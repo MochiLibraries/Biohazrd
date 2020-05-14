@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ClangSharpTest2020": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
