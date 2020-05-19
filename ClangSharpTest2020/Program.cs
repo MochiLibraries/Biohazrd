@@ -2,6 +2,7 @@
 using ClangSharp.Interop;
 using System;
 using System.IO;
+using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
@@ -109,6 +110,16 @@ namespace ClangSharpTest2020
                     { extra += " INLINE"; }
                 }
 
+                if (cursor is RecordDecl record)
+                {
+                    ClangType type = record.TypeForDecl;
+
+                    extra += $" {type.Handle.SizeOf} bytes";
+
+                    if (type.Handle.IsPODType)
+                    { extra += " <POD>"; }
+                }
+
 #if false
                 if (cursor.Extent.Start.IsFromMainFile)
                 { extra += " MAIN"; }
@@ -122,7 +133,10 @@ namespace ClangSharpTest2020
 #endif
             }
 
-            WriteLine($"{cursor.CursorKindSpellingSafe()} - {cursor.Spelling}{extra}");
+            string kind = cursor.CursorKindSpellingSafe();
+            //kind = cursor.GetType().Name;
+
+            WriteLine($"{kind} {cursor.Handle.DeclKind} - {cursor.Spelling}{extra}");
 
             // Clang seems to have a basic understanding of Doxygen comments.
             // This seems to associate the comment as appropriate for prefix and postfix documentation. Pretty neat!
@@ -141,6 +155,35 @@ namespace ClangSharpTest2020
             }
 #endif
 
+            // For records, print the layout
+            // Helpful: https://github.com/joshpeterson/layout
+            bool skipFields = false;
+            {
+                if (cursor is RecordDecl record)
+                {
+                    skipFields = true;
+                    bool wroteField = false;
+
+                    foreach (Cursor child in cursor.CursorChildren)
+                    {
+                        if (child.CursorKind != CXCursorKind.CXCursor_FieldDecl)
+                        { continue; }
+
+                        if (!wroteField)
+                        {
+                            wroteField = true;
+                            WriteLine("----------------------------------------------------------------------------");
+                        }
+
+                        FieldDecl field = (FieldDecl)child;
+                        WriteLine($"{field.Type.AsString} {field.Name} @ {field.Handle.OffsetOfField / 8} for {field.Type.Handle.SizeOf}");
+                    }
+
+                    if (wroteField)
+                    { WriteLine("----------------------------------------------------------------------------"); }
+                }
+            }
+
             Cursor cursorToIgnore = null;
             {
                 if (cursor is FunctionDecl function)
@@ -153,6 +196,9 @@ namespace ClangSharpTest2020
             foreach (Cursor child in cursor.CursorChildren)
             {
                 if (child == cursorToIgnore)
+                { continue; }
+
+                if (skipFields && child is FieldDecl)
                 { continue; }
 
                 Dump(child);
