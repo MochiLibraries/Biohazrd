@@ -2,6 +2,8 @@
 using ClangSharp.Interop;
 using System;
 using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
@@ -10,10 +12,20 @@ namespace ClangSharpTest2020
     {
         public static void Main(string[] args)
         {
+            NativeLibrary.SetDllImportResolver(typeof(Program).Assembly, ImportResolver);
+
             DoTest();
             Console.WriteLine();
             Console.WriteLine("Done.");
             //Console.ReadLine();
+        }
+
+        private static IntPtr ImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+        {
+            if (libraryName == "libclang.dll")
+            { return NativeLibrary.Load(@"C:\Scratch\llvm-project\build\Release\bin\libclang.dll"); }
+
+            return IntPtr.Zero;
         }
 
         private static void DoTest()
@@ -25,6 +37,7 @@ namespace ClangSharpTest2020
                 "--language=c++",
                 "--std=c++17",
                 "-Wno-pragma-once-outside-header", // Since we might be parsing headers, this warning will be irrelevant.
+                //"--target=x86_64-pc-linux",
             };
 
             // These are the flags used by ClangSharp.PInvokeGenerator, so we're just gonna use them for now.
@@ -179,8 +192,11 @@ namespace ClangSharpTest2020
                         WriteLine($"{field.Type.AsString} {field.Name} @ {field.Handle.OffsetOfField / 8} for {field.Type.Handle.SizeOf}");
                     }
 
-                    if (wroteField)
-                    { WriteLine("----------------------------------------------------------------------------"); }
+
+                    // Dump the layout using PathogenLayoutExtensions
+                    WriteLine("----------------------------------------------------------------------------");
+                    DumpLayoutWithPathogenExtensions(record);
+                    WriteLine("----------------------------------------------------------------------------");
                 }
             }
 
@@ -204,6 +220,93 @@ namespace ClangSharpTest2020
                 Dump(child);
             }
             Unindent();
+        }
+
+        private static unsafe void DumpLayoutWithPathogenExtensions(RecordDecl record)
+        {
+            PathogenRecordLayout* layout = null;
+
+            try
+            {
+                layout = PathogenExtensions.pathogen_GetRecordLayout(record.Handle);
+
+                // Count the number of fields
+                int fieldCount = 0;
+                for (PathogenRecordField* field = layout->FirstField; field != null; field = field->NextField)
+                { fieldCount++; }
+
+                WriteLine($"          Field count: {fieldCount}");
+                WriteLine($"                 Size: {layout->Size} bytes");
+                WriteLine($"            Alignment: {layout->Alignment} bytes");
+                WriteLine($"        Is C++ record: {(layout->IsCppRecord != 0 ? "Yes" : "No")}");
+
+                if (layout->IsCppRecord != 0)
+                {
+                    WriteLine($"     Non-virtual size: {layout->NonVirtualSize}");
+                    WriteLine($"Non-virtual alignment: {layout->NonVirtualAlignment}");
+                }
+
+                for (PathogenRecordField* field = layout->FirstField; field != null; field = field->NextField)
+                {
+                    string fieldLine = $"[{field->Offset}]";
+
+                    if (field->Kind != PathogenRecordFieldKind.Normal)
+                    { fieldLine += $" {field->Kind}"; }
+
+                    fieldLine += $" {field->Type} {field->Name.CString}";
+
+#if false
+                    if (field->Kind == PathogenRecordFieldKind.Normal)
+                    { fieldLine += $" (FieldDeclaration = {field->FieldDeclaration})"; }
+#endif
+
+                    if (field->IsPrimaryBase != 0)
+                    { fieldLine += " (PRIMARY)"; }
+
+                    WriteLine(fieldLine);
+                }
+
+                // Write out the VTable(s)
+                int vTableIndex = 0;
+                for (PathogenVTable* vTable = layout->FirstVTable; vTable != null; vTable = vTable->NextVTable)
+                {
+                    WriteLine($"------- VTABLE {vTableIndex} -------");
+
+                    int i = 0;
+                    foreach (PathogenVTableEntry entry in vTable->Entries)
+                    {
+                        string line = $"[{i}] {entry.Kind}";
+
+                        switch (entry.Kind)
+                        {
+                            case PathogenVTableEntryKind.VCallOffset:
+                            case PathogenVTableEntryKind.VBaseOffset:
+                            case PathogenVTableEntryKind.OffsetToTop:
+                                line += $" {entry.Offset}";
+                                break;
+                            case PathogenVTableEntryKind.RTTI:
+                                line += $" {entry.RttiType.DisplayName}";
+                                break;
+                            case PathogenVTableEntryKind.FunctionPointer:
+                            case PathogenVTableEntryKind.CompleteDestructorPointer:
+                            case PathogenVTableEntryKind.DeletingDestructorPointer:
+                            case PathogenVTableEntryKind.UnusedFunctionPointer:
+                                line += $" {entry.MethodDeclaration.DisplayName}";
+                                break;
+                        }
+
+                        WriteLine(line);
+                        i++;
+                    }
+
+                    vTableIndex++;
+                }
+            }
+            finally
+            {
+                if (layout != null)
+                { PathogenExtensions.pathogen_DeleteRecordLayout(layout); }
+            }
         }
 
         private static int IndentLevel = 0;
