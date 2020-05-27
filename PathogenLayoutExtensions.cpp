@@ -264,6 +264,12 @@ PATHOGEN_EXPORT PathogenRecordLayout* pathogen_GetRecordLayout(CXCursor cursor)
         return nullptr;
     }
 
+    // The cursor must have a definition (IE: it can't be a forward-declaration.)
+    if (record->getDefinition() == nullptr)
+    {
+        return nullptr;
+    }
+
     // Get the AST context
     ASTContext& context = cxcursor::getCursorContext(cursor);
 

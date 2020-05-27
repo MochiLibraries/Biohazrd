@@ -1,6 +1,7 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -17,43 +18,97 @@ namespace ClangSharpTest2020
             DoTest();
             Console.WriteLine();
             Console.WriteLine("Done.");
-            //Console.ReadLine();
+            Console.ReadLine();
         }
 
         private static IntPtr ImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
         {
+            // Note: The debug build of libclang is weirdly unstable (when built from Visual Studio?)
+            // Some issues it has:
+            // * Building the debug configuration twice in a row isn't successful due to the table generator not working https://bugs.llvm.org/show_bug.cgi?id=41367
+            // * I'll crash in the CRT over things that don't seem to be our fault.
+            // * The AST context isn't fully initialized.
+            // Note: This isn't a build system issue since it happens even when using Ninja,
+            // which seems to be the workflow recommended by the official documentation https://clang.llvm.org/get_started.html
+            // We might be able to build with Clang instead of MSVC to fix these issues.
             if (libraryName == "libclang.dll")
-            { return NativeLibrary.Load(@"C:\Scratch\llvm-project\build\Release\bin\libclang.dll"); }
+            //{ return NativeLibrary.Load(@"C:\Scratch\llvm-project\build\Debug\bin\libclang.dll"); }
+            //{ return NativeLibrary.Load(@"C:\Scratch\llvm-project\build\Release\bin\libclang.dll"); }
+            //{ return NativeLibrary.Load(@"C:\Scratch\llvm-project\build_ninja\bin\libclang.dll"); }
+            { return NativeLibrary.Load(@"C:\Scratch\llvm-project\build_ninja-release\bin\libclang.dll"); }
 
             return IntPtr.Zero;
         }
 
         private static void DoTest()
         {
-            const string sourceFilePath = @"C:\Development\Playground\CppWrappingInlineMaybe\CppWrappingInlineMaybe\Source.h";
-
-            string[] clangCommandLineArgs =
+            string[] includeDirs =
             {
+                @"C:\Scratch\PhysX\physx\install\vc15win64\PhysX\include\",
+                @"C:\Scratch\PhysX\pxshared\include\"
+            };
+
+            List<string> _clangCommandLineArgs = new List<string>()
+            {
+                "-D_DEBUG",
                 "--language=c++",
                 "--std=c++17",
-                "-Wno-pragma-once-outside-header", // Since we might be parsing headers, this warning will be irrelevant.
+                "-Wno-pragma-once-outside-header", // Since we are parsing headers, this warning will be irrelevant.
+                "-Wno-return-type-c-linkage", // PxGetFoundation triggers this.
                 //"--target=x86_64-pc-linux",
             };
 
+            foreach (string includeDir in includeDirs)
+            { _clangCommandLineArgs.Add($"-I{includeDir}"); }
+
+            string[] clangCommandLineArgs = _clangCommandLineArgs.ToArray();
+
+            CXIndex index = CXIndex.Create(displayDiagnostics: true);
+            using var writer = new StreamWriter("Output.txt");
+            Writer = writer;
+
+            List<string> files = new List<string>();
+
+#if false
+            files.Add(@"C:\Development\Playground\CppWrappingInlineMaybe\CppWrappingInlineMaybe\Source.h");
+#else
+            foreach (string includeDir in includeDirs)
+            {
+                foreach (string headerFile in Directory.EnumerateFiles(includeDir, "*.h", SearchOption.AllDirectories))
+                {
+                    if (headerFile.EndsWith("PxUnixIntrinsics.h"))
+                    { continue; }
+
+                    files.Add(headerFile);
+                }
+            }
+#endif
+
+            foreach (string file in files)
+            {
+                WriteLine("==============================================================================");
+                WriteLine(file);
+                Console.WriteLine(file);
+                WriteLine("==============================================================================");
+                if (!Translate(index, file, clangCommandLineArgs))
+                { return; }
+            }
+        }
+
+        private static bool Translate(in CXIndex index, string sourceFilePath, string[] clangCommandLineArgs)
+        {
             // These are the flags used by ClangSharp.PInvokeGenerator, so we're just gonna use them for now.
             CXTranslationUnit_Flags translationFlags =
                 CXTranslationUnit_Flags.CXTranslationUnit_IncludeAttributedTypes |
                 CXTranslationUnit_Flags.CXTranslationUnit_VisitImplicitAttributes
             ;
-
-            CXIndex index = CXIndex.Create(displayDiagnostics: true);
             CXTranslationUnit unitHandle;
             CXErrorCode status = CXTranslationUnit.TryParse(index, sourceFilePath, clangCommandLineArgs, ReadOnlySpan<CXUnsavedFile>.Empty, translationFlags, out unitHandle);
 
             if (status != CXErrorCode.CXError_Success)
             {
                 Console.Error.WriteLine($"Failed to parse due to {status}.");
-                return;
+                return false;
             }
 
             if (unitHandle.NumDiagnostics != 0)
@@ -72,15 +127,13 @@ namespace ClangSharpTest2020
                 if (hasErrors)
                 {
                     Console.Error.WriteLine("Aborting due to previous errors.");
-                    return;
+                    return false;
                 }
             }
 
             using TranslationUnit unit = TranslationUnit.GetOrCreate(unitHandle);
-            //new ClangWalker().VisitTranslationUnit(unit.TranslationUnitDecl);
-            using var writer = new StreamWriter("Output.txt");
-            Writer = writer;
             Dump(unit.TranslationUnitDecl);
+            return true;
         }
 
         private static StreamWriter Writer;
@@ -97,9 +150,13 @@ namespace ClangSharpTest2020
 
             // Some types of cursors are never relevant
             bool skip = false;
+            {
+                if (cursor is AccessSpecDecl)
+                { skip = true; }
 
-            if (cursor is AccessSpecDecl)
-            { skip = true; }
+                if (cursor is RecordDecl record && !record.Handle.IsDefinition)
+                { skip = true; }
+            }
 
             if (skip)
             {
@@ -153,9 +210,11 @@ namespace ClangSharpTest2020
 
             // Clang seems to have a basic understanding of Doxygen comments.
             // This seems to associate the comment as appropriate for prefix and postfix documentation. Pretty neat!
+#if false
             string commentText = clang.Cursor_getRawCommentText(cursor.Handle).ToString();
             if (!String.IsNullOrEmpty(commentText))
             { WriteLine(commentText); }
+#endif
 
 #if false
             if (cursor.Extent.Start.IsFromMainFile != cursor.Extent.End.IsFromMainFile)
@@ -168,12 +227,13 @@ namespace ClangSharpTest2020
             }
 #endif
 
-            // For records, print the layout
+            // For defined records, print the layout
             // Helpful: https://github.com/joshpeterson/layout
             bool skipFields = false;
             {
-                if (cursor is RecordDecl record)
+                if (cursor is RecordDecl record && record.Handle.IsDefinition) //TODO: PathogenLayoutExtensions should error on records without a definition.
                 {
+                    Console.WriteLine($"RECORD: {record.Name}");
                     skipFields = true;
                     bool wroteField = false;
 
@@ -224,11 +284,19 @@ namespace ClangSharpTest2020
 
         private static unsafe void DumpLayoutWithPathogenExtensions(RecordDecl record)
         {
+            const string PanicMarker = "!!!WARNWARN!!!";
             PathogenRecordLayout* layout = null;
 
             try
             {
                 layout = PathogenExtensions.pathogen_GetRecordLayout(record.Handle);
+
+                if (layout == null)
+                {
+                    Console.Error.WriteLine($"Failed to get record layout of {record.Name}.");
+                    WriteLine($"!!!!!! pathogen_GetRecordLayout Failed !!!!!!");
+                    return;
+                }
 
                 // Count the number of fields
                 int fieldCount = 0;
@@ -263,6 +331,15 @@ namespace ClangSharpTest2020
                     if (field->IsPrimaryBase != 0)
                     { fieldLine += " (PRIMARY)"; }
 
+                    switch (field->Kind)
+                    {
+                        case PathogenRecordFieldKind.VirtualBase:
+                        case PathogenRecordFieldKind.VirtualBaseTablePtr:
+                        case PathogenRecordFieldKind.VTorDisp:
+                            fieldLine += $" {PanicMarker}";
+                            break;
+                    }
+
                     WriteLine(fieldLine);
                 }
 
@@ -271,6 +348,9 @@ namespace ClangSharpTest2020
                 for (PathogenVTable* vTable = layout->FirstVTable; vTable != null; vTable = vTable->NextVTable)
                 {
                     WriteLine($"------- VTABLE {vTableIndex} -------");
+
+                    if (vTableIndex > 0)
+                    { WriteLine(PanicMarker); }
 
                     int i = 0;
                     foreach (PathogenVTableEntry entry in vTable->Entries)
