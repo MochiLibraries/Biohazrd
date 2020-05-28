@@ -54,7 +54,7 @@ namespace ClangSharpTest2020
                 "--language=c++",
                 "--std=c++17",
                 "-Wno-pragma-once-outside-header", // Since we are parsing headers, this warning will be irrelevant.
-                "-Wno-return-type-c-linkage", // PxGetFoundation triggers this.
+                "-Wno-return-type-c-linkage", // PxGetFoundation triggers this. There's code to suppress it, but it's only triggered when building for Clang on Linux.
                 //"--target=x86_64-pc-linux",
             };
 
@@ -64,25 +64,44 @@ namespace ClangSharpTest2020
             string[] clangCommandLineArgs = _clangCommandLineArgs.ToArray();
 
             CXIndex index = CXIndex.Create(displayDiagnostics: true);
-            using var writer = new StreamWriter("Output.txt");
-            Writer = writer;
 
             List<string> files = new List<string>();
 
 #if false
             files.Add(@"C:\Development\Playground\CppWrappingInlineMaybe\CppWrappingInlineMaybe\Source.h");
 #else
+            HashSet<string> whiteListedFiles = new HashSet<string>()
+            {
+                "PxFoundation.h"
+            };
+
+            HashSet<string> blackListedFiles = new HashSet<string>()
+            {
+                "PxUnixIntrinsics.h" // Not relevant on Windows
+            };
+
             foreach (string includeDir in includeDirs)
             {
                 foreach (string headerFile in Directory.EnumerateFiles(includeDir, "*.h", SearchOption.AllDirectories))
                 {
-                    if (headerFile.EndsWith("PxUnixIntrinsics.h"))
+                    string fileName = Path.GetFileName(headerFile);
+
+#if true
+                    if (!whiteListedFiles.Contains(fileName))
+                    { continue; }
+#endif
+
+                    if (blackListedFiles.Contains(fileName))
                     { continue; }
 
                     files.Add(headerFile);
                 }
             }
 #endif
+
+#if false
+            using var writer = new StreamWriter("Output.txt");
+            Writer = writer;
 
             foreach (string file in files)
             {
@@ -93,6 +112,21 @@ namespace ClangSharpTest2020
                 if (!Translate(index, file, clangCommandLineArgs))
                 { return; }
             }
+#else
+            using TranslatedLibrary library = new TranslatedLibrary(clangCommandLineArgs);
+
+            foreach (string file in files)
+            {
+                Console.WriteLine("==============================================================================");
+                Console.WriteLine(file);
+                Console.WriteLine("==============================================================================");
+
+                library.AddFile(file);
+
+                if (library.HasErrors)
+                { return; }
+            }
+#endif
         }
 
         private static bool Translate(in CXIndex index, string sourceFilePath, string[] clangCommandLineArgs)
@@ -151,8 +185,8 @@ namespace ClangSharpTest2020
             // Some types of cursors are never relevant
             bool skip = false;
             {
-                if (cursor is AccessSpecDecl)
-                { skip = true; }
+                //if (cursor is AccessSpecDecl)
+                //{ skip = true; }
 
                 if (cursor is RecordDecl record && !record.Handle.IsDefinition)
                 { skip = true; }
@@ -206,7 +240,7 @@ namespace ClangSharpTest2020
             string kind = cursor.CursorKindSpellingSafe();
             //kind = cursor.GetType().Name;
 
-            WriteLine($"{kind} {cursor.Handle.DeclKind} - {cursor.Spelling}{extra}");
+            WriteLine($"{cursor.GetType().Name} {kind} {cursor.Handle.DeclKind} - {cursor.Spelling}{extra}");
 
             // Clang seems to have a basic understanding of Doxygen comments.
             // This seems to associate the comment as appropriate for prefix and postfix documentation. Pretty neat!
