@@ -330,9 +330,8 @@ namespace ClangSharpTest2020
             // Helpful: https://github.com/joshpeterson/layout
             bool skipFields = false;
             {
-                if (cursor is RecordDecl record && record.Handle.IsDefinition) //TODO: PathogenLayoutExtensions should error on records without a definition.
+                if (cursor is RecordDecl record && record.Handle.IsDefinition)
                 {
-                    Console.WriteLine($"RECORD: {record.Name}");
                     skipFields = true;
                     bool wroteField = false;
 
