@@ -247,10 +247,32 @@ namespace ClangSharpTest2020
 #endif
             }
 
-            string kind = cursor.CursorKindSpellingSafe();
-            //kind = cursor.GetType().Name;
+            string kind = cursor.CursorKind.ToString();
+            string declKind = cursor.Handle.DeclKind.ToString();
 
-            WriteLine($"{cursor.GetType().Name} {kind} {cursor.Handle.DeclKind} - {cursor.Spelling}{extra}");
+            const string kindPrefix = "CXCursor_";
+            if (kind.StartsWith(kindPrefix))
+            { kind = kind.Substring(kindPrefix.Length); }
+
+            const string declKindPrefix = "CX_DeclKind_";
+            if (declKind.StartsWith(declKindPrefix))
+            { declKind = declKind.Substring(declKindPrefix.Length); }
+
+            if (cursor.CursorKind == CXCursorKind.CXCursor_UnexposedDecl)
+            { kind = null; }
+
+            if (cursor.Handle.DeclKind == CX_DeclKind.CX_DeclKind_Invalid)
+            { declKind = null; }
+
+            string prefix = $"{cursor.GetType().Name}";
+
+            if (kind != null)
+            { prefix += $" {kind}"; }
+
+            if (declKind != null)
+            { prefix += $" {declKind}"; }
+
+            WriteLine($"{prefix} - {cursor.Spelling}{extra}");
 
             // Clang seems to have a basic understanding of Doxygen comments.
             // This seems to associate the comment as appropriate for prefix and postfix documentation. Pretty neat!
