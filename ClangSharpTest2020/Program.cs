@@ -1,4 +1,5 @@
-﻿using ClangSharp;
+﻿#define DUMP_LOCATION_INFORMATION
+using ClangSharp;
 using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
@@ -233,18 +234,6 @@ namespace ClangSharpTest2020
                     if (type.Handle.IsPODType)
                     { extra += " <POD>"; }
                 }
-
-#if false
-                if (cursor.Extent.Start.IsFromMainFile)
-                { extra += " MAIN"; }
-                else if (cursor.Extent.End.IsFromMainFile)
-                { extra += " MAIN(END)"; }
-
-                if (cursor.Extent.Start.IsInSystemHeader)
-                { extra += " SYS"; }
-                else if (cursor.Extent.End.IsInSystemHeader)
-                { extra += " SYS(END)"; }
-#endif
             }
 
             string kind = cursor.CursorKind.ToString();
@@ -282,14 +271,56 @@ namespace ClangSharpTest2020
             { WriteLine(commentText); }
 #endif
 
+#if DUMP_LOCATION_INFORMATION
+            bool isFromMainFileStart = cursor.Extent.Start.IsFromMainFile;
+            bool isFromMainFileEnd = cursor.Extent.End.IsFromMainFile;
+            bool isFromMainFileStart2 = PathogenExtensions.pathogen_Location_isFromMainFile(cursor.Extent.Start) != 0;
+            bool isFromMainFileEnd2 = PathogenExtensions.pathogen_Location_isFromMainFile(cursor.Extent.End) != 0;
+
+            bool whacky = false;
 #if false
-            if (cursor.Extent.Start.IsFromMainFile != cursor.Extent.End.IsFromMainFile)
+            if (isFromMainFileStart2 != isFromMainFileStart || isFromMainFileEnd2 != isFromMainFileEnd)
             {
-                WriteLine("--------------");
-                WriteLine("Start and end location do not agree whether this cursor is in the main file!");
-                WriteLine($"Start: {cursor.Extent.Start}");
-                WriteLine($"  End: {cursor.Extent.End}");
-                WriteLine("--------------");
+                WriteLine("^^^^^WARNWARN1 PREVIOUS CURSOR IS FROM MAIN FILE ACCORDING TO CLANG BUT NOT PATHOGEN!!!!");
+                whacky = true;
+            }
+
+            if (isFromMainFileStart != isFromMainFileEnd)
+            {
+                WriteLine("^^^^^WARNWARN2 PREVIOUS CURSOR START AND ENDS DO NOT MATCH IN MAINFILENESS!!!!");
+                whacky = true;
+            }
+#endif
+
+            if (isFromMainFileStart2 != isFromMainFileEnd2)
+            {
+                WriteLine("^^^^^WARNWARN3 PREVIOUS CURSOR START AND ENDS DO NOT MATCH IN PATHOGEN MAINFILENESS!!!!");
+                whacky = true;
+            }
+
+            // For preprocessed entities (only emitted when CXTranslationUnit_DetailedPreprocessingRecord is enabled) we emit source locations
+            if (cursor is PreprocessedEntity || !cursor.IsFromMainFile() || whacky)
+            {
+                Indent();
+                WriteLine($" From main file: {cursor.Extent.Start.IsFromMainFile} -- {cursor.Extent.End.IsFromMainFile}");
+                WriteLine($"From main file2: {PathogenExtensions.pathogen_Location_isFromMainFile(cursor.Extent.Start) != 0} -- {PathogenExtensions.pathogen_Location_isFromMainFile(cursor.Extent.End) != 0}");
+                WriteLine($"  From sys file: {cursor.Extent.Start.IsInSystemHeader} -- {cursor.Extent.End.IsInSystemHeader}");
+                WriteLocationDetails("      Expansion", cursor.Extent.Start.GetExpansionLocation, cursor.Extent.End.GetExpansionLocation);
+                // Note: This is legacy, it was replaced by the expansion location.
+                WriteLocationDetails("  Instantiation", cursor.Extent.Start.GetInstantiationLocation, cursor.Extent.End.GetInstantiationLocation);
+                WriteLocationDetails("       Spelling", cursor.Extent.Start.GetSpellingLocation, cursor.Extent.End.GetSpellingLocation);
+                WriteLocationDetails("           File", cursor.Extent.Start.GetFileLocation, cursor.Extent.End.GetFileLocation);
+
+                {
+                    cursor.Extent.Start.GetPresumedLocation(out CXString startFile, out uint startLine, out uint startColumn);
+                    cursor.Extent.End.GetPresumedLocation(out CXString endFile, out uint endLine, out uint endColumn);
+                    string startFileName = Path.GetFileName(startFile.ToString());
+                    string endFileName = Path.GetFileName(endFile.ToString());
+                    WriteLocationDetails("       Presumed", startFileName, startLine, startColumn, 0, endFileName, endLine, endColumn, 0);
+                }
+
+                WriteLine("--------------------------------------------------------------");
+                Unindent();
             }
 #endif
 
@@ -469,6 +500,37 @@ namespace ClangSharpTest2020
             { Writer.Write("  "); }
 
             Writer.WriteLine(message);
+        }
+
+        private delegate void GetLocationDetails(out CXFile file, out uint line, out uint column, out uint offset);
+        private static void WriteLocationDetails(string prefix, GetLocationDetails getStart, GetLocationDetails getEnd)
+        {
+            getStart(out CXFile startFile, out uint startLine, out uint startColumn, out uint startOffset);
+            getEnd(out CXFile endFile, out uint endLine, out uint endColumn, out uint endOffset);
+
+            string startFileName = Path.GetFileName(startFile.Name.ToString());
+            string endFileName = Path.GetFileName(endFile.Name.ToString());
+
+            WriteLocationDetails(prefix, startFileName, startLine, startColumn, startOffset, endFileName, endLine, endColumn, endOffset);
+        }
+
+        private static void WriteLocationDetails(string prefix, string startFileName, uint startLine, uint startColumn, uint startOffset, string endFileName, uint endLine, uint endColumn, uint endOffset)
+        {
+            string line = $"{prefix}: ";
+
+            if (startFileName == endFileName)
+            {
+                line += startFileName;
+                line += startLine == endLine ? $":{startLine}" : $":{startLine}..{endLine}";
+                line += startColumn == endColumn ? $":{startColumn}" : $":{startColumn}..{endColumn}";
+
+                if (startOffset != 0 && endOffset != 0)
+                { line += startOffset == endOffset ? $"[{startOffset}]" : $"[{startOffset}..{endOffset}]"; }
+            }
+            else
+            { line += $" {startFileName}:{startLine}:{startColumn}[{startOffset}]..{endFileName}:{endLine}:{endColumn}[{endOffset}]"; }
+
+            WriteLine(line);
         }
     }
 }
