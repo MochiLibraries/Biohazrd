@@ -180,7 +180,9 @@ namespace ClangSharpTest2020
             return true;
         }
 
+#pragma warning disable CS0649
         private static StreamWriter Writer;
+#pragma warning restore CS0649
 
         private static void Dump(Cursor cursor)
         {
