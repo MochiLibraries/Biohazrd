@@ -446,3 +446,21 @@ PATHOGEN_EXPORT interop_bool pathogen_GetTypeSizes(PathogenTypeSizes* sizes)
     sizes->PathogenVTableEntry = sizeof(PathogenVTableEntry);
     return true;
 }
+
+// This isn't related to layout, but it's gotta go somewhere!
+// If you add more things relating to locations consider adding another file.
+
+//! This is essentially the same as clang_Location_isFromMainFile, but it uses SourceManager::isInMainFile instead of SourceManager::isWrittenInMainFile
+//! The libclang function suffers from some quirks, namely:
+//! * It is possible for the start and end locations for a cursor's extent to have different values.
+//! * Cursors which are the result of a macro expansion will be considered to be outside of the main file.
+//! These quirks are not good for our usecase of rejecting cursors from included files, so we provide this alternative.
+PATHOGEN_EXPORT int pathogen_Location_isFromMainFile(CXSourceLocation cxLocation)
+{
+    const SourceLocation location = SourceLocation::getFromRawEncoding(cxLocation.int_data);
+    if (location.isInvalid())
+    { return 0; }
+
+    const SourceManager& sourceManager = *static_cast<const SourceManager*>(cxLocation.ptr_data[0]);
+    return sourceManager.isInMainFile(location);
+}

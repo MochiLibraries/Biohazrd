@@ -175,9 +175,7 @@ namespace ClangSharpTest2020
         private static void Dump(Cursor cursor)
         {
             // Skip cursors which come from included files
-            // (Can also skip ones from system files. Unclear how Clang determines "system header" -- Might just be <> headers?)
-            // For some reason the first declaration in a file will only have its end marked as being from the main file.
-            if (!cursor.Extent.Start.IsFromMainFile && !cursor.Extent.End.IsFromMainFile)
+            if (!cursor.IsFromMainFile())
             {
                 return;
             }

@@ -47,6 +47,9 @@ namespace ClangSharpTest2020
 
         [DllImport("libclang.dll", ExactSpelling = true)]
         public static extern unsafe void pathogen_DeleteRecordLayout(PathogenRecordLayout* layout);
+
+        [DllImport("libclang.dll", ExactSpelling = true)]
+        public static extern int pathogen_Location_isFromMainFile(CXSourceLocation location);
     }
 
     internal enum PathogenRecordFieldKind : int
