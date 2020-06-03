@@ -134,7 +134,17 @@ namespace ClangSharpTest2020
             // These are the flags used by ClangSharp.PInvokeGenerator, so we're just gonna use them for now.
             CXTranslationUnit_Flags translationFlags =
                 CXTranslationUnit_Flags.CXTranslationUnit_IncludeAttributedTypes |
-                CXTranslationUnit_Flags.CXTranslationUnit_VisitImplicitAttributes
+                // Implicit attributes are a bunch of extra noise we don't really need.
+                //CXTranslationUnit_Flags.CXTranslationUnit_VisitImplicitAttributes |
+                // This seemingly causes included files to not be included
+                // But like, at all. The file won't parse if it depends on stuff in the include files.
+                //CXTranslationUnit_Flags.CXTranslationUnit_SingleFileParse |
+                // I was hoping this would help the previous flag work, but it did not.
+                //CXTranslationUnit_Flags.CXTranslationUnit_Incomplete |
+                // I was hoping this would help figure out what ranges are included, but it's only really informational.
+                // It *can* however be used to determine if a source range is a macro expansion.
+                CXTranslationUnit_Flags.CXTranslationUnit_DetailedPreprocessingRecord |
+                0
             ;
             CXTranslationUnit unitHandle;
             CXErrorCode status = CXTranslationUnit.TryParse(index, sourceFilePath, clangCommandLineArgs, ReadOnlySpan<CXUnsavedFile>.Empty, translationFlags, out unitHandle);
