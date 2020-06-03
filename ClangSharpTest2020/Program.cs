@@ -1,4 +1,6 @@
-﻿#define DUMP_LOCATION_INFORMATION
+﻿//#define DUMP_MODE
+#define DUMP_LOCATION_INFORMATION
+#define USE_FILE_WHITELIST
 using ClangSharp;
 using ClangSharp.Interop;
 using System;
@@ -87,7 +89,7 @@ namespace ClangSharpTest2020
                 {
                     string fileName = Path.GetFileName(headerFile);
 
-#if true
+#if USE_FILE_WHITELIST
                     if (!whiteListedFiles.Contains(fileName))
                     { continue; }
 #endif
@@ -100,7 +102,7 @@ namespace ClangSharpTest2020
             }
 #endif
 
-#if false
+#if DUMP_MODE
             using var writer = new StreamWriter("Output.txt");
             Writer = writer;
 
