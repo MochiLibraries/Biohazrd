@@ -1,20 +1,15 @@
-﻿using ClangSharp;
-using ClangSharp.Interop;
+﻿using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace ClangSharpTest2020
 {
     public sealed class TranslatedLibrary : IDisposable
     {
         private readonly List<TranslatedFile> Files = new List<TranslatedFile>();
-        private readonly List<TranslatedRecord> Records = new List<TranslatedRecord>();
-        private readonly List<TranslatedFunction> LooseFunctions = new List<TranslatedFunction>();
         private readonly CXIndex Index;
         private readonly string[] ClangCommandLineArgumentsArray;
 
@@ -29,25 +24,12 @@ namespace ClangSharpTest2020
             Index = CXIndex.Create(displayDiagnostics: true);
         }
 
-        internal void AddRecord(TranslatedRecord record)
-        {
-            if (record.Library != this)
-            { throw new ArgumentException("The specified record does not belong to this library.", nameof(record)); }
-
-            Records.Add(record);
-        }
-
-        internal void AddLooseFunction(TranslatedFunction function)
-        {
-            if (function.Library != this)
-            { throw new ArgumentException("The specified function does not belong to this library.", nameof(function)); }
-
-            LooseFunctions.Add(function);
-        }
-
         public void AddFile(string filePath)
         {
-            var newFile = new TranslatedFile(this, Index, filePath);
+            TranslatedFile newFile;
+            //using (new WorkingDirectoryScope(Path.GetFileNameWithoutExtension(filePath)))
+            { newFile = new TranslatedFile(this, Index, filePath); }
+
             Files.Add(newFile);
 
             if (newFile.HasErrors)

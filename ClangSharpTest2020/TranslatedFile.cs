@@ -2,19 +2,28 @@
 using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 
 namespace ClangSharpTest2020
 {
     public sealed class TranslatedFile : IDisposable
     {
         public TranslatedLibrary Library { get; }
+
+        private readonly List<TranslatedRecord> Records = new List<TranslatedRecord>();
+        private readonly List<TranslatedFunction> LooseFunctions = new List<TranslatedFunction>();
+
         public string FilePath { get; }
         private readonly TranslationUnit TranslationUnit;
 
         private readonly List<TranslationDiagnostic> _Diagnostics = new List<TranslationDiagnostic>();
-        private readonly ReadOnlyCollection<TranslationDiagnostic> Diagnostics;
+        public ReadOnlyCollection<TranslationDiagnostic> Diagnostics { get; }
 
+        private readonly Dictionary<CXCursor, Cursor> CursorHandleLookup = new Dictionary<CXCursor, Cursor>();
         private readonly HashSet<Cursor> AllCursors = new HashSet<Cursor>();
         private readonly HashSet<Cursor> UnprocessedCursors;
 
@@ -29,8 +38,7 @@ namespace ClangSharpTest2020
 
             // These are the flags used by ClangSharp.PInvokeGenerator, so we're just gonna use them for now.
             CXTranslationUnit_Flags translationFlags =
-                CXTranslationUnit_Flags.CXTranslationUnit_IncludeAttributedTypes |
-                CXTranslationUnit_Flags.CXTranslationUnit_VisitImplicitAttributes
+                CXTranslationUnit_Flags.CXTranslationUnit_IncludeAttributedTypes
             ;
 
             CXTranslationUnit unitHandle;
@@ -74,11 +82,39 @@ namespace ClangSharpTest2020
             UnprocessedCursors = new HashSet<Cursor>(AllCursors);
 
             // Process the translation unit
-            ProcessCursor(TranslationUnit.TranslationUnitDecl);
+            ProcessCursor(ImmutableArray<TranslationContext>.Empty, TranslationUnit.TranslationUnitDecl);
+
+            // Translate global functions
+            string globalFunctionType = Path.GetFileNameWithoutExtension(FilePath);
+            TranslatedRecord globalFunctionTarget = Records.FirstOrDefault(r => r.Record.Name == globalFunctionType);
+
+            if (globalFunctionTarget is object)
+            {
+                foreach (TranslatedFunction function in LooseFunctions)
+                { globalFunctionTarget.AddAsStaticMethod(function); }
+            }
+            else
+            {
+                using CodeWriter writer = new CodeWriter();
+                writer.WriteLine($"public partial static {globalFunctionType}");
+                using (writer.Block())
+                {
+                    foreach (TranslatedFunction function in LooseFunctions)
+                    { function.Translate(writer); }
+                }
+
+                writer.WriteOut($"{globalFunctionType}.cs");
+            }
+
+            // Perform the translation
+            foreach (TranslatedRecord record in Records)
+            { record.Translate(); }
 
             // Note unprocessed cursors
+#if false //TODO: Re-enable this
             foreach (Cursor cursor in UnprocessedCursors)
             { HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} was not processed."); }
+#endif
         }
 
         private void HandleDiagnostic(in TranslationDiagnostic diagnostic)
@@ -92,91 +128,123 @@ namespace ClangSharpTest2020
             Library.HandleDiagnostic(diagnostic);
         }
 
-        private void HandleDiagnostic(TranslationDiagnosticSeverity severity, SourceLocation location, string message)
+        internal void HandleDiagnostic(TranslationDiagnosticSeverity severity, SourceLocation location, string message)
             => HandleDiagnostic(new TranslationDiagnostic(this, location, severity, message));
 
-        private void HandleDiagnostic(TranslationDiagnosticSeverity severity, string message)
+        internal void HandleDiagnostic(TranslationDiagnosticSeverity severity, string message)
             => HandleDiagnostic(severity, new SourceLocation(FilePath), message);
 
         private void HandleDiagnostic(CXDiagnostic clangDiagnostic)
             => HandleDiagnostic(new TranslationDiagnostic(this, clangDiagnostic));
 
-        private void HandleDiagnostic(TranslationDiagnosticSeverity severity, Cursor associatedCursor, string message)
+        internal void HandleDiagnostic(TranslationDiagnosticSeverity severity, Cursor associatedCursor, string message)
+            => HandleDiagnostic(severity, new SourceLocation(associatedCursor.Extent.Start), message);
+
+        internal void HandleDiagnostic(TranslationDiagnosticSeverity severity, CXCursor associatedCursor, string message)
             => HandleDiagnostic(severity, new SourceLocation(associatedCursor.Extent.Start), message);
 
         private void EnumerateAllCursorsRecursive(Cursor cursor)
         {
-            // Skip cursors outside of the specific file being processed
-            if (!cursor.IsFromMainFile())
-            { return; }
+            if (CursorHandleLookup.TryGetValue(cursor.Handle, out Cursor existingCursor))
+            { Debug.Assert(ReferenceEquals(cursor, existingCursor), "A given cursor handle must correspond to only one cursor instance."); }
+            else
+            { CursorHandleLookup.Add(cursor.Handle, cursor); }
 
-            AllCursors.Add(cursor);
+            // Only add cursors from the main file to AllCursors
+            //PERF: Skip this if the parent node wasn't from the main file
+            if (cursor.IsFromMainFile())
+            { AllCursors.Add(cursor); }
 
             // Add all children, recursively
             foreach (Cursor child in cursor.CursorChildren)
             { EnumerateAllCursorsRecursive(child); }
         }
 
-        private void MarkAsProcessed(Cursor cursor)
+        internal void Consume(Cursor cursor)
         {
+            if (cursor.TranslationUnit != TranslationUnit)
+            { throw new InvalidOperationException("The file should not attempt to consume cursors from other translation units."); }
+
             if (!UnprocessedCursors.Remove(cursor))
             {
                 if (AllCursors.Contains(cursor))
                 { HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor was processed more than once."); }
+                else if (!CursorHandleLookup.ContainsKey(cursor.Handle))
+                { HandleDiagnostic(TranslationDiagnosticSeverity.Error, cursor, $"{cursor.CursorKindDetailed()} cursor was processed from an external translation unit."); }
                 else
-                { HandleDiagnostic(TranslationDiagnosticSeverity.Error, cursor, $"Tried to mark a {cursor.CursorKindDetailed()} cursor as processed when it came from outside this file."); }
+                {
+                    // We shouldn't process cursors that come from outside of our file.
+                    // Note: This depends on Cursor.IsFromMainFile using pathogen_Location_isFromMainFile because otherwise macro expansions will trigger this.
+                    HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor from outside our fle was processed.");
+
+                    // If we consume a cursor which we didn't consider to be a part of this file, we add it to our list of
+                    // all cursors to ensure our double cursor consumption above works for them.
+                    AllCursors.Add(cursor);
+                }
             }
         }
 
-        private void MarkAsProcessedRecursive(Cursor cursor)
-        {
-            MarkAsProcessed(cursor);
+        internal void Consume(CXCursor cursorHandle)
+            => Consume(FindCursor(cursorHandle));
 
+        internal void ConsumeRecursive(Cursor cursor)
+        {
+            Consume(cursor);
+
+            foreach (Cursor child in cursor.CursorChildren)
+            { ConsumeRecursive(child); }
+        }
+
+        internal void ConsumeRecursive(CXCursor cursorHandle)
+            => ConsumeRecursive(FindCursor(cursorHandle));
+
+        /// <remarks>Same as consume, but indicates that the cursor has no affect on the translation output.</remarks>
+        internal void Ignore(Cursor cursor)
+            => Consume(cursor);
+
+        internal void ProcessCursorChildren(ImmutableArray<TranslationContext> context, Cursor cursor)
+        {
+            foreach (Cursor child in cursor.CursorChildren)
+            { ProcessCursor(context, child); }
+        }
+
+        internal void ProcessUnconsumeChildren(ImmutableArray<TranslationContext> context, Cursor cursor)
+        {
             foreach (Cursor child in cursor.CursorChildren)
             {
-                // It's possible for children of main file cursors to be from outside the main file
-                // when macros are being used. So we don't mark non-main children here.
-                if (!child.IsFromMainFile())
-                { continue; }
-
-                MarkAsProcessedRecursive(child);
+                if (UnprocessedCursors.Contains(child))
+                { ProcessCursor(context, child); }
             }
         }
 
-        private void ProcessCursorChildren(Cursor cursor)
-        {
-            foreach (Cursor child in cursor.CursorChildren)
-            { ProcessCursor(child); }
-        }
-
-        private void ProcessCursor(Cursor cursor)
+        internal void ProcessCursor(ImmutableArray<TranslationContext> context, Cursor cursor)
         {
             // Skip cursors outside of the specific file being processed
-            // For some reason the first declaration in a file will only have its end marked as being from the main file.
-            if (!cursor.Extent.Start.IsFromMainFile && !cursor.Extent.End.IsFromMainFile)
+            if (!cursor.IsFromMainFile())
             { return; }
 
             // For translation units, just process all the children
             if (cursor is TranslationUnitDecl)
             {
-                MarkAsProcessed(cursor);
-                ProcessCursorChildren(cursor);
+                Debug.Assert(context.Length == 0);
+                Ignore(cursor);
+                ProcessCursorChildren(context, cursor);
                 return;
             }
 
             // Ignore linkage specification (IE: `exern "C"`)
             if (cursor.Handle.DeclKind == CX_DeclKind.CX_DeclKind_LinkageSpec)
             {
-                MarkAsProcessed(cursor);
-                ProcessCursorChildren(cursor);
+                Ignore(cursor);
+                ProcessCursorChildren(context, cursor);
                 return;
             }
 
-            //TODO: Do we need to keep track of namespaces for context?
-            if (cursor is NamespaceDecl)
+            // Namespaces
+            if (cursor is NamespaceDecl namespaceDeclaration)
             {
-                MarkAsProcessed(cursor);
-                ProcessCursorChildren(cursor);
+                Consume(cursor);
+                ProcessCursorChildren(context.Add(namespaceDeclaration), cursor);
                 return;
             }
 
@@ -189,71 +257,51 @@ namespace ClangSharpTest2020
                     {
                         case CX_AttrKind.CX_AttrKind_DLLExport:
                         case CX_AttrKind.CX_AttrKind_DLLImport:
-                            MarkAsProcessed(attribute);
+                            Ignore(attribute);
                             break;
                     }
                 }
             }
 
+            // Handle records (classes, structs, and unions)
             if (cursor is RecordDecl record)
             {
                 // Ignore forward-declarations
                 if (!record.Handle.IsDefinition)
                 {
-                    MarkAsProcessed(cursor);
+                    Ignore(cursor);
                     return;
                 }
 
-                //TODO: Remove this quick and dirty handle check
-                foreach (FieldDecl field in record.Fields)
-                { MarkAsProcessedRecursive(field); }
-
-                if (record is CXXRecordDecl cxxRecord)
-                {
-                    // Methods also includes the destructor
-                    foreach (CXXMethodDecl method in cxxRecord.Methods)
-                    { ProcessCursor(method); }
-
-                    foreach (CXXConstructorDecl ctor in cxxRecord.Ctors)
-                    { MarkAsProcessedRecursive(ctor); }
-                }
-
-                // Swallow any access specifiers
-                // We don't need them because their information is encoded on individual methods and fields
-                foreach (Cursor child in record.CursorChildren)
-                {
-                    if (child is AccessSpecDecl)
-                    { MarkAsProcessed(child); }
-                }
-
-                MarkAsProcessed(cursor);
+                Records.Add(new TranslatedRecord(context, this, record));
                 return;
             }
 
+            // Handle loose functions
             if (cursor is FunctionDecl function)
             {
-                foreach (ParmVarDecl parameter in function.Parameters)
-                { MarkAsProcessedRecursive(parameter); }
-
-                // If the function has a body, it is ignored (for now.)
-                //TODO: Do best effort translation of simple inline functions.
-                if (function.Body != null)
-                { MarkAsProcessedRecursive(function.Body); }
-
-                // Ignore children which are type references, they belong to the return type
-                foreach (Cursor child in cursor.CursorChildren)
-                {
-                    if (child.CursorKind == CXCursorKind.CXCursor_NamespaceRef || child.CursorKind == CXCursorKind.CXCursor_TypeRef)
-                    { MarkAsProcessed(child); }
-                }
-
-                MarkAsProcessed(cursor);
+                LooseFunctions.Add(new TranslatedFunction(context, this, function));
                 return;
             }
 
             // If we got this far, we didn't know how to process the cursor
-            HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"Not sure how to process cursor of type {cursor.CursorKindDetailed()}.");
-            ProcessCursorChildren(cursor);
+            //TODO: Verbosity
+            //HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"Not sure how to process cursor of type {cursor.CursorKindDetailed()}.");
+            ProcessCursorChildren(context, cursor);
+        }
+
+        public Cursor FindCursor(CXCursor cursorHandle)
+        {
+            if (cursorHandle.IsNull)
+            {
+                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, $"Someone tried to get the Cursor for a null handle.");
+                return null;
+            }
+
+            if (CursorHandleLookup.TryGetValue(cursorHandle, out Cursor ret))
+            { return ret; }
+
+            throw new ArgumentException("The specified cursor is not from this translation unit or is from outside of the main file.", nameof(cursorHandle));
         }
 
         public void Dispose()

@@ -80,7 +80,11 @@ namespace ClangSharpTest2020
 
             HashSet<string> blackListedFiles = new HashSet<string>()
             {
-                "PxUnixIntrinsics.h" // Not relevant on Windows
+                "PxUnixIntrinsics.h", // Not relevant on Windows
+
+                // The following files include anonyomus unions, which causes TranslatedFile.FindCursor to barf.
+                "PxMidphaseDesc.h",
+                "PxSolverDefs.h",
             };
 
             foreach (string includeDir in includeDirs)
@@ -116,6 +120,11 @@ namespace ClangSharpTest2020
                 { return; }
             }
 #else
+            const string outputDirectory = "Output";
+            if (Directory.Exists(outputDirectory))
+            { Directory.Delete(outputDirectory, recursive: true); }
+
+            using WorkingDirectoryScope _ = new WorkingDirectoryScope(outputDirectory);
             using TranslatedLibrary library = new TranslatedLibrary(clangCommandLineArgs);
 
             foreach (string file in files)
