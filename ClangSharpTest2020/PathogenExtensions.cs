@@ -92,10 +92,8 @@ namespace ClangSharpTest2020
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe struct PathogenVTable
     {
-        private int EntryCount;
-        private PathogenVTableEntry* _Entries;
-
-        public ReadOnlySpan<PathogenVTableEntry> Entries => new ReadOnlySpan<PathogenVTableEntry>(_Entries, EntryCount);
+        public int EntryCount;
+        public PathogenVTableEntry* Entries;
 
         public PathogenVTable* NextVTable;
     }

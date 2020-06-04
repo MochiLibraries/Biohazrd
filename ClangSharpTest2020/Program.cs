@@ -450,9 +450,9 @@ namespace ClangSharpTest2020
                     if (vTableIndex > 0)
                     { WriteLine(PanicMarker); }
 
-                    int i = 0;
-                    foreach (PathogenVTableEntry entry in vTable->Entries)
+                    for (int i = 0; i < vTable->EntryCount; i++)
                     {
+                        PathogenVTableEntry entry = vTable->Entries[i];
                         string line = $"[{i}] {entry.Kind}";
 
                         switch (entry.Kind)
