@@ -74,6 +74,23 @@ namespace ClangSharpTest2020
         UnusedFunctionPointer,
     }
 
+    internal static class PathogenVTableEntryKindEx
+    {
+        public static bool IsFunctionPointerKind(this PathogenVTableEntryKind kind)
+        {
+            switch (kind)
+            {
+                case PathogenVTableEntryKind.FunctionPointer:
+                case PathogenVTableEntryKind.CompleteDestructorPointer:
+                case PathogenVTableEntryKind.DeletingDestructorPointer:
+                case PathogenVTableEntryKind.UnusedFunctionPointer:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     internal struct PathogenVTableEntry
     {
