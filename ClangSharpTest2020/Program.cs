@@ -146,7 +146,7 @@ namespace ClangSharpTest2020
                 //CXTranslationUnit_Flags.CXTranslationUnit_Incomplete |
                 // I was hoping this would help figure out what ranges are included, but it's only really informational.
                 // It *can* however be used to determine if a source range is a macro expansion.
-                CXTranslationUnit_Flags.CXTranslationUnit_DetailedPreprocessingRecord |
+                //CXTranslationUnit_Flags.CXTranslationUnit_DetailedPreprocessingRecord |
                 0
             ;
             CXTranslationUnit unitHandle;
