@@ -233,50 +233,23 @@ namespace ClangSharpTest2020
             if (!cursor.IsFromMainFile())
             { return; }
 
-            //-------------------------------------------------------------------------------------
-            // Cursors do not have translation implemented
-            //-------------------------------------------------------------------------------------
-
-            // Ignore template specializations
-            if (cursor is ClassTemplateSpecializationDecl)
+            //---------------------------------------------------------------------------------------------------------
+            // Skip cursors which explicitly do not have translation implemented.
+            // This needs to happen first in case some of these checks overlap with cursors which are translated.
+            // (For instance, class template specializatiosn are records.)
+            //---------------------------------------------------------------------------------------------------------
+            if (IsExplicitlyUnsupported(cursor))
             {
-                Diagnostic(Severity.Warning, cursor, "Template specializations aren't supported yet.");
+                Diagnostic(Severity.Ignored, cursor, $"{cursor.CursorKindDetailed()} aren't supported yet.");
                 IgnoreRecursive(cursor);
                 return;
             }
 
-            // Ignore templates
-            if (cursor is TemplateDecl)
-            {
-                Diagnostic(Severity.Warning, cursor, "Template declarations aren't supported yet.");
-                IgnoreRecursive(cursor);
-                return;
-            }
-
-            // Ignore typedefs
-            // Typedefs will probably almost always have to be a special case.
-            // Sometimes they aren't very meaningful to the translation, and sometimes they have a large impact on how the API is used.
-            if (cursor is TypedefDecl)
-            {
-                Diagnostic(Severity.Warning, cursor, "Typedefs aren't supproted yet.");
-                IgnoreRecursive(cursor);
-                return;
-            }
-
-            // Can't translate global variables yet
-            //TODO: Constants deserve special treatment here.
-            if (cursor is VarDecl varDecl)
-            {
-                Diagnostic(Severity.Warning, cursor, "Global variables aren't supported yet.");
-                IgnoreRecursive(cursor);
-                return;
-            }
-
-            //-------------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------------------------------
             // Cursors which do not have a direct impact on the output
             // (These cursors are usually just containers for other cursors or the information
             //  they provide is already available on the cursors which they affect.)
-            //-------------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------------------------------
 
             // For translation units, just process all the children
             if (cursor is TranslationUnitDecl)
@@ -295,7 +268,7 @@ namespace ClangSharpTest2020
                 return;
             }
 
-            // Ignore unimportant (to us) attributes
+            // Ignore unimportant (to us) attributes on declarations
             if (cursor is Decl decl)
             {
                 foreach (Attr attribute in decl.Attrs)
@@ -310,9 +283,9 @@ namespace ClangSharpTest2020
                 }
             }
 
-            //-------------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------------------------------
             // Cursors which only affect the context
-            //-------------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------------------------------
 
             // Namespaces
             if (cursor is NamespaceDecl namespaceDeclaration)
@@ -322,9 +295,9 @@ namespace ClangSharpTest2020
                 return;
             }
 
-            //-------------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------------------------------
             // Records and loose functions
-            //-------------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------------------------------
 
             // Handle records (classes, structs, and unions)
             if (cursor is RecordDecl record)
@@ -347,13 +320,38 @@ namespace ClangSharpTest2020
                 return;
             }
 
-            //-------------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------------------------------
             // Failure
-            //-------------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------------------------------
 
             // If we got this far, we didn't know how to process the cursor
             // At one point we processed the children of the cursor anyway, but this can lead to confusing behavior when the skipped cursor provided meaningful context.
             Diagnostic(Severity.Warning, cursor, $"Not sure how to process cursor of type {cursor.CursorKindDetailed()}.");
+        }
+
+        private static bool IsExplicitlyUnsupported(Cursor cursor)
+        {
+            // Ignore template specializations
+            if (cursor is ClassTemplateSpecializationDecl)
+            { return true; }
+
+            // Ignore templates
+            if (cursor is TemplateDecl)
+            { return true; }
+
+            // Ignore typedefs
+            // Typedefs will probably almost always have to be a special case.
+            // Sometimes they aren't very meaningful to the translation, and sometimes they have a large impact on how the API is used.
+            if (cursor is TypedefDecl)
+            { return true; }
+
+            // Can't translate global variables yet
+            //TODO: Constants deserve special treatment here.
+            if (cursor is VarDecl)
+            { return true; }
+
+            // If we got this far, the cursor might be supported
+            return false;
         }
 
         public Cursor FindCursor(CXCursor cursorHandle)
