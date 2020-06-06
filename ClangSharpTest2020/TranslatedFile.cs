@@ -233,6 +233,32 @@ namespace ClangSharpTest2020
             if (!cursor.IsFromMainFile())
             { return; }
 
+            //-------------------------------------------------------------------------------------
+            // Cursors do not have translation implemented
+            //-------------------------------------------------------------------------------------
+
+            // Ignore template specializations
+            if (cursor is ClassTemplateSpecializationDecl)
+            {
+                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, "Template specializations aren't supported yet.");
+                IgnoreRecursive(cursor);
+                return;
+            }
+
+            // Ignore templates
+            if (cursor is TemplateDecl)
+            {
+                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, "Template declarations aren't supported yet.");
+                IgnoreRecursive(cursor);
+                return;
+            }
+
+            //-------------------------------------------------------------------------------------
+            // Cursors which do not have a direct impact on the output
+            // (These cursors are usually just containers for other cursors or the information
+            //  they provide is already available on the cursors which they affect.)
+            //-------------------------------------------------------------------------------------
+
             // For translation units, just process all the children
             if (cursor is TranslationUnitDecl)
             {
@@ -247,14 +273,6 @@ namespace ClangSharpTest2020
             {
                 Ignore(cursor);
                 ProcessCursorChildren(context, cursor);
-                return;
-            }
-
-            // Namespaces
-            if (cursor is NamespaceDecl namespaceDeclaration)
-            {
-                Consume(cursor);
-                ProcessCursorChildren(context.Add(namespaceDeclaration), cursor);
                 return;
             }
 
@@ -273,14 +291,21 @@ namespace ClangSharpTest2020
                 }
             }
 
-            // Ignore template specializations
-            // (Note that these are technically records, so this has to be done before records.)
-            if (cursor is ClassTemplateSpecializationDecl)
+            //-------------------------------------------------------------------------------------
+            // Cursors which only affect the context
+            //-------------------------------------------------------------------------------------
+
+            // Namespaces
+            if (cursor is NamespaceDecl namespaceDeclaration)
             {
-                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, "Template specializations aren't supported yet.");
-                IgnoreRecursive(cursor);
+                Consume(cursor);
+                ProcessCursorChildren(context.Add(namespaceDeclaration), cursor);
                 return;
             }
+
+            //-------------------------------------------------------------------------------------
+            // Records and loose functions
+            //-------------------------------------------------------------------------------------
 
             // Handle records (classes, structs, and unions)
             if (cursor is RecordDecl record)
@@ -303,13 +328,9 @@ namespace ClangSharpTest2020
                 return;
             }
 
-            // Skip templates (for now)
-            if (cursor is TemplateDecl)
-            {
-                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, "Template declarations aren't supported yet.");
-                IgnoreRecursive(cursor);
-                return;
-            }
+            //-------------------------------------------------------------------------------------
+            // Failure
+            //-------------------------------------------------------------------------------------
 
             // If we got this far, we didn't know how to process the cursor
             // At one point we processed the children of the cursor anyway, but this can lead to confusing behavior when the skipped cursor provided meaningful context.
