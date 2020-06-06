@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace ClangSharpTest2020
 {
-    internal static class CursorEx
+    internal static class ClangSharpExtensions
     {
         public static string CursorKindSpellingSafe(this Cursor cursor)
         {
