@@ -301,6 +301,14 @@ namespace ClangSharpTest2020
                 return;
             }
 
+            // Friend declarations don't really mean anything to C#
+            // They're usually implementation details anyway.
+            if (cursor is FriendDecl)
+            {
+                IgnoreRecursive(cursor);
+                return;
+            }
+
             //---------------------------------------------------------------------------------------------------------
             // Cursors which only affect the context
             //---------------------------------------------------------------------------------------------------------
