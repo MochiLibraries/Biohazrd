@@ -226,6 +226,11 @@ namespace ClangSharpTest2020
 
             string extra = "";
             {
+                if (cursor is EnumConstantDecl enumConstant)
+                {
+                    extra += $" = {enumConstant.InitVal}";
+                }
+
                 string mangling = cursor.Handle.Mangling.ToString();
                 if (!string.IsNullOrEmpty(mangling))
                 {
