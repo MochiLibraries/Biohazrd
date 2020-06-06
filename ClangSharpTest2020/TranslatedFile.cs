@@ -273,6 +273,15 @@ namespace ClangSharpTest2020
                 }
             }
 
+            // Ignore template specializations
+            // (Note that these are technically records, so this has to be done before records.)
+            if (cursor is ClassTemplateSpecializationDecl)
+            {
+                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, "Template specializations aren't supported yet.");
+                IgnoreRecursive(cursor);
+                return;
+            }
+
             // Handle records (classes, structs, and unions)
             if (cursor is RecordDecl record)
             {
