@@ -85,25 +85,28 @@ namespace ClangSharpTest2020
             ProcessCursor(ImmutableArray<TranslationContext>.Empty, TranslationUnit.TranslationUnitDecl);
 
             // Translate global functions
-            string globalFunctionType = Path.GetFileNameWithoutExtension(FilePath);
-            TranslatedRecord globalFunctionTarget = Records.FirstOrDefault(r => r.Record.Name == globalFunctionType);
+            if (LooseFunctions.Count > 0)
+            {
+                string globalFunctionType = Path.GetFileNameWithoutExtension(FilePath);
+                TranslatedRecord globalFunctionTarget = Records.FirstOrDefault(r => r.Record.Name == globalFunctionType);
 
-            if (globalFunctionTarget is object)
-            {
-                foreach (TranslatedFunction function in LooseFunctions)
-                { globalFunctionTarget.AddAsStaticMethod(function); }
-            }
-            else
-            {
-                using CodeWriter writer = new CodeWriter();
-                writer.WriteLine($"public partial static {globalFunctionType}");
-                using (writer.Block())
+                if (globalFunctionTarget is object)
                 {
                     foreach (TranslatedFunction function in LooseFunctions)
-                    { function.Translate(writer); }
+                    { globalFunctionTarget.AddAsStaticMethod(function); }
                 }
+                else
+                {
+                    using CodeWriter writer = new CodeWriter();
+                    writer.WriteLine($"public partial static {globalFunctionType}");
+                    using (writer.Block())
+                    {
+                        foreach (TranslatedFunction function in LooseFunctions)
+                        { function.Translate(writer); }
+                    }
 
-                writer.WriteOut($"{globalFunctionType}.cs");
+                    writer.WriteOut($"{globalFunctionType}.cs");
+                }
             }
 
             // Perform the translation
