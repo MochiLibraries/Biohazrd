@@ -171,7 +171,13 @@ namespace ClangSharpTest2020
             if (!UnprocessedCursors.Remove(cursor))
             {
                 if (AllCursors.Contains(cursor))
-                { HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor was processed more than once."); }
+                {
+                    // Only warn if the cursor is a declaration, a statement, or an untyped cursor.
+                    // This idea here is to only warn for cursors which affect behavior or API.
+                    // This avoids issues like when a type reference is shared between multiple cursors, such as `int i, j;`-type variable declarations.
+                    if (cursor is Decl || cursor is Stmt || cursor.GetType() == typeof(Cursor))
+                    { HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor was processed more than once."); }
+                }
                 else if (!CursorHandleLookup.ContainsKey(cursor.Handle))
                 { HandleDiagnostic(TranslationDiagnosticSeverity.Error, cursor, $"{cursor.CursorKindDetailed()} cursor was processed from an external translation unit."); }
                 else
