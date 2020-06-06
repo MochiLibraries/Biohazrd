@@ -367,6 +367,38 @@ namespace ClangSharpTest2020
                 }
             }
 
+            // For typedefs, see if we can print their layout
+            // This is nice for printing the layout of specialized templates.
+            // Unfortunately the RecordDecl for the specialized template won't have a definition unless it's used
+            // in another record. Using it in a function signature is sadly not enough.
+            // Not sure if this is because Clang doesn't bother generating the internal data structures required to compute layouts or what.
+            if (cursor is TypedefDecl typedef)
+            {
+                if (typedef.TypeForDecl.CanonicalType is RecordType recordType)
+                {
+                    if (recordType.Decl is RecordDecl recordTypeDecl)
+                    {
+                        if (recordTypeDecl.Definition is object)
+                        {
+#if false
+                            WriteLine("----------------------------------------------------------------------------");
+                            WriteLine($"=== {recordTypeDecl} definition info ===");
+                            WriteLine(recordTypeDecl.Definition.CursorKindDetailed());
+                            WriteLine($"Extent: {recordTypeDecl.Definition.Extent}");
+                            WriteLine($"Same? {ReferenceEquals(recordTypeDecl, recordTypeDecl.Definition)}");
+#endif
+                            WriteLine("----------------------------------------------------------------------------");
+                            DumpLayoutWithPathogenExtensions(recordTypeDecl);
+                            WriteLine("----------------------------------------------------------------------------");
+                        }
+                        else
+                        {
+                            WriteLine($"---- Could not dump layout of typedefed type '{recordTypeDecl}' because it has no definition.");
+                        }
+                    }
+                }
+            }
+
             Cursor cursorToIgnore = null;
             {
                 if (cursor is FunctionDecl function)
