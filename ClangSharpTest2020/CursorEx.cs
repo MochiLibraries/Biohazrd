@@ -26,6 +26,9 @@ namespace ClangSharpTest2020
             => $"{cursor.CursorKindSpellingSafe()} ({cursor.GetType().Name})";
 
         public static bool IsFromMainFile(this Cursor cursor)
+            => cursor.Extent.IsFromMainFile();
+
+        public static bool IsFromMainFile(this CXSourceRange extent)
         {
 #if false
             // This property uses libclang's clang_Location_isFromMainFile which in turn uses SourceManager::isWrittenInMainFile
@@ -34,7 +37,7 @@ namespace ClangSharpTest2020
             //  * While technically true, this isn't what we actually want in our case. (Our main motivation is to skip over cursors from included files.)
             // * For some reason the first declaration in a file will only have its end marked as being from the main file, so we check both.
             //  * This happens with some, but not all, cursors created from a macro expansion.
-            return cursor.Extent.Start.IsFromMainFile || cursor.Extent.End.IsFromMainFile;
+            return extent.Start.IsFromMainFile || extent.End.IsFromMainFile;
 #else
             // Unlike clang_Location_isFromMainFile, pathogen_Location_isFromMainFile uses SourceManager::isInMainFile, which does not suffer from the previously mentioned quirks.
             // One downside of it, however, is that it considered builtin macros to be from the main file when CXTranslationUnit_DetailedPreprocessingRecord is enabled.
@@ -50,14 +53,17 @@ namespace ClangSharpTest2020
             //            Presumed: <built-in>:1:9..19
             // --------------------------------------------------------------
             // As such, we check if the cursor comes from a system file first to early-reject it.
-            if (cursor.Extent.Start.IsInSystemHeader || cursor.Extent.End.IsInSystemHeader)
+            if (extent.Start.IsInSystemHeader || extent.End.IsInSystemHeader)
             { return false; }
 
-            bool isStartInMain = PathogenExtensions.pathogen_Location_isFromMainFile(cursor.Extent.Start) != 0;
-            bool isEndInMain = PathogenExtensions.pathogen_Location_isFromMainFile(cursor.Extent.End) != 0;
+            bool isStartInMain = extent.Start.IsFromMainFilePathogen();
+            bool isEndInMain = extent.End.IsFromMainFilePathogen();
             Debug.Assert(isStartInMain == isEndInMain, "Both the start and end of a cursor should be in or out of main.");
             return isStartInMain || isEndInMain;
 #endif
         }
+
+        public static bool IsFromMainFilePathogen(this CXSourceLocation location)
+            => PathogenExtensions.pathogen_Location_isFromMainFile(location) != 0;
     }
 }
