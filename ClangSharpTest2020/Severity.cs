@@ -1,6 +1,6 @@
 ﻿namespace ClangSharpTest2020
 {
-    public enum TranslationDiagnosticSeverity
+    public enum Severity
     {
         Ignored,
         Note,

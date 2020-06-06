@@ -39,7 +39,7 @@ namespace ClangSharpTest2020
             }
         }
 
-        internal void HandleDiagnostic(in TranslationDiagnostic diagnostic)
+        internal void Diagnostic(in TranslationDiagnostic diagnostic)
         {
             if (diagnostic.IsError)
             { HasErrors = true; }
@@ -52,22 +52,22 @@ namespace ClangSharpTest2020
             {
                 switch (diagnostic.Severity)
                 {
-                    case TranslationDiagnosticSeverity.Ignored:
+                    case Severity.Ignored:
                         Console.ForegroundColor = ConsoleColor.DarkGray;
                         output = Console.Out;
                         break;
-                    case TranslationDiagnosticSeverity.Note:
+                    case Severity.Note:
                         output = Console.Out;
                         break;
-                    case TranslationDiagnosticSeverity.Warning:
+                    case Severity.Warning:
                         Console.ForegroundColor = ConsoleColor.DarkYellow;
                         output = Console.Error;
                         break;
-                    case TranslationDiagnosticSeverity.Error:
+                    case Severity.Error:
                         Console.ForegroundColor = ConsoleColor.Red;
                         output = Console.Error;
                         break;
-                    case TranslationDiagnosticSeverity.Fatal:
+                    case Severity.Fatal:
                     default:
                         Console.ForegroundColor = ConsoleColor.White;
                         Console.BackgroundColor = ConsoleColor.DarkRed;

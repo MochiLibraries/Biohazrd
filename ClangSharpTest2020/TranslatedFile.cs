@@ -45,7 +45,7 @@ namespace ClangSharpTest2020
 
             if (status != CXErrorCode.CXError_Success)
             {
-                HandleDiagnostic(TranslationDiagnosticSeverity.Fatal, $"Failed to parse source file due to Clang error {status}.");
+                Diagnostic(Severity.Fatal, $"Failed to parse source file due to Clang error {status}.");
                 return;
             }
 
@@ -56,12 +56,12 @@ namespace ClangSharpTest2020
                     for (uint i = 0; i < unitHandle.NumDiagnostics; i++)
                     {
                         using CXDiagnostic diagnostic = unitHandle.GetDiagnostic(i);
-                        HandleDiagnostic(diagnostic);
+                        Diagnostic(diagnostic);
                     }
 
                     if (HasErrors)
                     {
-                        HandleDiagnostic(TranslationDiagnosticSeverity.Fatal, "Aborting translation due to previous errors.");
+                        Diagnostic(Severity.Fatal, "Aborting translation due to previous errors.");
                         unitHandle.Dispose();
                         return;
                     }
@@ -115,11 +115,11 @@ namespace ClangSharpTest2020
             // Note unprocessed cursors
 #if false //TODO: Re-enable this
             foreach (Cursor cursor in UnprocessedCursors)
-            { HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} was not processed."); }
+            { Diagnostic(Severity.Warning, cursor, $"{cursor.CursorKindDetailed()} was not processed."); }
 #endif
         }
 
-        private void HandleDiagnostic(in TranslationDiagnostic diagnostic)
+        private void Diagnostic(in TranslationDiagnostic diagnostic)
         {
             _Diagnostics.Add(diagnostic);
 
@@ -127,23 +127,23 @@ namespace ClangSharpTest2020
             { HasErrors = true; }
 
             // Send the diagnostic to the library
-            Library.HandleDiagnostic(diagnostic);
+            Library.Diagnostic(diagnostic);
         }
 
-        internal void HandleDiagnostic(TranslationDiagnosticSeverity severity, SourceLocation location, string message)
-            => HandleDiagnostic(new TranslationDiagnostic(this, location, severity, message));
+        internal void Diagnostic(Severity severity, SourceLocation location, string message)
+            => Diagnostic(new TranslationDiagnostic(this, location, severity, message));
 
-        internal void HandleDiagnostic(TranslationDiagnosticSeverity severity, string message)
-            => HandleDiagnostic(severity, new SourceLocation(FilePath), message);
+        internal void Diagnostic(Severity severity, string message)
+            => Diagnostic(severity, new SourceLocation(FilePath), message);
 
-        private void HandleDiagnostic(CXDiagnostic clangDiagnostic)
-            => HandleDiagnostic(new TranslationDiagnostic(this, clangDiagnostic));
+        private void Diagnostic(CXDiagnostic clangDiagnostic)
+            => Diagnostic(new TranslationDiagnostic(this, clangDiagnostic));
 
-        internal void HandleDiagnostic(TranslationDiagnosticSeverity severity, Cursor associatedCursor, string message)
-            => HandleDiagnostic(severity, new SourceLocation(associatedCursor.Extent.Start), message);
+        internal void Diagnostic(Severity severity, Cursor associatedCursor, string message)
+            => Diagnostic(severity, new SourceLocation(associatedCursor.Extent.Start), message);
 
-        internal void HandleDiagnostic(TranslationDiagnosticSeverity severity, CXCursor associatedCursor, string message)
-            => HandleDiagnostic(severity, new SourceLocation(associatedCursor.Extent.Start), message);
+        internal void Diagnostic(Severity severity, CXCursor associatedCursor, string message)
+            => Diagnostic(severity, new SourceLocation(associatedCursor.Extent.Start), message);
 
         private void EnumerateAllCursorsRecursive(Cursor cursor)
         {
@@ -170,10 +170,10 @@ namespace ClangSharpTest2020
                     // This idea here is to only warn for cursors which affect behavior or API.
                     // This avoids issues like when a type reference is shared between multiple cursors, such as `int i, j;`-type variable declarations.
                     if (cursor is Decl || cursor is Stmt || cursor.GetType() == typeof(Cursor))
-                    { HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor was processed more than once."); }
+                    { Diagnostic(Severity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor was processed more than once."); }
                 }
                 else if (cursor.TranslationUnit != TranslationUnit)
-                { HandleDiagnostic(TranslationDiagnosticSeverity.Error, cursor, $"{cursor.CursorKindDetailed()} cursor was processed from an external translation unit."); }
+                { Diagnostic(Severity.Error, cursor, $"{cursor.CursorKindDetailed()} cursor was processed from an external translation unit."); }
                 else
                 {
                     // We shouldn't process cursors that come from outside of our file.
@@ -181,7 +181,7 @@ namespace ClangSharpTest2020
                     // Note: We can't only rely on the cursor having been in the AllCursors list because there are some oddball cursors that are part of the translation unit but aren't part of the AST.
                     //       One example of such a cursor is the one on the word `union` in an anonymous, fieldless union in a struct.
                     if (!cursor.IsFromMainFile())
-                    { HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor from outside our fle was processed."); }
+                    { Diagnostic(Severity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor from outside our fle was processed."); }
 
                     // If we consume a cursor which we didn't consider to be a part of this file, we add it to our list of
                     // all cursors to ensure our double cursor consumption above works for them.
@@ -240,7 +240,7 @@ namespace ClangSharpTest2020
             // Ignore template specializations
             if (cursor is ClassTemplateSpecializationDecl)
             {
-                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, "Template specializations aren't supported yet.");
+                Diagnostic(Severity.Warning, cursor, "Template specializations aren't supported yet.");
                 IgnoreRecursive(cursor);
                 return;
             }
@@ -248,7 +248,7 @@ namespace ClangSharpTest2020
             // Ignore templates
             if (cursor is TemplateDecl)
             {
-                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, "Template declarations aren't supported yet.");
+                Diagnostic(Severity.Warning, cursor, "Template declarations aren't supported yet.");
                 IgnoreRecursive(cursor);
                 return;
             }
@@ -334,14 +334,14 @@ namespace ClangSharpTest2020
 
             // If we got this far, we didn't know how to process the cursor
             // At one point we processed the children of the cursor anyway, but this can lead to confusing behavior when the skipped cursor provided meaningful context.
-            HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"Not sure how to process cursor of type {cursor.CursorKindDetailed()}.");
+            Diagnostic(Severity.Warning, cursor, $"Not sure how to process cursor of type {cursor.CursorKindDetailed()}.");
         }
 
         public Cursor FindCursor(CXCursor cursorHandle)
         {
             if (cursorHandle.IsNull)
             {
-                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, $"Someone tried to get the Cursor for a null handle.");
+                Diagnostic(Severity.Warning, $"Someone tried to get the Cursor for a null handle.");
                 return null;
             }
 

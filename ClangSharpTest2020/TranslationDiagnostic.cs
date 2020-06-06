@@ -8,14 +8,14 @@ namespace ClangSharpTest2020
     {
         public readonly TranslatedFile TranslatedFile;
         public readonly SourceLocation Location;
-        public readonly TranslationDiagnosticSeverity Severity;
+        public readonly Severity Severity;
         public readonly bool IsFromClang;
         public readonly string Message;
 
-        /// <summary>True if <see cref="Severity"/> is <see cref="TranslationDiagnosticSeverity.Error"/> or <see cref="TranslationDiagnosticSeverity.Fatal"/>.</summary>
-        public bool IsError => Severity == TranslationDiagnosticSeverity.Error || Severity == TranslationDiagnosticSeverity.Fatal;
+        /// <summary>True if <see cref="Severity"/> is <see cref="Severity.Error"/> or <see cref="Severity.Fatal"/>.</summary>
+        public bool IsError => Severity == Severity.Error || Severity == Severity.Fatal;
 
-        internal TranslationDiagnostic(TranslatedFile translatedFile, SourceLocation location, TranslationDiagnosticSeverity severity, string message)
+        internal TranslationDiagnostic(TranslatedFile translatedFile, SourceLocation location, Severity severity, string message)
         {
             TranslatedFile = translatedFile;
             Location = location;
@@ -24,7 +24,7 @@ namespace ClangSharpTest2020
             Message = message;
         }
 
-        private TranslationDiagnostic(TranslatedFile translatedFile, TranslationDiagnosticSeverity severity, string message)
+        private TranslationDiagnostic(TranslatedFile translatedFile, Severity severity, string message)
             : this(translatedFile, default, severity, message)
         { }
 
@@ -35,11 +35,11 @@ namespace ClangSharpTest2020
             Location = new SourceLocation(clangDiagnostic.Location);
             Severity = clangDiagnostic.Severity switch
             {
-                CXDiagnosticSeverity.CXDiagnostic_Ignored => TranslationDiagnosticSeverity.Ignored,
-                CXDiagnosticSeverity.CXDiagnostic_Note => TranslationDiagnosticSeverity.Note,
-                CXDiagnosticSeverity.CXDiagnostic_Warning => TranslationDiagnosticSeverity.Warning,
-                CXDiagnosticSeverity.CXDiagnostic_Error => TranslationDiagnosticSeverity.Error,
-                CXDiagnosticSeverity.CXDiagnostic_Fatal => TranslationDiagnosticSeverity.Fatal,
+                CXDiagnosticSeverity.CXDiagnostic_Ignored => Severity.Ignored,
+                CXDiagnosticSeverity.CXDiagnostic_Note => Severity.Note,
+                CXDiagnosticSeverity.CXDiagnostic_Warning => Severity.Warning,
+                CXDiagnosticSeverity.CXDiagnostic_Error => Severity.Error,
+                CXDiagnosticSeverity.CXDiagnostic_Fatal => Severity.Fatal,
                 _ => throw new ArgumentException($"Unknown Clang diagnostic severity: {clangDiagnostic.Severity}", nameof(clangDiagnostic))
             };
             IsFromClang = true;

@@ -84,7 +84,7 @@ namespace ClangSharpTest2020
                         case PathogenRecordFieldKind.VirtualBase:
                         case PathogenRecordFieldKind.VirtualBaseTablePtr:
                         case PathogenRecordFieldKind.VTorDisp:
-                            File.HandleDiagnostic(TranslationDiagnosticSeverity.Warning, diagnosticCursor, $"{field->Kind} fields may not be translated correctly.");
+                            File.Diagnostic(Severity.Warning, diagnosticCursor, $"{field->Kind} fields may not be translated correctly.");
                             isUnsupportedKind = true;
                             break;
                     }
@@ -92,12 +92,12 @@ namespace ClangSharpTest2020
                     if (!isUnsupportedKind)
                     {
                         if (isBitField)
-                        { File.HandleDiagnostic(TranslationDiagnosticSeverity.Warning, diagnosticCursor, $"Bitfields are very lazily translated, consider improving."); }
+                        { File.Diagnostic(Severity.Warning, diagnosticCursor, $"Bitfields are very lazily translated, consider improving."); }
 
                         //TODO: For some reason this can happen with some records with only one base. Not sure why.
                         // This warning is really only of concern when the base is virtual, add a check for that here.
                         //if (isNonPrimaryBase)
-                        //{ File.HandleDiagnostic(TranslationDiagnosticSeverity.Warning, diagnosticCursor, $"Non-primary {field->Kind} fields may not be translated correctly."); }
+                        //{ File.Diagnostic(TranslationDiagnosticSeverity.Warning, diagnosticCursor, $"Non-primary {field->Kind} fields may not be translated correctly."); }
                     }
 
 #if VERBOSE_MODE
@@ -163,7 +163,7 @@ namespace ClangSharpTest2020
                     {
                         //TODO: This can happen with anonyomous unions, need to figure out how to handle this appropriately.
                         if (field->FieldDeclaration.IsNull)
-                        { File.HandleDiagnostic(TranslationDiagnosticSeverity.Warning, Record, $"{Record.Name} contains a field with no definition."); }
+                        { File.Diagnostic(Severity.Warning, Record, $"{Record.Name} contains a field with no definition."); }
                         else
                         //TODO: This causes the type reference to be consumed multiple times when multiple fields are declared on the same line.
                         { File.ConsumeRecursive(field->FieldDeclaration); }
@@ -235,7 +235,7 @@ namespace ClangSharpTest2020
                     // If there's additional vtables, emit warnings since we don't know how to translate them.
                     if (vTable->NextVTable != null)
                     {
-                        File.HandleDiagnostic(TranslationDiagnosticSeverity.Warning, Record, $"Record {Record.Name} has more than one vtable, only the first vtable was translated.");
+                        File.Diagnostic(Severity.Warning, Record, $"Record {Record.Name} has more than one vtable, only the first vtable was translated.");
 
                         for (PathogenVTable* additionalVTable = vTable->NextVTable; additionalVTable != null; additionalVTable = additionalVTable->NextVTable)
                         {
@@ -247,7 +247,7 @@ namespace ClangSharpTest2020
                                 { continue; }
 
                                 Cursor methodCursor = File.FindCursor(entry->MethodDeclaration);
-                                File.HandleDiagnostic(TranslationDiagnosticSeverity.Warning, methodCursor, $"{Record.Name}::{methodCursor} will not be translated because it exists in a non-primary vtable.");
+                                File.Diagnostic(Severity.Warning, methodCursor, $"{Record.Name}::{methodCursor} will not be translated because it exists in a non-primary vtable.");
                             }
                         }
                     }
@@ -267,7 +267,7 @@ namespace ClangSharpTest2020
 
                 if (layout == null)
                 {
-                    File.HandleDiagnostic(TranslationDiagnosticSeverity.Fatal, Record, $"Failed top get the record layout of {Record.Name}");
+                    File.Diagnostic(Severity.Fatal, Record, $"Failed top get the record layout of {Record.Name}");
                     return;
                 }
 
