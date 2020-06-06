@@ -306,9 +306,8 @@ namespace ClangSharpTest2020
             }
 
             // If we got this far, we didn't know how to process the cursor
-            //TODO: Verbosity
-            //HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"Not sure how to process cursor of type {cursor.CursorKindDetailed()}.");
-            ProcessCursorChildren(context, cursor);
+            // At one point we processed the children of the cursor anyway, but this can lead to confusing behavior when the skipped cursor provided meaningful context.
+            HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"Not sure how to process cursor of type {cursor.CursorKindDetailed()}.");
         }
 
         public Cursor FindCursor(CXCursor cursorHandle)
