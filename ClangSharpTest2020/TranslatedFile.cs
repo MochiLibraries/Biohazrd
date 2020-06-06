@@ -23,7 +23,6 @@ namespace ClangSharpTest2020
         private readonly List<TranslationDiagnostic> _Diagnostics = new List<TranslationDiagnostic>();
         public ReadOnlyCollection<TranslationDiagnostic> Diagnostics { get; }
 
-        private readonly Dictionary<CXCursor, Cursor> CursorHandleLookup = new Dictionary<CXCursor, Cursor>();
         private readonly HashSet<Cursor> AllCursors = new HashSet<Cursor>();
         private readonly HashSet<Cursor> UnprocessedCursors;
 
@@ -148,11 +147,6 @@ namespace ClangSharpTest2020
 
         private void EnumerateAllCursorsRecursive(Cursor cursor)
         {
-            if (CursorHandleLookup.TryGetValue(cursor.Handle, out Cursor existingCursor))
-            { Debug.Assert(ReferenceEquals(cursor, existingCursor), "A given cursor handle must correspond to only one cursor instance."); }
-            else
-            { CursorHandleLookup.Add(cursor.Handle, cursor); }
-
             // Only add cursors from the main file to AllCursors
             //PERF: Skip this if the parent node wasn't from the main file
             if (cursor.IsFromMainFile())
@@ -178,13 +172,16 @@ namespace ClangSharpTest2020
                     if (cursor is Decl || cursor is Stmt || cursor.GetType() == typeof(Cursor))
                     { HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor was processed more than once."); }
                 }
-                else if (!CursorHandleLookup.ContainsKey(cursor.Handle))
+                else if (cursor.TranslationUnit != TranslationUnit)
                 { HandleDiagnostic(TranslationDiagnosticSeverity.Error, cursor, $"{cursor.CursorKindDetailed()} cursor was processed from an external translation unit."); }
                 else
                 {
                     // We shouldn't process cursors that come from outside of our file.
                     // Note: This depends on Cursor.IsFromMainFile using pathogen_Location_isFromMainFile because otherwise macro expansions will trigger this.
-                    HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor from outside our fle was processed.");
+                    // Note: We can't only rely on the cursor having been in the AllCursors list because there are some oddball cursors that are part of the translation unit but aren't part of the AST.
+                    //       One example of such a cursor is the one on the word `union` in an anonymous, fieldless union in a struct.
+                    if (!cursor.IsFromMainFile())
+                    { HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor from outside our fle was processed."); }
 
                     // If we consume a cursor which we didn't consider to be a part of this file, we add it to our list of
                     // all cursors to ensure our double cursor consumption above works for them.
@@ -318,10 +315,7 @@ namespace ClangSharpTest2020
                 return null;
             }
 
-            if (CursorHandleLookup.TryGetValue(cursorHandle, out Cursor ret))
-            { return ret; }
-
-            throw new ArgumentException("The specified cursor is not from this translation unit or is from outside of the main file.", nameof(cursorHandle));
+            return TranslationUnit.GetOrCreate(cursorHandle);
         }
 
         public void Dispose()

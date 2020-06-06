@@ -1,6 +1,9 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using System;
 using System.Diagnostics;
+using System.Reflection;
+using Type = System.Type;
 
 namespace ClangSharpTest2020
 {
@@ -65,5 +68,31 @@ namespace ClangSharpTest2020
 
         public static bool IsFromMainFilePathogen(this CXSourceLocation location)
             => PathogenExtensions.pathogen_Location_isFromMainFile(location) != 0;
+
+        private static MethodInfo TranslationUnit_GetOrCreate;
+        [ThreadStatic] private static object[] TranslationUnit_GetOrCreate_Parameters;
+        public static Cursor GetOrCreate(this TranslationUnit translationUnit, CXCursor handle)
+        {
+            if (handle.TranslationUnit != translationUnit.Handle)
+            { throw new ArgumentException("The specified cursor is not from the specified translation unit.", nameof(handle)); }
+
+            if (TranslationUnit_GetOrCreate == null)
+            {
+                Type[] parameterTypes = { typeof(CXCursor) };
+                const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DoNotWrapExceptions;
+                MethodInfo getOrCreateGeneric = typeof(TranslationUnit).GetMethod("GetOrCreate", genericParameterCount: 1, bindingFlags, binder: null, parameterTypes, modifiers: null);
+
+                if (getOrCreateGeneric is null)
+                { throw new NotSupportedException("Could not get the GetOrCreate<TCursor>(CXCursor) method!"); }
+
+                TranslationUnit_GetOrCreate = getOrCreateGeneric.MakeGenericMethod(typeof(Cursor));
+            }
+
+            if (TranslationUnit_GetOrCreate_Parameters == null)
+            { TranslationUnit_GetOrCreate_Parameters = new object[1]; }
+
+            TranslationUnit_GetOrCreate_Parameters[0] = handle; //PERF: Reuse the box
+            return (Cursor)TranslationUnit_GetOrCreate.Invoke(translationUnit, TranslationUnit_GetOrCreate_Parameters);
+        }
     }
 }
