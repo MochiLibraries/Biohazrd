@@ -1,6 +1,7 @@
 ﻿//#define DUMP_MODE
-#define DUMP_LOCATION_INFORMATION
+//#define DUMP_LOCATION_INFORMATION
 #define DUMP_LOCATION_INFORMATION_VERBOSE
+//#define DUMP_RECORD_LAYOUTS
 #define USE_FILE_WHITELIST
 using ClangSharp;
 using ClangSharp.Interop;
@@ -340,31 +341,12 @@ namespace ClangSharpTest2020
             }
 #endif
 
+#if DUMP_RECORD_LAYOUTS
             // For defined records, print the layout
             // Helpful: https://github.com/joshpeterson/layout
-            bool skipFields = false;
             {
                 if (cursor is RecordDecl record && record.Handle.IsDefinition)
                 {
-                    skipFields = true;
-                    bool wroteField = false;
-
-                    foreach (Cursor child in cursor.CursorChildren)
-                    {
-                        if (child.CursorKind != CXCursorKind.CXCursor_FieldDecl)
-                        { continue; }
-
-                        if (!wroteField)
-                        {
-                            wroteField = true;
-                            WriteLine("----------------------------------------------------------------------------");
-                        }
-
-                        FieldDecl field = (FieldDecl)child;
-                        WriteLine($"{field.Type.AsString} {field.Name} @ {field.Handle.OffsetOfField / 8} for {field.Type.Handle.SizeOf}");
-                    }
-
-
                     // Dump the layout using PathogenLayoutExtensions
                     WriteLine("----------------------------------------------------------------------------");
                     DumpLayoutWithPathogenExtensions(record);
@@ -403,6 +385,7 @@ namespace ClangSharpTest2020
                     }
                 }
             }
+#endif
 
             Cursor cursorToIgnore = null;
             {
@@ -416,9 +399,6 @@ namespace ClangSharpTest2020
             foreach (Cursor child in cursor.CursorChildren)
             {
                 if (child == cursorToIgnore)
-                { continue; }
-
-                if (skipFields && child is FieldDecl)
                 { continue; }
 
                 Dump(child);
