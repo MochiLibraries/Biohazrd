@@ -283,6 +283,20 @@ namespace ClangSharpTest2020
                 }
             }
 
+            // Namespace using directives do not impact the output
+            if (cursor is UsingDirectiveDecl)
+            {
+                IgnoreRecursive(cursor);
+                return;
+            }
+
+            // Namespace aliases do not impact the output
+            if (cursor is NamespaceAliasDecl)
+            {
+                IgnoreRecursive(cursor);
+                return;
+            }
+
             //---------------------------------------------------------------------------------------------------------
             // Cursors which only affect the context
             //---------------------------------------------------------------------------------------------------------
@@ -348,6 +362,10 @@ namespace ClangSharpTest2020
             // Can't translate global variables yet
             //TODO: Constants deserve special treatment here.
             if (cursor is VarDecl)
+            { return true; }
+
+            // Enums aren't supported yet
+            if (cursor is EnumDecl)
             { return true; }
 
             // If we got this far, the cursor might be supported
