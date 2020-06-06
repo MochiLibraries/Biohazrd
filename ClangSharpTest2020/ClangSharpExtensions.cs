@@ -9,24 +9,35 @@ namespace ClangSharpTest2020
 {
     internal static class ClangSharpExtensions
     {
-        public static string CursorKindSpellingSafe(this Cursor cursor)
+        public static string CursorKindDetailed(this Cursor cursor, string delimiter = "/")
         {
-            string ret = cursor.CursorKindSpelling;
+            string kind = cursor.CursorKind.ToString();
+            string declKind = cursor.Handle.DeclKind.ToString();
 
-            // A handful of the kinds are incorrectly exposed as Unexposed.
-            if (ret == "UnexposedDecl")
-            {
-                if (cursor.CursorKind == CXCursorKind.CXCursor_UnexposedDecl)
-                { ret = cursor.Handle.DeclKind.ToString(); } // Sometimes the cursor doesn't know the kind, but the declaration does.
-                else
-                { ret = cursor.CursorKind.ToString(); }
-            }
+            const string kindPrefix = "CXCursor_";
+            if (kind.StartsWith(kindPrefix))
+            { kind = kind.Substring(kindPrefix.Length); }
+
+            const string declKindPrefix = "CX_DeclKind_";
+            if (declKind.StartsWith(declKindPrefix))
+            { declKind = declKind.Substring(declKindPrefix.Length); }
+
+            if (cursor.CursorKind == CXCursorKind.CXCursor_UnexposedDecl)
+            { kind = null; }
+
+            if (cursor.Handle.DeclKind == CX_DeclKind.CX_DeclKind_Invalid)
+            { declKind = null; }
+
+            string ret = cursor.GetType().Name;
+
+            if (kind is object)
+            { ret += $"{delimiter}{kind}"; }
+
+            if (declKind is object)
+            { ret += $"{delimiter}{declKind}"; }
 
             return ret;
         }
-
-        public static string CursorKindDetailed(this Cursor cursor)
-            => $"{cursor.CursorKindSpellingSafe()} ({cursor.GetType().Name})";
 
         public static bool IsFromMainFile(this Cursor cursor)
             => cursor.Extent.IsFromMainFile();
