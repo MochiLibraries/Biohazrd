@@ -4,6 +4,7 @@ using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace ClangSharpTest2020
 {
@@ -26,15 +27,49 @@ namespace ClangSharpTest2020
             ParentRecord = parentRecord;
             Record = record;
 
+            // Handle nested cursors
+            ImmutableArray<TranslationContext> nestedContext = Context.Add(Record);
+
+            // Add methods
             if (Record is CXXRecordDecl cxxRecord)
             {
-                ImmutableArray<TranslationContext>  methodContext = Context.Add(Record);
-
                 foreach (CXXMethodDecl method in cxxRecord.Methods)
-                { Methods.Add(new TranslatedFunction(methodContext, this, method)); }
+                { Methods.Add(new TranslatedFunction(nestedContext, this, method)); }
             }
 
-            //TODO: Process nested types
+            //TODO: Add nested types
+
+            // Process any other nested cursors which aren't fields or methods
+            foreach (Cursor cursor in Record.CursorChildren)
+            {
+                // Fields are processed on-demand when we get the record layout
+                if (cursor is FieldDecl)
+                { continue; }
+
+                // Methods were processed above
+                if (cursor is FunctionDecl)
+                { continue; }
+
+                // Base specifiers are processed on-demand when we get the record layout
+                //TODO: Consume the cursor?
+                if (cursor is CXXBaseSpecifier)
+                { continue; }
+
+                // Access specifiers do not have a direct impact on the transaltion
+                // The information they provide is available on the individual members
+                if (cursor is AccessSpecDecl)
+                {
+                    file.Ignore(cursor);
+                    continue;
+                }
+
+                // Skip anything that is an attribute
+                // (Don't ignore/consume them though, there's logic in TranslatedFile to ignore attributes that don't affect output.)
+                if (cursor is Attr)
+                { continue; }
+
+                file.ProcessCursor(nestedContext, cursor);
+            }
         }
 
         internal TranslatedRecord(ImmutableArray<TranslationContext> context, TranslatedFile file, RecordDecl record)
