@@ -1,5 +1,6 @@
 ﻿//#define DUMP_MODE
 #define DUMP_LOCATION_INFORMATION
+#define DUMP_LOCATION_INFORMATION_VERBOSE
 #define USE_FILE_WHITELIST
 using ClangSharp;
 using ClangSharp.Interop;
@@ -308,6 +309,10 @@ namespace ClangSharpTest2020
                 WriteLine("^^^^^WARNWARN3 PREVIOUS CURSOR START AND ENDS DO NOT MATCH IN PATHOGEN MAINFILENESS!!!!");
                 whacky = true;
             }
+
+#if DUMP_LOCATION_INFORMATION_VERBOSE
+            whacky = true;
+#endif
 
             // For preprocessed entities (only emitted when CXTranslationUnit_DetailedPreprocessingRecord is enabled) we emit source locations
             if (cursor is PreprocessedEntity || !cursor.IsFromMainFile() || whacky)
