@@ -211,6 +211,10 @@ namespace ClangSharpTest2020
         internal void Ignore(Cursor cursor)
             => Consume(cursor);
 
+        /// <remarks>Same as consume, but indicates that the cursor has no affect on the translation output.</remarks>
+        internal void IgnoreRecursive(Cursor cursor)
+            => ConsumeRecursive(cursor);
+
         internal void ProcessCursorChildren(ImmutableArray<TranslationContext> context, Cursor cursor)
         {
             foreach (Cursor child in cursor.CursorChildren)
@@ -290,6 +294,14 @@ namespace ClangSharpTest2020
             if (cursor is FunctionDecl function)
             {
                 LooseFunctions.Add(new TranslatedFunction(context, this, function));
+                return;
+            }
+
+            // Skip templates (for now)
+            if (cursor is TemplateDecl)
+            {
+                HandleDiagnostic(TranslationDiagnosticSeverity.Warning, cursor, "Template declarations aren't supported yet.");
+                IgnoreRecursive(cursor);
                 return;
             }
 
