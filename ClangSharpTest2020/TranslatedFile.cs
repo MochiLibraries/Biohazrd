@@ -253,6 +253,25 @@ namespace ClangSharpTest2020
                 return;
             }
 
+            // Ignore typedefs
+            // Typedefs will probably almost always have to be a special case.
+            // Sometimes they aren't very meaningful to the translation, and sometimes they have a large impact on how the API is used.
+            if (cursor is TypedefDecl)
+            {
+                Diagnostic(Severity.Warning, cursor, "Typedefs aren't supproted yet.");
+                IgnoreRecursive(cursor);
+                return;
+            }
+
+            // Can't translate global variables yet
+            //TODO: Constants deserve special treatment here.
+            if (cursor is VarDecl varDecl)
+            {
+                Diagnostic(Severity.Warning, cursor, "Global variables aren't supported yet.");
+                IgnoreRecursive(cursor);
+                return;
+            }
+
             //-------------------------------------------------------------------------------------
             // Cursors which do not have a direct impact on the output
             // (These cursors are usually just containers for other cursors or the information
