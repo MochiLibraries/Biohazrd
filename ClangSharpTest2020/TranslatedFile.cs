@@ -1,4 +1,6 @@
-﻿using ClangSharp;
+﻿// This is disabled right now because it complains about anonyomous types and nested types used immediately for a field's type.
+//#define WARN_WHEN_CURSORS_ARE_PROCESSED_MULTIPLE_TIMES
+using ClangSharp;
 using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
@@ -166,11 +168,13 @@ namespace ClangSharpTest2020
             {
                 if (AllCursors.Contains(cursor))
                 {
+#if WARN_WHEN_CURSORS_ARE_PROCESSED_MULTIPLE_TIMES
                     // Only warn if the cursor is a declaration, a statement, or an untyped cursor.
                     // This idea here is to only warn for cursors which affect behavior or API.
                     // This avoids issues like when a type reference is shared between multiple cursors, such as `int i, j;`-type variable declarations.
                     if (cursor is Decl || cursor is Stmt || cursor.GetType() == typeof(Cursor))
                     { Diagnostic(Severity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor was processed more than once."); }
+#endif
                 }
                 else if (cursor.TranslationUnit != TranslationUnit)
                 { Diagnostic(Severity.Error, cursor, $"{cursor.CursorKindDetailed()} cursor was processed from an external translation unit."); }
