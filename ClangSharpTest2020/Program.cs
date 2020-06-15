@@ -2,7 +2,7 @@
 //#define DUMP_LOCATION_INFORMATION
 #define DUMP_LOCATION_INFORMATION_VERBOSE
 //#define DUMP_RECORD_LAYOUTS
-#define USE_FILE_WHITELIST
+#define USE_FILE_ALLOWLIST
 using ClangSharp;
 using ClangSharp.Interop;
 using System;
@@ -75,12 +75,12 @@ namespace ClangSharpTest2020
 #if false
             files.Add(@"C:\Development\Playground\CppWrappingInlineMaybe\CppWrappingInlineMaybe\Source.h");
 #else
-            HashSet<string> whiteListedFiles = new HashSet<string>()
+            HashSet<string> allowedFiles = new HashSet<string>()
             {
                 "PxFoundation.h"
             };
 
-            HashSet<string> blackListedFiles = new HashSet<string>()
+            HashSet<string> skippedFiles = new HashSet<string>()
             {
                 "PxUnixIntrinsics.h", // Not relevant on Windows
 
@@ -95,12 +95,12 @@ namespace ClangSharpTest2020
                 {
                     string fileName = Path.GetFileName(headerFile);
 
-#if USE_FILE_WHITELIST
-                    if (!whiteListedFiles.Contains(fileName))
+#if USE_FILE_ALLOWLIST
+                    if (!allowedFiles.Contains(fileName))
                     { continue; }
 #endif
 
-                    if (blackListedFiles.Contains(fileName))
+                    if (skippedFiles.Contains(fileName))
                     { continue; }
 
                     files.Add(headerFile);
