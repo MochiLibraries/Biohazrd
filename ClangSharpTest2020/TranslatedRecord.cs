@@ -252,7 +252,7 @@ namespace ClangSharpTest2020
                     {
                         writer.EnsureSeparation();
                         writer.WriteLine("[StructLayout(LayoutKind.Sequential)]");
-                        writer.WriteLine($"internal struct {VTableTypeName}");
+                        writer.WriteLine($"public unsafe struct {VTableTypeName}");
                         using (writer.Block())
                         {
                             foreach (string fieldName in vTableEntryNames)
@@ -262,7 +262,7 @@ namespace ClangSharpTest2020
                                 { continue; }
 
                                 //TODO: Use function pointer types in C#9
-                                writer.WriteLine($"internal IntPtr {fieldName};");
+                                writer.WriteLine($"public void* {fieldName};");
                             }
                         }
                     }
