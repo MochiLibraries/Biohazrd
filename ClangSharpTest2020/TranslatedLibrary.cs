@@ -64,7 +64,7 @@ namespace ClangSharpTest2020
                         output = Console.Error;
                         break;
                     case Severity.Error:
-                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.ForegroundColor = ConsoleColor.DarkRed;
                         output = Console.Error;
                         break;
                     case Severity.Fatal:

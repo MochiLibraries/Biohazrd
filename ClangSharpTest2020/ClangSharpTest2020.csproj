@@ -16,6 +16,11 @@
     This doesn't work with the libclang meta package directly, we have to exclude the specific runtime package.
     -->
     <PackageReference Include="libclang.runtime.$(RuntimeIdentifier)" Version="*" ExcludeAssets="All" />
+    <!--
+    We're using a pre-release compiler to get access to function pointers
+    This is not any particular version, it's just the latest from the Roslyn CI.
+    -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0-1.20315.2" />
   </ItemGroup>
 
 </Project>

@@ -3,8 +3,10 @@
 #define DUMP_LOCATION_INFORMATION_VERBOSE
 //#define DUMP_RECORD_LAYOUTS
 #define USE_FILE_ALLOWLIST
+#define BUILD_GENERATED_CODE
 using ClangSharp;
 using ClangSharp.Interop;
+using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -140,6 +142,38 @@ namespace ClangSharpTest2020
                 if (library.HasErrors)
                 { return; }
             }
+
+            // Build csproj
+#if BUILD_GENERATED_CODE
+            Console.WriteLine("==============================================================================");
+            Console.WriteLine("Building generated C# code...");
+            Console.WriteLine("==============================================================================");
+            {
+                CSharpBuildHelper build = new CSharpBuildHelper();
+                foreach (string generatedFile in Directory.EnumerateFiles(".", "*.cs", SearchOption.AllDirectories))
+                { build.AddFile(generatedFile); }
+
+                int errorCount = 0;
+                int warningCount = 0;
+
+                foreach (Diagnostic diagnostic in build.Compile())
+                {
+                    switch (diagnostic.Severity)
+                    {
+                        case DiagnosticSeverity.Warning:
+                            warningCount++;
+                            break;
+                        case DiagnosticSeverity.Error:
+                            errorCount++;
+                            break;
+                    }
+
+                    WriteDiagnostic(diagnostic);
+                }
+
+                Console.WriteLine($"========== C# build {(errorCount > 0 ? "failed" : "succeeded")}: {errorCount} error(s), {warningCount} warning(s) ==========");
+            }
+#endif
 #endif
         }
 
@@ -538,6 +572,43 @@ namespace ClangSharpTest2020
             { line += $" {startFileName}:{startLine}:{startColumn}[{startOffset}]..{endFileName}:{endLine}:{endColumn}[{endOffset}]"; }
 
             WriteLine(line);
+        }
+
+        private static void WriteDiagnostic(Diagnostic diagnostic)
+        {
+            TextWriter output;
+            ConsoleColor oldForegroundColor = Console.ForegroundColor;
+            ConsoleColor oldBackgroundColor = Console.BackgroundColor;
+
+            try
+            {
+                switch (diagnostic.Severity)
+                {
+                    case DiagnosticSeverity.Hidden:
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
+                        output = Console.Out;
+                        break;
+                    case DiagnosticSeverity.Info:
+                        output = Console.Out;
+                        break;
+                    case DiagnosticSeverity.Warning:
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        output = Console.Error;
+                        break;
+                    case DiagnosticSeverity.Error:
+                    default:
+                        Console.ForegroundColor = ConsoleColor.DarkRed;
+                        output = Console.Error;
+                        break;
+                }
+
+                output.WriteLine(diagnostic);
+            }
+            finally
+            {
+                Console.BackgroundColor = oldBackgroundColor;
+                Console.ForegroundColor = oldForegroundColor;
+            }
         }
     }
 }
