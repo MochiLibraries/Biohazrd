@@ -95,7 +95,7 @@ namespace ClangSharpTest2020
             writer.EnsureSeparation();
             //TODO: Documentation comment
             writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size = {layout->Size})]");
-            writer.WriteLine($"public partial unsafe struct {Record.Name}");
+            writer.WriteLine($"public unsafe partial struct {Record.Name}");
             using (writer.Block())
             {
                 const string VTableTypeName = "VirtualMethodTable";
