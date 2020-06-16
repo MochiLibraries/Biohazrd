@@ -490,16 +490,25 @@ namespace ClangSharpTest2020
             {
                 CXType_Void => ("void", 0),
                 CXType_Bool => ("bool", sizeof(bool)),
-                //CXType_Char16 => ("char", typeof(char)),
+
+                // Character types
+                // We always translate `char` (without an explicit sign) as `byte` because in C this type ususally indicates a string and
+                // .NET's Encoding utilities all work with bytes.
+                // (Additionally, good developers will explicitly sign numeric 8-bit fields since char's signedness is undefined)
+                CXType_Char_S => ("byte", sizeof(byte)), // char (with -fsigned-char)
+                CXType_Char_U => ("byte", sizeof(byte)), // char (with -fno-signed-char)
+                CXType_WChar => ("char", sizeof(char)), // wchar_t
+                CXType_Char16 => ("char", sizeof(char)), // char16_t
 
                 // Unsigned integer types
-                CXType_UChar => ("byte", sizeof(byte)), // unsigned char
+                CXType_UChar => ("byte", sizeof(byte)), // unsigned char / uint8_t
                 CXType_UShort => ("ushort", sizeof(ushort)),
                 CXType_UInt => ("uint", sizeof(uint)),
                 CXType_ULong => ("uint", sizeof(uint)),
                 CXType_ULongLong => ("ulong", sizeof(ulong)),
 
                 // Signed integer types
+                CXType_SChar => ("sbyte", sizeof(sbyte)), // signed char / int8_t
                 CXType_Short => ("short", sizeof(short)),
                 CXType_Int => ("int", sizeof(int)),
                 CXType_Long => ("int", sizeof(int)),
