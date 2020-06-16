@@ -4,7 +4,6 @@ using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 
 namespace ClangSharpTest2020
 {
@@ -95,7 +94,8 @@ namespace ClangSharpTest2020
             writer.EnsureSeparation();
             //TODO: Documentation comment
             writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size = {layout->Size})]");
-            writer.WriteLine($"public unsafe partial struct {Record.Name}");
+            // Records are translated as ref structs to prevent storing them on the managed heap.
+            writer.WriteLine($"public unsafe ref partial struct {Record.Name}");
             using (writer.Block())
             {
                 const string VTableTypeName = "VirtualMethodTable";
