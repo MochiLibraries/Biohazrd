@@ -166,11 +166,19 @@ namespace ClangSharpTest2020
             { return; }
 
             //TODO: Decide how to translate constructors/destructors
-            if (Function is CXXConstructorDecl || Function is CXXDestructorDecl)
+            if (Function is CXXConstructorDecl)
+            {
+                writer.EnsureSeparation();
+                writer.WriteLine($"//TODO: Translate constructor {Function}");
+                File.Diagnostic(Severity.Note, Function, "Constructor was not translated.");
+                return;
+            }
+
+            if (Function is CXXDestructorDecl)
             {
                 writer.EnsureSeparation();
                 writer.WriteLine($"//TODO: Translate destructor {Function}");
-                File.Diagnostic(Severity.Note, Function, "Constructor/destructor was not translated.");
+                File.Diagnostic(Severity.Note, Function, "Destructor was not translated.");
                 return;
             }
 
