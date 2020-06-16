@@ -101,7 +101,7 @@ namespace ClangSharpTest2020
                 else
                 {
                     using CodeWriter writer = new CodeWriter();
-                    writer.WriteLine($"public partial static {globalFunctionType}");
+                    writer.WriteLine($"public static partial class {globalFunctionType}");
                     using (writer.Block())
                     {
                         foreach (TranslatedFunction function in LooseFunctions)
