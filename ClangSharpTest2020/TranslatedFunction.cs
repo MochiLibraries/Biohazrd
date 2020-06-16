@@ -107,11 +107,22 @@ namespace ClangSharpTest2020
             if (IsInstanceMethod)
             { accessibility = "private"; }
 
+            writer.EnsureSeparation();
+
+            // Write out the DllImport attribute
+            writer.Using("System.Runtime.InteropServices");
+
             //TODO: Put the DLL name in a constant or something.
             // (In the case of PhysX, some functions come from different libraries, so we need a way to categorize these somehow...)
-            writer.EnsureSeparation();
-            writer.Using("System.Runtime.InteropServices");
-            writer.WriteLine($"[DllImport(\"TODO.dll\", CallingConvention = CallingConvention.{CallingConvention}, EntryPoint = \"{Function.Handle.Mangling}\", ExactSpelling = true)]");
+            writer.Write($"[DllImport(\"TODO.dll\", CallingConvention = CallingConvention.{CallingConvention}");
+            
+            string mangledName = Function.Handle.Mangling.ToString();
+            if (mangledName != Function.Name)
+            { writer.Write($", EntryPoint = \"{mangledName}\""); }
+
+            writer.WriteLine(", ExactSpelling = true)]");
+
+            // Write out the function signature
             writer.Write($"{accessibility} static extern ");
             WriteReturnType(writer);
             writer.Write($" {Function.Name}(");
