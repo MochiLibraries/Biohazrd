@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using Type = System.Type;
+using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
@@ -80,14 +81,16 @@ namespace ClangSharpTest2020
         public static bool IsFromMainFilePathogen(this CXSourceLocation location)
             => PathogenExtensions.pathogen_Location_isFromMainFile(location) != 0;
 
-        private static MethodInfo TranslationUnit_GetOrCreate;
+        private static MethodInfo TranslationUnit_GetOrCreate_CXCursor;
+        private static MethodInfo TranslationUnit_GetOrCreate_CXType;
         [ThreadStatic] private static object[] TranslationUnit_GetOrCreate_Parameters;
+
         public static Cursor GetOrCreate(this TranslationUnit translationUnit, CXCursor handle)
         {
             if (handle.TranslationUnit != translationUnit.Handle)
             { throw new ArgumentException("The specified cursor is not from the specified translation unit.", nameof(handle)); }
 
-            if (TranslationUnit_GetOrCreate == null)
+            if (TranslationUnit_GetOrCreate_CXCursor == null)
             {
                 Type[] parameterTypes = { typeof(CXCursor) };
                 const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DoNotWrapExceptions;
@@ -96,14 +99,40 @@ namespace ClangSharpTest2020
                 if (getOrCreateGeneric is null)
                 { throw new NotSupportedException("Could not get the GetOrCreate<TCursor>(CXCursor) method!"); }
 
-                TranslationUnit_GetOrCreate = getOrCreateGeneric.MakeGenericMethod(typeof(Cursor));
+                TranslationUnit_GetOrCreate_CXCursor = getOrCreateGeneric.MakeGenericMethod(typeof(Cursor));
             }
 
             if (TranslationUnit_GetOrCreate_Parameters == null)
             { TranslationUnit_GetOrCreate_Parameters = new object[1]; }
 
             TranslationUnit_GetOrCreate_Parameters[0] = handle; //PERF: Reuse the box
-            return (Cursor)TranslationUnit_GetOrCreate.Invoke(translationUnit, TranslationUnit_GetOrCreate_Parameters);
+            return (Cursor)TranslationUnit_GetOrCreate_CXCursor.Invoke(translationUnit, TranslationUnit_GetOrCreate_Parameters);
+        }
+
+        public static ClangType GetOrCreate(this TranslationUnit translationUnit, CXType handle)
+        {
+            // This has issues with built-in types. Unclear how important this check even is, so it's disabled for now.
+            // In theory we could just check this when there is a declaration, but built-in types seem to have invalid declarations rather than just null ones.
+            //if (handle.Declaration.TranslationUnit != translationUnit.Handle)
+            //{ throw new ArgumentException("The specified type is not from the specified translation unit.", nameof(handle)); }
+
+            if (TranslationUnit_GetOrCreate_CXType == null)
+            {
+                Type[] parameterTypes = { typeof(CXType) };
+                const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DoNotWrapExceptions;
+                MethodInfo getOrCreateGeneric = typeof(TranslationUnit).GetMethod("GetOrCreate", genericParameterCount: 1, bindingFlags, binder: null, parameterTypes, modifiers: null);
+
+                if (getOrCreateGeneric is null)
+                { throw new NotSupportedException("Could not get the GetOrCreate<TType>(CXType) method!"); }
+
+                TranslationUnit_GetOrCreate_CXType = getOrCreateGeneric.MakeGenericMethod(typeof(ClangType));
+            }
+
+            if (TranslationUnit_GetOrCreate_Parameters == null)
+            { TranslationUnit_GetOrCreate_Parameters = new object[1]; }
+
+            TranslationUnit_GetOrCreate_Parameters[0] = handle; //PERF: Reuse the box
+            return (ClangType)TranslationUnit_GetOrCreate_CXType.Invoke(translationUnit, TranslationUnit_GetOrCreate_Parameters);
         }
 
         public static CXCallingConv GetCallingConvention(this FunctionDecl function)

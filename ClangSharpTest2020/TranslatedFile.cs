@@ -397,7 +397,18 @@ namespace ClangSharpTest2020
             return TranslationUnit.GetOrCreate(cursorHandle);
         }
 
-        internal void WriteType(CodeWriter writer, ClangType type, Cursor associatedCursor, TypeTranslationContext context)
+        public ClangType FindType(CXType typeHandle)
+        {
+            if (typeHandle.kind == CXTypeKind.CXType_Invalid)
+            {
+                Diagnostic(Severity.Warning, $"Someone tried to get the Type for an invalid type handle.");
+                return null;
+            }
+
+            return TranslationUnit.GetOrCreate(typeHandle);
+        }
+
+        internal void WriteType(CodeWriter writer, ClangType type, CXCursor associatedCursor, TypeTranslationContext context)
         {
             int levelsOfIndirection = 0;
             ClangType unreducedType = type;
@@ -567,6 +578,9 @@ namespace ClangSharpTest2020
             for (int i = 0; i < levelsOfIndirection; i++)
             { writer.Write('*'); }
         }
+
+        internal void WriteType(CodeWriter writer, ClangType type, Cursor associatedCursor, TypeTranslationContext context)
+            => WriteType(writer, type, associatedCursor.Handle, context);
 
         public void Dispose()
             => TranslationUnit?.Dispose();

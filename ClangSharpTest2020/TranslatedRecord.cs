@@ -4,6 +4,7 @@ using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
@@ -166,7 +167,10 @@ namespace ClangSharpTest2020
                         if (field->Kind == PathogenRecordFieldKind.VTablePtr)
                         { writer.Write($"{VTableTypeName}*"); }
                         else
-                        { writer.Write("void*"); } //TODO: Need to translate type.
+                        {
+                            ClangType type = File.FindType(field->Type);
+                            File.WriteType(writer, type, field->FieldDeclaration, TypeTranslationContext.ForField);
+                        }
 
                         writer.Write(' ');
 
