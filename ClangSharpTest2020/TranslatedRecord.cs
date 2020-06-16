@@ -111,6 +111,8 @@ namespace ClangSharpTest2020
                     bool isNonPrimaryBase = (field->Kind == PathogenRecordFieldKind.VirtualBase || field->Kind == PathogenRecordFieldKind.NonVirtualBase) && field->IsPrimaryBase == 0;
                     bool isUnsupportedKind = false;
 
+                    FieldDecl fieldDeclaration = field->Kind == PathogenRecordFieldKind.Normal ? (FieldDecl)File.FindCursor(field->FieldDeclaration) : null;
+
                     CXCursor diagnosticCursor = field->Kind == PathogenRecordFieldKind.Normal ? field->FieldDeclaration : Record.Handle;
 
                     writer.EnsureSeparation();
@@ -156,11 +158,15 @@ namespace ClangSharpTest2020
                     // Emit the field
                     {
                         // Field offset
-                        writer.WriteLine($"[FieldOffset({field->Offset})]");
+                        writer.Write($"[FieldOffset({field->Offset})] ");
 
                         // Field access
-                        //TODO: Skip private fields and mark protected fields internal.
+                        //TODO: Handle protected
                         string accessModifier = field->Kind == PathogenRecordFieldKind.Normal ? "public" : "internal";
+
+                        if (fieldDeclaration is object && fieldDeclaration.Access == CX_CXXAccessSpecifier.CX_CXXPrivate)
+                        { accessModifier = "private"; }
+
                         writer.Write($"{accessModifier} ");
 
                         // Field type
