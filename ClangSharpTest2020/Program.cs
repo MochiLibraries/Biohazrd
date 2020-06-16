@@ -2,6 +2,8 @@
 //#define DUMP_LOCATION_INFORMATION
 #define DUMP_LOCATION_INFORMATION_VERBOSE
 //#define DUMP_RECORD_LAYOUTS
+#define DUMP_EXTRA_FUNCTION_INFO
+#define DUMP_FIELD_TYPE_INFO
 #define USE_FILE_ALLOWLIST
 #define BUILD_GENERATED_CODE
 using ClangSharp;
@@ -112,7 +114,18 @@ namespace ClangSharpTest2020
 
 #if DUMP_MODE
             using var writer = new StreamWriter("Output.txt");
+            using var typeInfoWriter = new StreamWriter("Output_TypeInfo.txt");
             Writer = writer;
+            TypeInfoWriter = typeInfoWriter;
+
+#if DUMP_FIELD_TYPE_INFO
+            TypeInfoWriter.WriteLine("-- Fields are included.");
+#endif
+#if DUMP_EXTRA_FUNCTION_INFO
+            TypeInfoWriter.WriteLine("-- Parameters are included.");
+#endif
+            foreach (CXTypeKind typeKind in typeof(CXTypeKind).GetEnumValues())
+            { TypeKindStatistics[typeKind] = 0; }
 
             foreach (string file in files)
             {
@@ -123,6 +136,8 @@ namespace ClangSharpTest2020
                 if (!Translate(index, file, clangCommandLineArgs))
                 { return; }
             }
+
+            WriteOutTypeKindStatistics();
 #else
             const string outputDirectory = "Output";
             if (Directory.Exists(outputDirectory))
@@ -230,6 +245,8 @@ namespace ClangSharpTest2020
 
 #pragma warning disable CS0649
         private static StreamWriter Writer;
+        private static StreamWriter TypeInfoWriter;
+        private static SortedDictionary<CXTypeKind, int> TypeKindStatistics = new SortedDictionary<CXTypeKind, int>();
 #pragma warning restore CS0649
 
         private static void Dump(Cursor cursor)
@@ -398,6 +415,34 @@ namespace ClangSharpTest2020
                         }
                     }
                 }
+            }
+#endif
+
+#if DUMP_EXTRA_FUNCTION_INFO
+            {
+                if (cursor is FunctionDecl function)
+                {
+                    Indent();
+                    WriteLine("----------------------------------------------------------------------------");
+                    WriteLine($"Return type: {function.ReturnType.Kind} '{function.ReturnType}'");
+
+                    int i = 0;
+                    foreach (ParmVarDecl parameter in function.Parameters)
+                    {
+                        WriteTypeInfo($"Parameter {i}: {parameter.Name} of ", parameter.Type, function);
+                        i++;
+                    }
+
+                    WriteLine("----------------------------------------------------------------------------");
+                    Unindent();
+                }
+            }
+#endif
+
+#if DUMP_FIELD_TYPE_INFO
+            {
+                if (cursor is FieldDecl field)
+                { WriteTypeInfo("^---- Field type: ", field.Type, field); }
             }
 #endif
 
@@ -572,6 +617,135 @@ namespace ClangSharpTest2020
             { line += $" {startFileName}:{startLine}:{startColumn}[{startOffset}]..{endFileName}:{endLine}:{endColumn}[{endOffset}]"; }
 
             WriteLine(line);
+        }
+
+        private static void WriteTypeInfo(string prefix, ClangType type, Cursor context, int recursionLevel = 0)
+        {
+            string typeInfo = $"{type.GetType().Name} ({type.Kind}) '{type}' SizeOf={type.Handle.SizeOf}";
+
+            // Write to main output
+            WriteLine($"{prefix}{typeInfo}");
+
+            // Write to type info output
+            {
+                // Write indent
+                for (int i = 0; i < recursionLevel; i++)
+                { TypeInfoWriter.Write("  "); }
+
+                // Write out the prefix when we aren't the root type
+                // (The prefix for the root type comes from the dump and contains information other than what WriteTypeInfo added.)
+                if (recursionLevel > 0 && prefix is object)
+                { TypeInfoWriter.Write(prefix); }
+
+                // Write type info
+                TypeInfoWriter.Write(typeInfo);
+
+                // Add the location for the context if we have it
+                if (context is object)
+                {
+                    context.Location.GetFileLocation(out CXFile file, out uint line, out _, out _);
+                    string shortFileName = Path.GetFileName(file.Name.ToString());
+                    TypeInfoWriter.Write($" @ {shortFileName}:{line}");
+                }
+
+                // Finish the line
+                TypeInfoWriter.WriteLine();
+            }
+
+            // Log type kind statistics
+            {
+                int typeKindCount;
+
+                if (!TypeKindStatistics.TryGetValue(type.Kind, out typeKindCount))
+                { typeKindCount = 0; }
+
+                typeKindCount++;
+                TypeKindStatistics[type.Kind] = typeKindCount;
+            }
+
+            // If we're recurssing excessively, complain and stop
+            if (recursionLevel >= 100)
+            {
+                const string excessiveRecursionWarning = "!!!!!!!!!! Type info output truncated, too much recursion !!!!!!!!!!";
+                WriteLine(excessiveRecursionWarning);
+                TypeInfoWriter.Write(excessiveRecursionWarning);
+                return;
+            }
+
+            // Function types are a special case
+            if (type is FunctionType functionType)
+            {
+                Indent();
+                WriteTypeInfo("Return type: ", functionType.ReturnType, null, recursionLevel + 1);
+
+                if (type is FunctionProtoType functionProtoType)
+                {
+                    int i = 0;
+                    foreach (ClangType parameterType in functionProtoType.ParamTypes)
+                    {
+                        WriteTypeInfo($"Parameter {i}: ", parameterType, null, recursionLevel + 1);
+                        i++;
+                    }
+                }
+                Unindent();
+                return;
+            }
+
+            // Check for simple recursive types
+            ClangType nextType = type switch
+            {
+                PointerType pointerType => pointerType.PointeeType,
+                ReferenceType referenceType => referenceType.PointeeType,
+                ArrayType arrayType => arrayType.ElementType,
+                AttributedType attributedType => attributedType.ModifiedType,
+                ElaboratedType elaboratedType => elaboratedType.NamedType,
+                TypedefType typedefType => typedefType.CanonicalType,
+                _ => null
+            };
+
+            if (nextType == null)
+            { return; }
+
+            // Guard against infinite recursion
+            if (ReferenceEquals(type, nextType))
+            {
+                const string wouldBeInfiniteRecursionWarning = "!!!!!!!!!! The previous type would recurse into its self, skipped recursion !!!!!!!!!!";
+                WriteLine(wouldBeInfiniteRecursionWarning);
+                TypeInfoWriter.Write(wouldBeInfiniteRecursionWarning);
+                return;
+            }
+
+            // Recurse
+            Indent();
+            WriteTypeInfo(null, nextType, null, recursionLevel + 1);
+            Unindent();
+        }
+
+        private static void WriteOutTypeKindStatistics()
+        {
+            int maxTypeKindNameLength = 0;
+
+            foreach (CXTypeKind kind in TypeKindStatistics.Keys)
+            {
+                int typeKindNameLength = kind.ToString().Length;
+
+                if (maxTypeKindNameLength < typeKindNameLength)
+                { maxTypeKindNameLength = typeKindNameLength; }
+            }
+
+            TypeInfoWriter.WriteLine("==============================================================================");
+            TypeInfoWriter.WriteLine("Type kind statistics (only includes types which were printed above.)");
+            TypeInfoWriter.WriteLine("==============================================================================");
+            foreach (KeyValuePair<CXTypeKind, int> typeKindStatistic in TypeKindStatistics)
+            {
+                string typeKindName = typeKindStatistic.Key.ToString();
+                TypeInfoWriter.Write(typeKindName);
+
+                for (int i = typeKindName.Length; i < maxTypeKindNameLength; i++)
+                { TypeInfoWriter.Write(' '); }
+
+                TypeInfoWriter.WriteLine($"  {typeKindStatistic.Value}");
+            }
         }
 
         private static void WriteDiagnostic(Diagnostic diagnostic)
