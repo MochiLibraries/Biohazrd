@@ -292,6 +292,13 @@ namespace ClangSharpTest2020
                 {
                     if (function.IsInlined)
                     { extra += " INLINE"; }
+
+                    extra += $" Type={function.Type.Kind}";
+
+                    if (function.Type is AttributedType attributedType)
+                    { extra += $" AttrCallConv={attributedType.Handle.FunctionTypeCallingConv}"; }
+                    else if (function.Type is FunctionType functionType)
+                    { extra += $" CallConv={functionType.CallConv}"; }
                 }
 
                 if (cursor is RecordDecl record)
