@@ -23,4 +23,10 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0-1.20315.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="TestHeaders\**\*.h">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

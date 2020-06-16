@@ -78,6 +78,7 @@ namespace ClangSharpTest2020
 
 #if false
             files.Add(@"C:\Development\Playground\CppWrappingInlineMaybe\CppWrappingInlineMaybe\Source.h");
+            files.AddRange(Directory.EnumerateFiles("TestHeaders", "*.h", SearchOption.AllDirectories));
 #else
             HashSet<string> allowedFiles = new HashSet<string>()
             {
@@ -139,6 +140,13 @@ namespace ClangSharpTest2020
 
             WriteOutTypeKindStatistics();
 #else
+            // Ensure all files are absolute paths since we're about to change directories
+            for (int i = 0; i < files.Count; i++)
+            {
+                if (!Path.IsPathRooted(files[i]))
+                { files[i] = Path.GetFullPath(files[i]); }
+            }
+
             const string outputDirectory = "Output";
             if (Directory.Exists(outputDirectory))
             { Directory.Delete(outputDirectory, recursive: true); }
