@@ -9,6 +9,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using static ClangSharp.Interop.CXTypeKind;
+using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
@@ -393,6 +395,177 @@ namespace ClangSharpTest2020
             }
 
             return TranslationUnit.GetOrCreate(cursorHandle);
+        }
+
+        internal void WriteType(CodeWriter writer, ClangType type, Cursor associatedCursor, TypeTranslationContext context)
+        {
+            int levelsOfIndirection = 0;
+            ClangType unreducedType = type;
+
+            // Walk the type up until we find the type we actually want to print
+            // This also figures out how many levels of indirection the type has
+            bool keepGoing = true;
+            do
+            {
+                switch (type)
+                {
+                    // Elaborated types are namespace-qualified types like physx::PxU32 instead of just PxU32.
+                    case ElaboratedType elaboratedType:
+                        type = elaboratedType.NamedType;
+                        break;
+                    // For now, we discard typedefs and translate the type they alias
+                    case TypedefType typedefType:
+                        type = typedefType.CanonicalType;
+                        break;
+                    case PointerType pointerType:
+                        type = pointerType.PointeeType;
+                        levelsOfIndirection++;
+                        break;
+                    case ReferenceType referenceType:
+                        // Our test codebase doesn't have any types like this, and I'm not actually sure what it is.
+                        // Complain if we find one so we can hopefully resolve the issue.
+                        if (referenceType.Kind == CXTypeKind.CXType_RValueReference)
+                        { Diagnostic(Severity.Warning, associatedCursor, "Found RValue reference type. This type may not be translated correctly (due to lack of real-world samples.)"); }
+
+                        // References are translated as pointers
+                        type = referenceType.PointeeType;
+                        levelsOfIndirection++;
+                        break;
+                    case ArrayType arrayType:
+                        // Specific array type handling
+                        switch (arrayType)
+                        {
+                            case ConstantArrayType constantArrayType:
+                                if (context == TypeTranslationContext.ForReturn)
+                                { Diagnostic(Severity.Error, associatedCursor, "Cannot translate constant-sized array return type."); }
+                                else if (context == TypeTranslationContext.ForField)
+                                { Diagnostic(Severity.Warning, associatedCursor, "Constant-sized arrays are not fully supported. Only first element was translated."); }
+                                else if (context == TypeTranslationContext.ForParameter)
+                                { Diagnostic(Severity.Warning, associatedCursor, "The size of the array for this parameter won't be translated."); }
+                                break;
+                            case DependentSizedArrayType dependentSizedArrayType:
+                                // Dependent-sized arrays are arrays sized by a template parameter
+                                Diagnostic(Severity.Error, associatedCursor, "Dependent-sized arrays are not supported.");
+                                break;
+                            case IncompleteArrayType incompleteArrayType:
+                                if (context != TypeTranslationContext.ForParameter)
+                                { Diagnostic(Severity.Error, associatedCursor, "Incomplete array types are only supported as parameters."); }
+                                break;
+                            default:
+                                Diagnostic(Severity.Error, associatedCursor, $"Don't know how to translate array type {type.GetType().Name} ({type.Kind})");
+                                break;
+                        }
+
+                        // If we're in the context other than a field, translate the array as a pointer
+                        if (context != TypeTranslationContext.ForField)
+                        { levelsOfIndirection++; }
+
+                        type = arrayType.ElementType;
+                        break;
+                    default:
+                        // If we got this far, we either encountered a type we can't deal with or we hit a type we can translate.
+                        keepGoing = false;
+                        break;
+                }
+            } while (keepGoing);
+
+            // Determine the type name
+            // Things we probably can/should support: (Some things here need verification of when they actually occur in a C++ codebase.)
+            // CXType_Char_U
+            // CXType_Char16
+            // CXType_Char32 -- Unclear what to translate it as Char.ConvertToUtf32 just uses int.
+            //TODO: Support function pointers (CXType_FunctionProto)
+            (string typeName, int cSharpTypeSize) = type.Kind switch
+            {
+                CXType_Void => ("void", 0),
+                CXType_Bool => ("bool", sizeof(bool)),
+                //CXType_Char16 => ("char", typeof(char)),
+
+                // Unsigned integer types
+                CXType_UChar => ("byte", sizeof(byte)), // unsigned char
+                CXType_UShort => ("ushort", sizeof(ushort)),
+                CXType_UInt => ("uint", sizeof(uint)),
+                CXType_ULong => ("uint", sizeof(uint)),
+                CXType_ULongLong => ("ulong", sizeof(ulong)),
+
+                // Signed integer types
+                CXType_Short => ("short", sizeof(short)),
+                CXType_Int => ("int", sizeof(int)),
+                CXType_Long => ("int", sizeof(int)),
+                CXType_LongLong => ("long", sizeof(long)),
+
+                // Floating point types
+                CXType_Float => ("float", sizeof(float)),
+                CXType_Double => ("double", sizeof(double)),
+
+                // Records and enums
+                //TODO: Deal with namespaces and such
+                CXType_Record => (((RecordType)type).Decl.Name, 0),
+                CXType_Enum => (((EnumType)type).Decl.Name, 4),
+
+                // If we got this far, we don't know how to translate this type
+                _ => (null, 0)
+            };
+
+            // If the size of the C# type is known, we try to sanity-check it
+            // If the check fails, we erase the type name and let the substitute logic run below
+            // (This check failing likely indicates a programming issue, so we assert too.)
+            if (cSharpTypeSize != 0 && type.Handle.SizeOf != cSharpTypeSize)
+            {
+                Diagnostic(Severity.Error, $"sizeof({type}) is {type.Handle.SizeOf}, but the translated sizeof({typeName}) is {cSharpTypeSize}.");
+                Debug.Assert(false, "This size check shouldn't fail.");
+                typeName = null;
+            }
+
+            // If the type isn't supported, we try to translate it as a primitive
+            if (typeName is null)
+            {
+                string reducedTypeNote = ReferenceEquals(type, unreducedType) ? "" : $" (reduced from `{unreducedType}`)";
+                string warningPrefix = $"Not sure how to translate `{type}`{reducedTypeNote}";
+
+                // Pointers to unknown types are changed to void pointers
+                if (levelsOfIndirection > 0)
+                {
+                    typeName = "void";
+                    Diagnostic(Severity.Warning, associatedCursor, $"{warningPrefix}, translated as void pointer.");
+                }
+                // Otherwise we try to find a matching primitive
+                else
+                {
+                    typeName = type.Handle.SizeOf switch
+                    {
+                        sizeof(byte) => "byte",
+                        sizeof(short) => "short",
+                        sizeof(int) => "int",
+                        sizeof(long) => "long",
+                        // Note: There's no reason to try and handle IntPtr here.
+                        // Even ignoring the fact that it'll be handled by the int or long branch,
+                        // we aren't dealing with pointers at this point so we don't want to translate anything as such.
+                        _ => null
+                    };
+
+                    if (typeName is object)
+                    { Diagnostic(Severity.Warning, associatedCursor, $"{warningPrefix}, translated as same-size C# primitive type `{typeName}`."); }
+                    else
+                    {
+                        //TODO: This is reasonable for fields since we use explicit layouts, but it totally breaks calling conventions.
+                        // We need a way to retroactively mark the member as [Obsolete] to preven it from being used.
+                        typeName = "byte";
+                        Diagnostic
+                        (
+                            context == TypeTranslationContext.ForField ? Severity.Warning : Severity.Error,
+                            associatedCursor,
+                            $"{warningPrefix}`, translated as a `byte` since it isn't the size of any C# primitive."
+                        );
+                    }
+                }
+            }
+
+            // Write out the type
+            writer.Write(typeName);
+
+            for (int i = 0; i < levelsOfIndirection; i++)
+            { writer.Write('*'); }
         }
 
         public void Dispose()

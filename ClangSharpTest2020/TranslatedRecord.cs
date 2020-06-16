@@ -16,6 +16,8 @@ namespace ClangSharpTest2020
 
         private List<TranslatedFunction> Methods = new List<TranslatedFunction>();
 
+        public string TranslatedName => Record.Name;
+
         private TranslatedRecord(ImmutableArray<TranslationContext> context, TranslatedFile file, TranslatedRecord parentRecord, RecordDecl record)
         {
             if (!record.Handle.IsDefinition)
@@ -95,7 +97,7 @@ namespace ClangSharpTest2020
             //TODO: Documentation comment
             writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size = {layout->Size})]");
             // Records are translated as ref structs to prevent storing them on the managed heap.
-            writer.WriteLine($"public unsafe ref partial struct {Record.Name}");
+            writer.WriteLine($"public unsafe ref partial struct {TranslatedName}");
             using (writer.Block())
             {
                 const string VTableTypeName = "VirtualMethodTable";

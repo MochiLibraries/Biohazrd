@@ -105,5 +105,17 @@ namespace ClangSharpTest2020
             TranslationUnit_GetOrCreate_Parameters[0] = handle; //PERF: Reuse the box
             return (Cursor)TranslationUnit_GetOrCreate.Invoke(translationUnit, TranslationUnit_GetOrCreate_Parameters);
         }
+
+        public static CXCallingConv GetCallingConvention(this FunctionDecl function)
+        {
+            // When the convention is explicitly specified (with or without the __attribute__ syntax), function.Type will be AttributedType
+            // Calling conventions that don't affect the current platform (IE: stdcall on x64) are ignored by Clang (they become CXCallingConv_C)
+            if (function.Type is AttributedType attributedType)
+            { return attributedType.Handle.FunctionTypeCallingConv; }
+            else if (function.Type is FunctionType functionType)
+            { return functionType.CallConv; }
+            else
+            { throw new NotSupportedException($"The function has an unexpected value for `{nameof(function.Type)}`."); }
+        }
     }
 }
