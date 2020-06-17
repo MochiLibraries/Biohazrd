@@ -18,6 +18,8 @@ namespace ClangSharpTest2020
         public override string TranslatedName => Function.Name;
         private string DllImportName => TranslatedName;
 
+        private string ThisTypeSanatized => Record is null ? "void" : SanitizeIdentifier(Record.TranslatedName);
+
         public override bool CanBeRoot => false;
 
         private string TranslatedAccessibility => !(Function is CXXMethodDecl) || Function.Access == CX_CXXAccessSpecifier.CX_CXXPublic ? "public" : "private";
@@ -71,10 +73,7 @@ namespace ClangSharpTest2020
 
             if (includeThis && IsInstanceMethod)
             {
-                if (Record is object)
-                { writer.Write($"{SanitizeIdentifier(Record.TranslatedName)}* _this"); }
-                else
-                { writer.Write("void* _this"); }
+                writer.Write($"{ThisTypeSanatized}* __this");
                 first = false;
             }
 
@@ -156,7 +155,7 @@ namespace ClangSharpTest2020
                 // Once https://github.com/dotnet/csharplang/issues/1792 is implemented, this fixed statement should be removed.
                 using (writer.Block())
                 {
-                    writer.WriteLine($"fixed ({SanitizeIdentifier(Record.TranslatedName)}* thisP = &this)");
+                    writer.WriteLine($"fixed ({ThisTypeSanatized}* thisP = &this)");
                     writer.WriteLine($"{{ {SanitizeIdentifier(DllImportName)}(thisP); }}");
                 }
             }
