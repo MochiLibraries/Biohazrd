@@ -166,6 +166,9 @@ namespace ClangSharpTest2020
                 { return; }
             }
 
+            // Emit the translation
+            library.Translate(LibraryTranslationMode.OneFilePerInputFile);
+
             // Build csproj
 #if BUILD_GENERATED_CODE
             Console.WriteLine("==============================================================================");

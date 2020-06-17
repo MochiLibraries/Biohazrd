@@ -30,6 +30,8 @@ namespace ClangSharpTest2020
         private readonly HashSet<Cursor> AllCursors = new HashSet<Cursor>();
         private readonly HashSet<Cursor> UnprocessedCursors;
 
+        private string GlobalFunctionTypeName { get; }
+
         /// <summary>True if <see cref="Diagnostics"/> contains any diagnostic with <see cref="TranslationDiagnostic.IsError"/> or true.</summary>
         public bool HasErrors { get; private set; }
 
@@ -87,40 +89,65 @@ namespace ClangSharpTest2020
             // Process the translation unit
             ProcessCursor(ImmutableArray<TranslationContext>.Empty, TranslationUnit.TranslationUnitDecl);
 
-            // Translate global functions
+            // Associate loose global functions to a record matching our file name if we have one.
+            GlobalFunctionTypeName = Path.GetFileNameWithoutExtension(FilePath);
             if (LooseFunctions.Count > 0)
             {
-                string globalFunctionType = Path.GetFileNameWithoutExtension(FilePath);
-                TranslatedRecord globalFunctionTarget = Records.FirstOrDefault(r => r.TranslatedName == globalFunctionType);
+                TranslatedRecord globalFunctionTarget = Records.FirstOrDefault(r => r.TranslatedName == GlobalFunctionTypeName);
 
                 if (globalFunctionTarget is object)
                 {
                     foreach (TranslatedFunction function in LooseFunctions)
                     { globalFunctionTarget.AddAsStaticMethod(function); }
-                }
-                else
-                {
-                    using CodeWriter writer = new CodeWriter();
-                    writer.WriteLine($"public static partial class {globalFunctionType}");
-                    using (writer.Block())
-                    {
-                        foreach (TranslatedFunction function in LooseFunctions)
-                        { function.Translate(writer); }
-                    }
 
-                    writer.WriteOut($"{globalFunctionType}.cs");
+                    LooseFunctions.Clear();
                 }
             }
-
-            // Perform the translation
-            foreach (TranslatedRecord record in Records)
-            { record.Translate(); }
 
             // Note unprocessed cursors
 #if false //TODO: Re-enable this
             foreach (Cursor cursor in UnprocessedCursors)
             { Diagnostic(Severity.Warning, cursor, $"{cursor.CursorKindDetailed()} was not processed."); }
 #endif
+        }
+
+        private void TranslateGlobalFunctions(CodeWriter writer)
+        {
+            if (LooseFunctions.Count == 0)
+            { return; }
+
+            writer.EnsureSeparation();
+            writer.WriteLine($"public static partial class {GlobalFunctionTypeName}");
+            using (writer.Block())
+            {
+                foreach (TranslatedFunction function in LooseFunctions)
+                { function.Translate(writer); }
+            }
+        }
+
+        public void Translate()
+        {
+            // Translate global functions
+            if (LooseFunctions.Count > 0)
+            {
+                using CodeWriter writer = new CodeWriter();
+                TranslateGlobalFunctions(writer);
+                writer.WriteOut($"{GlobalFunctionTypeName}.cs");
+            }
+
+            // Translate records
+            foreach (TranslatedRecord record in Records)
+            { record.Translate(); }
+        }
+
+        public void Translate(CodeWriter writer)
+        {
+            // Translate global functions
+            TranslateGlobalFunctions(writer);
+
+            // Translate records
+            foreach (TranslatedRecord record in Records)
+            { record.Translate(writer); }
         }
 
         private void Diagnostic(in TranslationDiagnostic diagnostic)

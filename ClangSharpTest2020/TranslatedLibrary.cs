@@ -24,7 +24,7 @@ namespace ClangSharpTest2020
             Index = CXIndex.Create(displayDiagnostics: true);
         }
 
-        public void AddFile(string filePath)
+        public TranslatedFile AddFile(string filePath)
         {
             TranslatedFile newFile;
             //using (new WorkingDirectoryScope(Path.GetFileNameWithoutExtension(filePath)))
@@ -36,6 +36,44 @@ namespace ClangSharpTest2020
             {
                 Debug.Assert(HasErrors, "The library should already have errors if the new file does as well.");
                 HasErrors = true;
+            }
+
+            return newFile;
+        }
+
+        public void Translate(LibraryTranslationMode mode)
+        {
+            switch (mode)
+            {
+                case LibraryTranslationMode.OneFilePerType:
+                {
+                    foreach (TranslatedFile file in Files)
+                    { file.Translate(); }
+                }
+                break;
+                case LibraryTranslationMode.OneFilePerInputFile:
+                {
+                    foreach (TranslatedFile file in Files)
+                    {
+                        using CodeWriter writer = new CodeWriter();
+                        file.Translate(writer);
+                        string outputFileName = Path.GetFileNameWithoutExtension(file.FilePath) + ".cs";
+                        writer.WriteOut(outputFileName);
+                    }
+                }
+                break;
+                case LibraryTranslationMode.OneFile:
+                {
+                    using CodeWriter writer = new CodeWriter();
+
+                    foreach (TranslatedFile file in Files)
+                    { file.Translate(writer); }
+
+                    writer.WriteOut("TranslatedLibrary.cs");
+                }
+                break;
+                default:
+                    throw new ArgumentException("The specified mode is invalid.", nameof(mode));
             }
         }
 
