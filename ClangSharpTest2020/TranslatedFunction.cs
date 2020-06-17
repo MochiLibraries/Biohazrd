@@ -20,6 +20,8 @@ namespace ClangSharpTest2020
         public string TranslatedName => Function.Name;
         private string DllImportName => TranslatedName;
 
+        private string TranslatedAccessibility => !(Function is CXXMethodDecl) || Function.Access == CX_CXXAccessSpecifier.CX_CXXPublic ? "public" : "private";
+
         private TranslatedFunction(ImmutableArray<TranslationContext> context, TranslatedFile file, TranslatedRecord record, FunctionDecl function)
         {
             Debug.Assert(record == null || record.File == file, "The record and file must be consistent.");
@@ -101,7 +103,7 @@ namespace ClangSharpTest2020
 
         private void TranslateDllImport(CodeWriter writer)
         {
-            string accessibility = "public";
+            string accessibility = TranslatedAccessibility;
 
             // If this function is an instance method, translate it as private since this p/invoke will be accessed via a trampoline
             if (IsInstanceMethod)
@@ -134,7 +136,7 @@ namespace ClangSharpTest2020
         {
             // Translate the method signature
             writer.EnsureSeparation();
-            writer.Write($"public unsafe ");
+            writer.Write($"{TranslatedAccessibility} unsafe ");
             WriteReturnType(writer);
             writer.Write($" {Function.Name}(");
             WriteParameterList(writer, includeThis: false);
@@ -159,12 +161,6 @@ namespace ClangSharpTest2020
 
         public void Translate(CodeWriter writer)
         {
-            // Skip private methods, they are not useful.
-            // We also skip protected methods (for now.)
-            //TODO: Protected methods could be useful when overriding virtual functions from C#, so they should be accessible somehow.
-            if (Function is CXXMethodDecl method && (method.Access == CX_CXXAccessSpecifier.CX_CXXPrivate || method.Access == CX_CXXAccessSpecifier.CX_CXXProtected))
-            { return; }
-
             //TODO: Decide how to translate constructors/destructors
             if (Function is CXXConstructorDecl)
             {

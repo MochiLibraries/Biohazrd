@@ -161,11 +161,13 @@ namespace ClangSharpTest2020
                         writer.Write($"[FieldOffset({field->Offset})] ");
 
                         // Field access
-                        //TODO: Handle protected
                         string accessModifier = field->Kind == PathogenRecordFieldKind.Normal ? "public" : "internal";
 
-                        if (fieldDeclaration is object && fieldDeclaration.Access == CX_CXXAccessSpecifier.CX_CXXPrivate)
-                        { accessModifier = "private"; }
+                        if (fieldDeclaration is object)
+                        {
+                            if (fieldDeclaration.Access == CX_CXXAccessSpecifier.CX_CXXPrivate || fieldDeclaration.Access == CX_CXXAccessSpecifier.CX_CXXProtected)
+                            { accessModifier = "private"; }
+                        }
 
                         writer.Write($"{accessModifier} ");
 
