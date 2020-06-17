@@ -3,8 +3,8 @@ using ClangSharp.Interop;
 using System;
 using System.Diagnostics;
 using System.Reflection;
-using Type = System.Type;
 using ClangType = ClangSharp.Type;
+using Type = System.Type;
 
 namespace ClangSharpTest2020
 {
