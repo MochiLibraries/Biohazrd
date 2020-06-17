@@ -64,6 +64,7 @@ namespace ClangSharpTest2020
         private void WriteReturnType(CodeWriter writer)
             => File.WriteType(writer, Function.ReturnType, Function, TypeTranslationContext.ForReturn);
 
+        private bool FirstParameterListWrite = true;
         private void WriteParameterList(CodeWriter writer, bool includeThis)
         {
             bool first = true;
@@ -77,6 +78,7 @@ namespace ClangSharpTest2020
                 first = false;
             }
 
+            int parameterNumber = 0;
             foreach (ParmVarDecl parameter in Function.Parameters)
             {
                 if (first)
@@ -86,8 +88,20 @@ namespace ClangSharpTest2020
 
                 File.WriteType(writer, parameter.Type, parameter, TypeTranslationContext.ForParameter);
                 writer.Write(' ');
-                writer.WriteIdentifier(parameter.Name);
+                if (String.IsNullOrEmpty(parameter.Name))
+                {
+                    writer.WriteIdentifier($"__unnamed{parameterNumber}");
+
+                    if (FirstParameterListWrite)
+                    { File.Diagnostic(Severity.Note, parameter, $"Parameter {parameterNumber} of {Function} does not have a name."); }
+                }
+                else
+                { writer.WriteIdentifier(parameter.Name); }
+
+                parameterNumber++;
             }
+
+            FirstParameterListWrite = false;
         }
 
         private void TranslateDllImport(CodeWriter writer)
