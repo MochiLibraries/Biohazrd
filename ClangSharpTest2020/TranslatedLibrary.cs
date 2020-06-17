@@ -55,6 +55,9 @@ namespace ClangSharpTest2020
                 {
                     foreach (TranslatedFile file in Files)
                     {
+                        if (file.IsEmptyTranslation)
+                        { continue; }
+
                         using CodeWriter writer = new CodeWriter();
                         file.Translate(writer);
                         string outputFileName = Path.GetFileNameWithoutExtension(file.FilePath) + ".cs";

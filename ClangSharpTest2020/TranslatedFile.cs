@@ -21,6 +21,8 @@ namespace ClangSharpTest2020
         private readonly List<TranslatedRecord> Records = new List<TranslatedRecord>();
         private readonly List<TranslatedFunction> LooseFunctions = new List<TranslatedFunction>();
 
+        public bool IsEmptyTranslation => Records.Count == 0 && LooseFunctions.Count == 0;
+
         public string FilePath { get; }
         private readonly TranslationUnit TranslationUnit;
 
@@ -103,6 +105,10 @@ namespace ClangSharpTest2020
                     LooseFunctions.Clear();
                 }
             }
+
+            // Note if this file didn't translate into anything
+            if (IsEmptyTranslation)
+            { Diagnostic(Severity.Note, TranslationUnit.TranslationUnitDecl, "File did not result in anything to be translated."); }
 
             // Note unprocessed cursors
 #if false //TODO: Re-enable this
