@@ -4,6 +4,7 @@ using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using static ClangSharpTest2020.CodeWriter;
 using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
@@ -93,7 +94,7 @@ namespace ClangSharpTest2020
             //TODO: Documentation comment
             writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size = {layout->Size})]");
             // Records are translated as ref structs to prevent storing them on the managed heap.
-            writer.WriteLine($"public unsafe ref partial struct {TranslatedName}");
+            writer.WriteLine($"public unsafe ref partial struct {SanitizeIdentifier(TranslatedName)}");
             using (writer.Block())
             {
                 const string VTableTypeName = "VirtualMethodTable";
@@ -179,9 +180,9 @@ namespace ClangSharpTest2020
 
                         // Field name
                         if (field->Kind == PathogenRecordFieldKind.VTablePtr)
-                        { writer.Write(VTableFieldName); }
+                        { writer.WriteIdentifier(VTableFieldName); }
                         else
-                        { writer.Write(field->Name.ToString()); }
+                        { writer.WriteIdentifier(field->Name.ToString()); }
 
                         // Done.
                         writer.WriteLine(';');
@@ -261,7 +262,7 @@ namespace ClangSharpTest2020
                     {
                         writer.EnsureSeparation();
                         writer.WriteLine("[StructLayout(LayoutKind.Sequential)]");
-                        writer.WriteLine($"public unsafe struct {VTableTypeName}");
+                        writer.WriteLine($"public unsafe struct {SanitizeIdentifier(VTableTypeName)}");
                         using (writer.Block())
                         {
                             foreach (string fieldName in vTableEntryNames)
@@ -271,7 +272,7 @@ namespace ClangSharpTest2020
                                 { continue; }
 
                                 //TODO: Use function pointer types in C#9
-                                writer.WriteLine($"public void* {fieldName};");
+                                writer.WriteLine($"public void* {SanitizeIdentifier(fieldName)};");
                             }
                         }
                     }

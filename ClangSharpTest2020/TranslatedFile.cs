@@ -547,8 +547,8 @@ namespace ClangSharpTest2020
 
                 // Records and enums
                 //TODO: Deal with namespaces and such
-                CXType_Record => (((RecordType)type).Decl.Name, 0),
-                CXType_Enum => (((EnumType)type).Decl.Name, 4),
+                CXType_Record => (CodeWriter.SanitizeIdentifier(((RecordType)type).Decl.Name), 0),
+                CXType_Enum => (CodeWriter.SanitizeIdentifier(((EnumType)type).Decl.Name), 4),
 
                 // If we got this far, we don't know how to translate this type
                 _ => (null, 0)
@@ -609,6 +609,7 @@ namespace ClangSharpTest2020
             }
 
             // Write out the type
+            // Note that we do not want to use SanatizeSymbol here, because typeName might be a built-in type keyword.
             writer.Write(typeName);
 
             for (int i = 0; i < levelsOfIndirection; i++)

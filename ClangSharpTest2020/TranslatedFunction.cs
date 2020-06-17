@@ -1,8 +1,9 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
 using System.Collections.Immutable;
-using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using static ClangSharpTest2020.CodeWriter;
 
 namespace ClangSharpTest2020
 {
@@ -80,7 +81,7 @@ namespace ClangSharpTest2020
             if (includeThis && IsInstanceMethod)
             {
                 if (Record is object)
-                { writer.Write($"{Record.TranslatedName}* _this"); }
+                { writer.Write($"{SanitizeIdentifier(Record.TranslatedName)}* _this"); }
                 else
                 { writer.Write("void* _this"); }
                 first = false;
@@ -94,7 +95,8 @@ namespace ClangSharpTest2020
                 { writer.Write(", "); }
 
                 File.WriteType(writer, parameter.Type, parameter, TypeTranslationContext.ForParameter);
-                writer.Write($" {parameter.Name}");
+                writer.Write(' ');
+                writer.WriteIdentifier(parameter.Name);
             }
         }
 
@@ -124,7 +126,7 @@ namespace ClangSharpTest2020
             // Write out the function signature
             writer.Write($"{accessibility} static extern ");
             WriteReturnType(writer);
-            writer.Write($" {DllImportName}(");
+            writer.Write($" {SanitizeIdentifier(DllImportName)}(");
             WriteParameterList(writer, includeThis: true);
             writer.WriteLine(");");
         }
@@ -135,7 +137,7 @@ namespace ClangSharpTest2020
             writer.EnsureSeparation();
             writer.Write($"{TranslatedAccessibility} unsafe ");
             WriteReturnType(writer);
-            writer.Write($" {TranslatedName}(");
+            writer.Write($" {SanitizeIdentifier(TranslatedName)}(");
             WriteParameterList(writer, includeThis: false);
             writer.WriteLine(")");
 
@@ -150,8 +152,8 @@ namespace ClangSharpTest2020
                 // Once https://github.com/dotnet/csharplang/issues/1792 is implemented, this fixed statement should be removed.
                 using (writer.Block())
                 {
-                    writer.WriteLine($"fixed ({Record.TranslatedName}* thisP = &this)");
-                    writer.WriteLine($"{{ {DllImportName}(thisP); }}");
+                    writer.WriteLine($"fixed ({SanitizeIdentifier(Record.TranslatedName)}* thisP = &this)");
+                    writer.WriteLine($"{{ {SanitizeIdentifier(DllImportName)}(thisP); }}");
                 }
             }
         }
