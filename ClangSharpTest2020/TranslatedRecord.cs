@@ -8,25 +8,20 @@ using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
-    public sealed class TranslatedRecord
+    public sealed class TranslatedRecord : TranslatedDeclaration
     {
-        public ImmutableArray<TranslationContext> Context { get; }
-        public TranslatedFile File { get; }
-        public TranslatedRecord ParentRecord { get; }
         private RecordDecl Record { get; }
 
         private List<TranslatedFunction> Methods = new List<TranslatedFunction>();
 
-        public string TranslatedName => Record.Name;
+        public override string TranslatedName => Record.Name;
 
         private TranslatedRecord(ImmutableArray<TranslationContext> context, TranslatedFile file, TranslatedRecord parentRecord, RecordDecl record)
+            : base(context, file)
         {
             if (!record.Handle.IsDefinition)
             { throw new ArgumentException("Only defining records can be translated!"); }
 
-            Context = context;
-            File = file;
-            ParentRecord = parentRecord;
             Record = record;
 
             // Handle nested cursors
@@ -307,7 +302,7 @@ namespace ClangSharpTest2020
             File.Consume(Record);
         }
 
-        public unsafe void Translate(CodeWriter writer)
+        public unsafe override void Translate(CodeWriter writer)
         {
             PathogenRecordLayout* layout = null;
             try
@@ -334,10 +329,7 @@ namespace ClangSharpTest2020
             using CodeWriter writer = new CodeWriter();
             Translate(writer);
             //TODO: Use context to add enclosing types to file name.
-            writer.WriteOut($"{Record.Name}.cs");
+            writer.WriteOut($"{TranslatedName}.cs");
         }
-
-        public override string ToString()
-            => Record.Name;
     }
 }

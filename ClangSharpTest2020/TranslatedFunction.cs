@@ -6,10 +6,8 @@ using System.Diagnostics;
 
 namespace ClangSharpTest2020
 {
-    public sealed class TranslatedFunction
+    public sealed class TranslatedFunction : TranslatedDeclaration
     {
-        public ImmutableArray<TranslationContext> Context { get; }
-        public TranslatedFile File { get; }
         public TranslatedRecord Record { get; }
         public FunctionDecl Function { get; }
         private CallingConvention CallingConvention { get; }
@@ -17,17 +15,16 @@ namespace ClangSharpTest2020
         public bool IsInstanceMethod => Function is CXXMethodDecl method && !method.IsStatic;
         public bool IsVirtual => Function is CXXMethodDecl method && method.IsVirtual;
 
-        public string TranslatedName => Function.Name;
+        public override string TranslatedName => Function.Name;
         private string DllImportName => TranslatedName;
 
         private string TranslatedAccessibility => !(Function is CXXMethodDecl) || Function.Access == CX_CXXAccessSpecifier.CX_CXXPublic ? "public" : "private";
 
         private TranslatedFunction(ImmutableArray<TranslationContext> context, TranslatedFile file, TranslatedRecord record, FunctionDecl function)
+            : base(context, file)
         {
             Debug.Assert(record == null || record.File == file, "The record and file must be consistent.");
 
-            Context = context;
-            File = file;
             Record = record;
             Function = function;
 
@@ -159,7 +156,7 @@ namespace ClangSharpTest2020
             }
         }
 
-        public void Translate(CodeWriter writer)
+        public override void Translate(CodeWriter writer)
         {
             //TODO: Decide how to translate constructors/destructors
             if (Function is CXXConstructorDecl)
@@ -186,8 +183,5 @@ namespace ClangSharpTest2020
             if (IsInstanceMethod)
             { TranslateTrampoline(writer); }
         }
-
-        public override string ToString()
-            => TranslatedName;
     }
 }
