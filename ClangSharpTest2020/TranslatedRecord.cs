@@ -13,7 +13,7 @@ namespace ClangSharpTest2020
         public ImmutableArray<TranslationContext> Context { get; }
         public TranslatedFile File { get; }
         public TranslatedRecord ParentRecord { get; }
-        public RecordDecl Record { get; }
+        private RecordDecl Record { get; }
 
         private List<TranslatedFunction> Methods = new List<TranslatedFunction>();
 

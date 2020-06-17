@@ -91,7 +91,7 @@ namespace ClangSharpTest2020
             if (LooseFunctions.Count > 0)
             {
                 string globalFunctionType = Path.GetFileNameWithoutExtension(FilePath);
-                TranslatedRecord globalFunctionTarget = Records.FirstOrDefault(r => r.Record.Name == globalFunctionType);
+                TranslatedRecord globalFunctionTarget = Records.FirstOrDefault(r => r.TranslatedName == globalFunctionType);
 
                 if (globalFunctionTarget is object)
                 {

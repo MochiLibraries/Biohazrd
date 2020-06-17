@@ -119,7 +119,7 @@ namespace ClangSharpTest2020
             writer.Write($"[DllImport(\"TODO.dll\", CallingConvention = CallingConvention.{CallingConvention}");
             
             string mangledName = Function.Handle.Mangling.ToString();
-            if (mangledName != Function.Name)
+            if (mangledName != DllImportName)
             { writer.Write($", EntryPoint = \"{mangledName}\""); }
 
             writer.WriteLine(", ExactSpelling = true)]");
@@ -127,7 +127,7 @@ namespace ClangSharpTest2020
             // Write out the function signature
             writer.Write($"{accessibility} static extern ");
             WriteReturnType(writer);
-            writer.Write($" {Function.Name}(");
+            writer.Write($" {DllImportName}(");
             WriteParameterList(writer, includeThis: true);
             writer.WriteLine(");");
         }
@@ -138,7 +138,7 @@ namespace ClangSharpTest2020
             writer.EnsureSeparation();
             writer.Write($"{TranslatedAccessibility} unsafe ");
             WriteReturnType(writer);
-            writer.Write($" {Function.Name}(");
+            writer.Write($" {TranslatedName}(");
             WriteParameterList(writer, includeThis: false);
             writer.WriteLine(")");
 
@@ -153,8 +153,8 @@ namespace ClangSharpTest2020
                 // Once https://github.com/dotnet/csharplang/issues/1792 is implemented, this fixed statement should be removed.
                 using (writer.Block())
                 {
-                    writer.WriteLine($"fixed ({Record.Record.Name}* thisP = &this)");
-                    writer.WriteLine($"{{ {Function.Name}(thisP); }}");
+                    writer.WriteLine($"fixed ({Record.TranslatedName}* thisP = &this)");
+                    writer.WriteLine($"{{ {DllImportName}(thisP); }}");
                 }
             }
         }
@@ -188,6 +188,6 @@ namespace ClangSharpTest2020
         }
 
         public override string ToString()
-            => Function.Name;
+            => TranslatedName;
     }
 }
