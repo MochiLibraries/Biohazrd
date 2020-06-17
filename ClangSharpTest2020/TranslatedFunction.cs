@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using System;
 using System.Runtime.InteropServices;
 using static ClangSharpTest2020.CodeWriter;
 
@@ -163,22 +164,14 @@ namespace ClangSharpTest2020
 
         public override void Translate(CodeWriter writer)
         {
-            //TODO: Decide how to translate constructors/destructors
-            if (Function is CXXConstructorDecl)
-            {
-                writer.EnsureSeparation();
-                writer.WriteLine($"//TODO: Translate constructor {Function}");
-                File.Diagnostic(Severity.Note, Function, "Constructor was not translated.");
-                return;
-            }
+            //TODO: Implement these translations
+            using var _0 = writer.DisableScope(Function is CXXConstructorDecl, File, Function, "Unimplemented translation: Constructor");
+            using var _1 = writer.DisableScope(Function is CXXDestructorDecl, File, Function, "Unimplemented translation: Destructor");
+            using var _2 = writer.DisableScope(Function.Name.StartsWith("operator"), File, Function, "Unimplemented translation: Operator overload");
 
-            if (Function is CXXDestructorDecl)
-            {
-                writer.EnsureSeparation();
-                writer.WriteLine($"//TODO: Translate destructor {Function}");
-                File.Diagnostic(Severity.Note, Function, "Destructor was not translated.");
-                return;
-            }
+            //TODO: Currently this happens for inline method bodies declared outside of the record. Need to figure out how to ignore/reassociate them.
+            // We probably want to try and re-associate them because sometimes the definition has the parameter names but the declaration doesn't.
+            using var _3 = writer.DisableScope(IsInstanceMethod && Record is null, File, Function, "Translation hole: Instance method without an associated record.");
 
             // Translate the DllImport
             if (!IsVirtual)

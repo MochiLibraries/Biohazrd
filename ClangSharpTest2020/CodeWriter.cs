@@ -96,6 +96,54 @@ namespace ClangSharpTest2020
             { IndentLevel = oldIndentLevel; }
         }
 
+        public LeftAdjustedScope DisableScope(bool disabled, TranslatedFile file, ClangSharp.Cursor context, string message)
+        {
+            if (!disabled)
+            { return default; }
+
+            EnsureSeparation();
+
+            LeftAdjustedScope ret;
+
+            if (message is null)
+            { ret = new LeftAdjustedScope(this, "#if false", "#endif"); }
+            else
+            {
+                file.Diagnostic(Severity.Ignored, context, message);
+                ret = new LeftAdjustedScope(this, $"#if false // {message}", "#endif");
+            }
+
+            IsAtStartOfBlock = true;
+            return ret;
+        }
+
+        public readonly struct LeftAdjustedScope : IDisposable
+        {
+            private readonly CodeWriter Writer;
+            private readonly int ExpectedIndentLevel;
+            private readonly string EndLine;
+
+            internal LeftAdjustedScope(CodeWriter writer, string startLine, string endLine)
+            {
+                Writer = writer;
+                ExpectedIndentLevel = Writer.IndentLevel;
+                EndLine = endLine;
+
+                Writer?.WriteLineLeftAdjusted(startLine);
+            }
+
+            void IDisposable.Dispose()
+            {
+                if (Writer == null)
+                { return; }
+
+                if (Writer.IndentLevel != ExpectedIndentLevel)
+                { throw new InvalidOperationException("Indent level is not where it should be to close this scope!"); }
+
+                Writer.WriteLineLeftAdjusted(EndLine);
+            }
+        }
+
         public override void Write(char value)
         {
             IsAtStartOfBlock = false;

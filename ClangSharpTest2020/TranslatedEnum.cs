@@ -81,6 +81,9 @@ namespace ClangSharpTest2020
 
         public override void Translate(CodeWriter writer)
         {
+            //TODO
+            using var _ = writer.DisableScope(String.IsNullOrEmpty(TranslatedName), File, EnumDeclaration, "Unimplemented translation: Anonymous enum");
+
             writer.EnsureSeparation();
             writer.Write("enum ");
             writer.WriteIdentifier(TranslatedName);

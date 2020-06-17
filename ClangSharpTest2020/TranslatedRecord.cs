@@ -85,6 +85,10 @@ namespace ClangSharpTest2020
         {
             //TODO: Use context to emit namespace and enclosing types.
             writer.Using("System.Runtime.InteropServices");
+
+            //TODO
+            using var _ = writer.DisableScope(String.IsNullOrEmpty(TranslatedName), File, Record, "Unimplemented translation: Anonymous record");
+
             writer.EnsureSeparation();
             //TODO: Documentation comment
             writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size = {layout->Size})]");
