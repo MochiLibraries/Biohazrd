@@ -89,7 +89,7 @@ namespace ClangSharpTest2020
             UnprocessedCursors = new HashSet<Cursor>(AllCursors);
 
             // Process the translation unit
-            ProcessCursor(ImmutableArray<TranslationContext>.Empty, TranslationUnit.TranslationUnitDecl);
+            ProcessCursor(TranslationUnit.TranslationUnitDecl);
 
             // Associate loose global functions to a record matching our file name if we have one.
             GlobalFunctionTypeName = Path.GetFileNameWithoutExtension(FilePath);
@@ -251,22 +251,22 @@ namespace ClangSharpTest2020
         internal void IgnoreRecursive(Cursor cursor)
             => ConsumeRecursive(cursor);
 
-        internal void ProcessCursorChildren(ImmutableArray<TranslationContext> context, Cursor cursor)
+        internal void ProcessCursorChildren(Cursor cursor)
         {
             foreach (Cursor child in cursor.CursorChildren)
-            { ProcessCursor(context, child); }
+            { ProcessCursor(child); }
         }
 
-        internal void ProcessUnconsumeChildren(ImmutableArray<TranslationContext> context, Cursor cursor)
+        internal void ProcessUnconsumeChildren(Cursor cursor)
         {
             foreach (Cursor child in cursor.CursorChildren)
             {
                 if (UnprocessedCursors.Contains(child))
-                { ProcessCursor(context, child); }
+                { ProcessCursor(child); }
             }
         }
 
-        internal void ProcessCursor(ImmutableArray<TranslationContext> context, Cursor cursor)
+        internal void ProcessCursor(Cursor cursor)
         {
             // Skip cursors outside of the specific file being processed
             if (!cursor.IsFromMainFile())
@@ -293,9 +293,8 @@ namespace ClangSharpTest2020
             // For translation units, just process all the children
             if (cursor is TranslationUnitDecl)
             {
-                Debug.Assert(context.Length == 0);
                 Ignore(cursor);
-                ProcessCursorChildren(context, cursor);
+                ProcessCursorChildren(cursor);
                 return;
             }
 
@@ -303,7 +302,7 @@ namespace ClangSharpTest2020
             if (cursor.Handle.DeclKind == CX_DeclKind.CX_DeclKind_LinkageSpec)
             {
                 Ignore(cursor);
-                ProcessCursorChildren(context, cursor);
+                ProcessCursorChildren(cursor);
                 return;
             }
 
@@ -352,7 +351,7 @@ namespace ClangSharpTest2020
             if (cursor is NamespaceDecl namespaceDeclaration)
             {
                 Consume(cursor);
-                ProcessCursorChildren(context.Add(namespaceDeclaration), cursor);
+                ProcessCursorChildren(cursor);
                 return;
             }
 
@@ -370,14 +369,14 @@ namespace ClangSharpTest2020
                     return;
                 }
 
-                Records.Add(new TranslatedRecord(context, this, record));
+                Records.Add(new TranslatedRecord(this, record));
                 return;
             }
 
             // Handle loose functions
             if (cursor is FunctionDecl function)
             {
-                LooseFunctions.Add(new TranslatedFunction(context, this, function));
+                LooseFunctions.Add(new TranslatedFunction(this, function));
                 return;
             }
 

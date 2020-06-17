@@ -4,13 +4,11 @@ namespace ClangSharpTest2020
 {
     public abstract class TranslatedDeclaration
     {
-        protected ImmutableArray<TranslationContext> Context { get; }
         internal TranslatedFile File { get; } //TODO: This should probably be protected
         public abstract string TranslatedName { get; }
 
-        protected TranslatedDeclaration(ImmutableArray<TranslationContext> context, TranslatedFile file)
+        protected TranslatedDeclaration(TranslatedFile file)
         {
-            Context = context;
             File = file;
         }
 

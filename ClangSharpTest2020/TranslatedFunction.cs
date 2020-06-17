@@ -21,8 +21,8 @@ namespace ClangSharpTest2020
 
         private string TranslatedAccessibility => !(Function is CXXMethodDecl) || Function.Access == CX_CXXAccessSpecifier.CX_CXXPublic ? "public" : "private";
 
-        private TranslatedFunction(ImmutableArray<TranslationContext> context, TranslatedFile file, TranslatedRecord record, FunctionDecl function)
-            : base(context, file)
+        private TranslatedFunction(TranslatedFile file, TranslatedRecord record, FunctionDecl function)
+            : base(file)
         {
             Debug.Assert(record == null || record.File == file, "The record and file must be consistent.");
 
@@ -63,12 +63,12 @@ namespace ClangSharpTest2020
             }
         }
 
-        internal TranslatedFunction(ImmutableArray<TranslationContext> context, TranslatedFile file, FunctionDecl function)
-            : this(context, file, record: null, function)
+        internal TranslatedFunction(TranslatedFile file, FunctionDecl function)
+            : this(file, record: null, function)
         { }
 
-        internal TranslatedFunction(ImmutableArray<TranslationContext> context, TranslatedRecord record, FunctionDecl function)
-            : this(context, record.File, record, function)
+        internal TranslatedFunction(TranslatedRecord record, FunctionDecl function)
+            : this(record.File, record, function)
         { }
 
         private void WriteReturnType(CodeWriter writer)

@@ -17,22 +17,19 @@ namespace ClangSharpTest2020
 
         public override string TranslatedName => Record.Name;
 
-        private TranslatedRecord(ImmutableArray<TranslationContext> context, TranslatedFile file, TranslatedRecord parentRecord, RecordDecl record)
-            : base(context, file)
+        private TranslatedRecord(TranslatedFile file, TranslatedRecord parentRecord, RecordDecl record)
+            : base(file)
         {
             if (!record.Handle.IsDefinition)
             { throw new ArgumentException("Only defining records can be translated!"); }
 
             Record = record;
 
-            // Handle nested cursors
-            ImmutableArray<TranslationContext> nestedContext = Context.Add(Record);
-
             // Add methods
             if (Record is CXXRecordDecl cxxRecord)
             {
                 foreach (CXXMethodDecl method in cxxRecord.Methods)
-                { Methods.Add(new TranslatedFunction(nestedContext, this, method)); }
+                { Methods.Add(new TranslatedFunction(this, method)); }
             }
 
             //TODO: Add nested types
@@ -66,16 +63,16 @@ namespace ClangSharpTest2020
                 if (cursor is Attr)
                 { continue; }
 
-                file.ProcessCursor(nestedContext, cursor);
+                file.ProcessCursor(cursor);
             }
         }
 
-        internal TranslatedRecord(ImmutableArray<TranslationContext> context, TranslatedFile file, RecordDecl record)
-            : this(context, file, null, record)
+        internal TranslatedRecord(TranslatedFile file, RecordDecl record)
+            : this(file, null, record)
         { }
 
-        internal TranslatedRecord(ImmutableArray<TranslationContext> context, TranslatedRecord parentRecord, RecordDecl record)
-            : this(context, parentRecord.File, parentRecord, record)
+        internal TranslatedRecord(TranslatedRecord parentRecord, RecordDecl record)
+            : this(parentRecord.File, parentRecord, record)
         { }
 
         public void AddAsStaticMethod(TranslatedFunction translatedFunction)
@@ -83,7 +80,7 @@ namespace ClangSharpTest2020
             if (translatedFunction.File != File)
             { throw new ArgumentException("The global function and the record must come from the same file.", nameof(translatedFunction)); }
 
-            Methods.Add(new TranslatedFunction(Context.Add(Record), File, translatedFunction.Function));
+            Methods.Add(new TranslatedFunction(File, translatedFunction.Function));
         }
 
         private unsafe void Translate(CodeWriter writer, PathogenRecordLayout* layout)
