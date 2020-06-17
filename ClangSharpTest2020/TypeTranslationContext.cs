@@ -4,6 +4,7 @@
     {
         ForField,
         ForParameter,
-        ForReturn
+        ForReturn,
+        ForEnumUnderlyingType,
     }
 }

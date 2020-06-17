@@ -410,7 +410,11 @@ namespace ClangSharpTest2020
             }
 
             // Handle enums
-            //TODO
+            if (cursor is EnumDecl enumDeclaration)
+            {
+                new TranslatedEnum(container, enumDeclaration);
+                return;
+            }
 
             // Handle functions and methods
             if (cursor is FunctionDecl function)
@@ -458,10 +462,6 @@ namespace ClangSharpTest2020
             // Can't translate global variables yet
             //TODO: Constants deserve special treatment here.
             if (cursor is VarDecl)
-            { return true; }
-
-            // Enums aren't supported yet
-            if (cursor is EnumDecl)
             { return true; }
 
             // If we got this far, the cursor might be supported
@@ -563,10 +563,7 @@ namespace ClangSharpTest2020
             } while (keepGoing);
 
             // Determine the type name
-            // Things we probably can/should support: (Some things here need verification of when they actually occur in a C++ codebase.)
-            // CXType_Char_U
-            // CXType_Char16
-            // CXType_Char32 -- Unclear what to translate it as Char.ConvertToUtf32 just uses int.
+            //TODO: Limit to what C# allows when context is ForEnumUnderlyingType
             //TODO: Support function pointers (CXType_FunctionProto)
             (string typeName, int cSharpTypeSize) = type.Kind switch
             {

@@ -293,6 +293,11 @@ namespace ClangSharpTest2020
                     extra += $" = {enumConstant.InitVal}";
                 }
 
+                if (cursor is EnumDecl enumDecl)
+                {
+                    extra += $" IsScoped={enumDecl.IsScoped} IntegerType=`{enumDecl.IntegerType}`";
+                }
+
                 string mangling = cursor.Handle.Mangling.ToString();
                 if (!string.IsNullOrEmpty(mangling))
                 {
@@ -321,6 +326,9 @@ namespace ClangSharpTest2020
                     if (type.Handle.IsPODType)
                     { extra += " <POD>"; }
                 }
+
+                if (cursor is IntegerLiteral integerLiteral)
+                { extra += $" Value=`{integerLiteral.Value}`"; }
             }
 
             WriteLine($"{cursor.CursorKindDetailed(" ")} - {cursor.Spelling}{extra}");
