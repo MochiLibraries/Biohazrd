@@ -1,7 +1,5 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
-using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using static ClangSharpTest2020.CodeWriter;
 
@@ -9,9 +7,10 @@ namespace ClangSharpTest2020
 {
     public sealed class TranslatedFunction : TranslatedDeclaration
     {
-        public TranslatedRecord Record { get; }
         public FunctionDecl Function { get; }
         private CallingConvention CallingConvention { get; }
+
+        public TranslatedRecord Record => Parent as TranslatedRecord;
 
         public bool IsInstanceMethod => Function is CXXMethodDecl method && !method.IsStatic;
         public bool IsVirtual => Function is CXXMethodDecl method && method.IsVirtual;
@@ -19,14 +18,13 @@ namespace ClangSharpTest2020
         public override string TranslatedName => Function.Name;
         private string DllImportName => TranslatedName;
 
+        public override bool CanBeRoot => false;
+
         private string TranslatedAccessibility => !(Function is CXXMethodDecl) || Function.Access == CX_CXXAccessSpecifier.CX_CXXPublic ? "public" : "private";
 
-        private TranslatedFunction(TranslatedFile file, TranslatedRecord record, FunctionDecl function)
-            : base(file)
+        internal TranslatedFunction(IDeclarationContainer container, FunctionDecl function)
+            : base(container)
         {
-            Debug.Assert(record == null || record.File == file, "The record and file must be consistent.");
-
-            Record = record;
             Function = function;
 
             // Determine the calling convention of the function
@@ -54,22 +52,14 @@ namespace ClangSharpTest2020
                     break;
                 case CXCallingConv.CXCallingConv_Invalid:
                     CallingConvention = default;
-                    file.Diagnostic(Severity.Error, function, "Could not determine function's calling convention.");
+                    File.Diagnostic(Severity.Error, function, "Could not determine function's calling convention.");
                     break;
                 default:
                     CallingConvention = default;
-                    file.Diagnostic(Severity.Error, function, $"Function uses unsupported calling convention '{clangCallingConvention}'.");
+                    File.Diagnostic(Severity.Error, function, $"Function uses unsupported calling convention '{clangCallingConvention}'.");
                     break;
             }
         }
-
-        internal TranslatedFunction(TranslatedFile file, FunctionDecl function)
-            : this(file, record: null, function)
-        { }
-
-        internal TranslatedFunction(TranslatedRecord record, FunctionDecl function)
-            : this(record.File, record, function)
-        { }
 
         private void WriteReturnType(CodeWriter writer)
             => File.WriteType(writer, Function.ReturnType, Function, TypeTranslationContext.ForReturn);

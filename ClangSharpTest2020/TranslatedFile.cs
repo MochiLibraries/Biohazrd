@@ -4,7 +4,6 @@ using ClangSharp;
 using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -14,14 +13,16 @@ using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
-    public sealed class TranslatedFile : IDisposable
+    public sealed class TranslatedFile : IDeclarationContainer, IDisposable
     {
         public TranslatedLibrary Library { get; }
+        TranslatedFile IDeclarationContainer.File => this;
 
-        private readonly List<TranslatedRecord> Records = new List<TranslatedRecord>();
-        private readonly List<TranslatedFunction> LooseFunctions = new List<TranslatedFunction>();
-
-        public bool IsEmptyTranslation => Records.Count == 0 && LooseFunctions.Count == 0;
+        /// <summary>Declarations for which <see cref="TranslatedDeclaration.CanBeRoot"/> is true.</summary>
+        private readonly List<TranslatedDeclaration> IndependentDeclarations = new List<TranslatedDeclaration>();
+        /// <summary>Declarations for which <see cref="TranslatedDeclaration.CanBeRoot"/> is false.</summary>
+        private readonly List<TranslatedDeclaration> LooseDeclarations = new List<TranslatedDeclaration>();
+        public bool IsEmptyTranslation => IndependentDeclarations.Count == 0 && LooseDeclarations.Count == 0;
 
         public string FilePath { get; }
         private readonly TranslationUnit TranslationUnit;
@@ -32,7 +33,8 @@ namespace ClangSharpTest2020
         private readonly HashSet<Cursor> AllCursors = new HashSet<Cursor>();
         private readonly HashSet<Cursor> UnprocessedCursors;
 
-        private string GlobalFunctionTypeName { get; }
+        /// <summary>The name of the type which will contain the declarations from <see cref="LooseDeclarations"/>.</summary>
+        private string LooseDeclarationsTypeName { get; }
 
         /// <summary>True if <see cref="Diagnostics"/> contains any diagnostic with <see cref="TranslationDiagnostic.IsError"/> or true.</summary>
         public bool HasErrors { get; private set; }
@@ -89,20 +91,18 @@ namespace ClangSharpTest2020
             UnprocessedCursors = new HashSet<Cursor>(AllCursors);
 
             // Process the translation unit
-            ProcessCursor(TranslationUnit.TranslationUnitDecl);
+            ProcessCursor(this, TranslationUnit.TranslationUnitDecl);
 
-            // Associate loose global functions to a record matching our file name if we have one.
-            GlobalFunctionTypeName = Path.GetFileNameWithoutExtension(FilePath);
-            if (LooseFunctions.Count > 0)
+            // Associate loose declarations (IE: global functions and variables) to a record matching our file name if we have one.
+            LooseDeclarationsTypeName = Path.GetFileNameWithoutExtension(FilePath);
+            if (LooseDeclarations.Count > 0)
             {
-                TranslatedRecord globalFunctionTarget = Records.FirstOrDefault(r => r.TranslatedName == GlobalFunctionTypeName);
-
-                if (globalFunctionTarget is object)
+                //TODO: This would be problematic for enums which are named LooseDeclarationsTypeName since we'd double-write the file.
+                TranslatedRecord looseDeclarationsTarget = IndependentDeclarations.OfType<TranslatedRecord>().FirstOrDefault(r => r.TranslatedName == LooseDeclarationsTypeName);
+                if (looseDeclarationsTarget is object)
                 {
-                    foreach (TranslatedFunction function in LooseFunctions)
-                    { globalFunctionTarget.AddAsStaticMethod(function); }
-
-                    LooseFunctions.Clear();
+                    while (LooseDeclarations.Count > 0)
+                    { LooseDeclarations[0].Parent = looseDeclarationsTarget; }
                 }
             }
 
@@ -117,43 +117,72 @@ namespace ClangSharpTest2020
 #endif
         }
 
-        private void TranslateGlobalFunctions(CodeWriter writer)
+        void IDeclarationContainer.AddDeclaration(TranslatedDeclaration declaration)
         {
-            if (LooseFunctions.Count == 0)
+            Debug.Assert(ReferenceEquals(declaration.Parent, this));
+
+            if (declaration.CanBeRoot)
+            { IndependentDeclarations.Add(declaration); }
+            else
+            { LooseDeclarations.Add(declaration); }
+        }
+
+        void IDeclarationContainer.RemoveDeclaration(TranslatedDeclaration declaration)
+        {
+            Debug.Assert(ReferenceEquals(declaration.Parent, this));
+            bool removed;
+
+            if (declaration.CanBeRoot)
+            { removed = IndependentDeclarations.Remove(declaration); }
+            else
+            { removed = LooseDeclarations.Remove(declaration); }
+
+            Debug.Assert(removed);
+        }
+
+        private void TranslateLooseDeclarations(CodeWriter writer)
+        {
+            // If there are no loose declarations, there's nothing to do.
+            if (LooseDeclarations.Count == 0)
             { return; }
 
+            // Write out a static class containing all of the loose declarations
             writer.EnsureSeparation();
-            writer.WriteLine($"public static partial class {GlobalFunctionTypeName}");
+            writer.WriteLine($"public static partial class {LooseDeclarationsTypeName}");
             using (writer.Block())
             {
-                foreach (TranslatedFunction function in LooseFunctions)
-                { function.Translate(writer); }
+                foreach (TranslatedDeclaration declaration in LooseDeclarations)
+                { declaration.Translate(writer); }
             }
         }
 
         public void Translate()
         {
-            // Translate global functions
-            if (LooseFunctions.Count > 0)
+            // Translate loose declarations
+            if (LooseDeclarations.Count > 0)
             {
                 using CodeWriter writer = new CodeWriter();
-                TranslateGlobalFunctions(writer);
-                writer.WriteOut($"{GlobalFunctionTypeName}.cs");
+                TranslateLooseDeclarations(writer);
+                writer.WriteOut($"{LooseDeclarationsTypeName}.cs");
             }
 
-            // Translate records
-            foreach (TranslatedRecord record in Records)
-            { record.Translate(); }
+            // Translate independent declarations
+            foreach (TranslatedDeclaration declaration in IndependentDeclarations)
+            {
+                using CodeWriter writer = new CodeWriter();
+                declaration.Translate(writer);
+                writer.WriteOut($"{declaration.TranslatedName}.cs");
+            }
         }
 
         public void Translate(CodeWriter writer)
         {
-            // Translate global functions
-            TranslateGlobalFunctions(writer);
+            // Translate loose declarations
+            TranslateLooseDeclarations(writer);
 
-            // Translate records
-            foreach (TranslatedRecord record in Records)
-            { record.Translate(writer); }
+            // Translate independent declarations
+            foreach (TranslatedDeclaration declaration in IndependentDeclarations)
+            { declaration.Translate(writer); }
         }
 
         private void Diagnostic(in TranslationDiagnostic diagnostic)
@@ -251,22 +280,13 @@ namespace ClangSharpTest2020
         internal void IgnoreRecursive(Cursor cursor)
             => ConsumeRecursive(cursor);
 
-        internal void ProcessCursorChildren(Cursor cursor)
+        internal void ProcessCursorChildren(IDeclarationContainer container, Cursor cursor)
         {
             foreach (Cursor child in cursor.CursorChildren)
-            { ProcessCursor(child); }
+            { ProcessCursor(container, child); }
         }
 
-        internal void ProcessUnconsumeChildren(Cursor cursor)
-        {
-            foreach (Cursor child in cursor.CursorChildren)
-            {
-                if (UnprocessedCursors.Contains(child))
-                { ProcessCursor(child); }
-            }
-        }
-
-        internal void ProcessCursor(Cursor cursor)
+        internal void ProcessCursor(IDeclarationContainer container, Cursor cursor)
         {
             // Skip cursors outside of the specific file being processed
             if (!cursor.IsFromMainFile())
@@ -293,8 +313,9 @@ namespace ClangSharpTest2020
             // For translation units, just process all the children
             if (cursor is TranslationUnitDecl)
             {
+                Debug.Assert(container is TranslatedFile, "Translation units should only occur within the root declaration container.");
                 Ignore(cursor);
-                ProcessCursorChildren(cursor);
+                ProcessCursorChildren(container, cursor);
                 return;
             }
 
@@ -302,7 +323,7 @@ namespace ClangSharpTest2020
             if (cursor.Handle.DeclKind == CX_DeclKind.CX_DeclKind_LinkageSpec)
             {
                 Ignore(cursor);
-                ProcessCursorChildren(cursor);
+                ProcessCursorChildren(container, cursor);
                 return;
             }
 
@@ -343,6 +364,20 @@ namespace ClangSharpTest2020
                 return;
             }
 
+            // Base specifiers are discovered by the record layout
+            if (cursor is CXXBaseSpecifier)
+            {
+                Ignore(cursor);
+                return;
+            }
+
+            // Access specifiers are discovered by inspecting the member directly
+            if (cursor is AccessSpecDecl)
+            {
+                Ignore(cursor);
+                return;
+            }
+
             //---------------------------------------------------------------------------------------------------------
             // Cursors which only affect the context
             //---------------------------------------------------------------------------------------------------------
@@ -350,8 +385,9 @@ namespace ClangSharpTest2020
             // Namespaces
             if (cursor is NamespaceDecl namespaceDeclaration)
             {
+                Debug.Assert(container is TranslatedFile, "Namespaces should only occur within the root declaration container.");
                 Consume(cursor);
-                ProcessCursorChildren(cursor);
+                ProcessCursorChildren(container, cursor);
                 return;
             }
 
@@ -369,16 +405,30 @@ namespace ClangSharpTest2020
                     return;
                 }
 
-                Records.Add(new TranslatedRecord(this, record));
+                new TranslatedRecord(container, record);
                 return;
             }
 
-            // Handle loose functions
+            // Handle enums
+            //TODO
+
+            // Handle functions and methods
             if (cursor is FunctionDecl function)
             {
-                LooseFunctions.Add(new TranslatedFunction(this, function));
+                new TranslatedFunction(container, function);
                 return;
             }
+
+            // Handle fields
+            if (cursor is FieldDecl field)
+            {
+                Debug.Assert(container is TranslatedRecord, "Fields should only occur within records.");
+                //TODO
+                return;
+            }
+
+            // Handle static fields and globals
+            //TODO
 
             //---------------------------------------------------------------------------------------------------------
             // Failure

@@ -3,22 +3,38 @@ using ClangSharp;
 using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
+using System.Diagnostics;
 using static ClangSharpTest2020.CodeWriter;
 using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
-    public sealed class TranslatedRecord : TranslatedDeclaration
+    public sealed class TranslatedRecord : TranslatedDeclaration, IDeclarationContainer
     {
         private RecordDecl Record { get; }
 
-        private List<TranslatedFunction> Methods = new List<TranslatedFunction>();
+        private readonly List<TranslatedDeclaration> Members = new List<TranslatedDeclaration>();
 
         public override string TranslatedName => Record.Name;
 
-        private TranslatedRecord(TranslatedFile file, TranslatedRecord parentRecord, RecordDecl record)
-            : base(file)
+        public override bool CanBeRoot => true;
+
+        TranslatedFile IDeclarationContainer.File => File;
+        void IDeclarationContainer.AddDeclaration(TranslatedDeclaration declaration)
+        {
+            Debug.Assert(ReferenceEquals(declaration.Parent, this));
+            Members.Add(declaration);
+        }
+
+        void IDeclarationContainer.RemoveDeclaration(TranslatedDeclaration declaration)
+        {
+            Debug.Assert(ReferenceEquals(declaration.Parent, this));
+            bool removed = Members.Remove(declaration);
+            Debug.Assert(removed);
+        }
+
+        internal TranslatedRecord(IDeclarationContainer container, RecordDecl record)
+            : base(container)
         {
             if (!record.Handle.IsDefinition)
             { throw new ArgumentException("Only defining records can be translated!"); }
@@ -29,10 +45,8 @@ namespace ClangSharpTest2020
             if (Record is CXXRecordDecl cxxRecord)
             {
                 foreach (CXXMethodDecl method in cxxRecord.Methods)
-                { Methods.Add(new TranslatedFunction(this, method)); }
+                { new TranslatedFunction(this, method); }
             }
-
-            //TODO: Add nested types
 
             // Process any other nested cursors which aren't fields or methods
             foreach (Cursor cursor in Record.CursorChildren)
@@ -54,7 +68,7 @@ namespace ClangSharpTest2020
                 // The information they provide is available on the individual members
                 if (cursor is AccessSpecDecl)
                 {
-                    file.Ignore(cursor);
+                    File.Ignore(cursor);
                     continue;
                 }
 
@@ -63,24 +77,8 @@ namespace ClangSharpTest2020
                 if (cursor is Attr)
                 { continue; }
 
-                file.ProcessCursor(cursor);
+                File.ProcessCursor(this, cursor);
             }
-        }
-
-        internal TranslatedRecord(TranslatedFile file, RecordDecl record)
-            : this(file, null, record)
-        { }
-
-        internal TranslatedRecord(TranslatedRecord parentRecord, RecordDecl record)
-            : this(parentRecord.File, parentRecord, record)
-        { }
-
-        public void AddAsStaticMethod(TranslatedFunction translatedFunction)
-        {
-            if (translatedFunction.File != File)
-            { throw new ArgumentException("The global function and the record must come from the same file.", nameof(translatedFunction)); }
-
-            Methods.Add(new TranslatedFunction(File, translatedFunction.Function));
         }
 
         private unsafe void Translate(CodeWriter writer, PathogenRecordLayout* layout)
@@ -212,12 +210,9 @@ namespace ClangSharpTest2020
                     }
                 }
 
-                // Write out non-virtual methods
-                foreach (TranslatedFunction function in Methods)
-                {
-                    //TODO: Ensure non-virtual
-                    function.Translate(writer);
-                }
+                // Write out members
+                foreach (TranslatedDeclaration member in Members)
+                { member.Translate(writer); }
 
                 // Write out virtual methods
                 if (layout->FirstVTable != null)
@@ -320,14 +315,6 @@ namespace ClangSharpTest2020
                 if (layout != null)
                 { PathogenExtensions.pathogen_DeleteRecordLayout(layout); }
             }
-        }
-
-        public void Translate()
-        {
-            using CodeWriter writer = new CodeWriter();
-            Translate(writer);
-            //TODO: Use context to add enclosing types to file name.
-            writer.WriteOut($"{TranslatedName}.cs");
         }
     }
 }
