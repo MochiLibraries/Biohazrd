@@ -424,10 +424,10 @@ namespace ClangSharpTest2020
             }
 
             // Handle fields
+            // This method is not meant to handle fields (they are enumerated by TranslatedRecord when querying the record layout.)
             if (cursor is FieldDecl field)
             {
-                Debug.Assert(container is TranslatedRecord, "Fields should only occur within records.");
-                //TODO
+                Diagnostic(Severity.Warning, field, "Field declaration processed outside of record.");
                 return;
             }
 

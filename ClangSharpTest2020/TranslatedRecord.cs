@@ -1,89 +1,169 @@
-﻿#define VERBOSE_MODE
-using ClangSharp;
-using ClangSharp.Interop;
+﻿using ClangSharp;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using static ClangSharpTest2020.CodeWriter;
-using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
     public sealed class TranslatedRecord : TranslatedDeclaration, IDeclarationContainer
     {
-        private RecordDecl Record { get; }
+        internal RecordDecl Record { get; }
 
-        private readonly List<TranslatedDeclaration> Members = new List<TranslatedDeclaration>();
+        private readonly List<TranslatedDeclaration> _Members = new List<TranslatedDeclaration>();
+        public ReadOnlyCollection<TranslatedDeclaration> Members { get; }
 
         public override string TranslatedName => Record.Name;
+        public long Size { get; }
 
         public override bool CanBeRoot => true;
 
+        /// <summary>The insertion point for new members.</summary>
+        /// <remarks>
+        /// If -1, new members are added to the end of the members list.
+        /// This field is used to ensure that the member order from the input file is maintained.
+        /// This is necessary because we enumerate fields from the layout of the record before processing cursors under this record.
+        /// </remarks>
+        private int InsertNewMembersHere = -1;
         TranslatedFile IDeclarationContainer.File => File;
         void IDeclarationContainer.AddDeclaration(TranslatedDeclaration declaration)
         {
-            Debug.Assert(ReferenceEquals(declaration.Parent, this));
-            Members.Add(declaration);
+            Debug.Assert(ReferenceEquals(declaration.Parent, this), "Members should already have us as parents before being added.");
+            Debug.Assert(_Members.IndexOf(declaration) == -1, "Members should not be added to records which they're already a member.");
+
+            // If we have an insert point, use it to add the declaration
+            if (InsertNewMembersHere != -1)
+            {
+                _Members.Insert(InsertNewMembersHere, declaration);
+                InsertNewMembersHere++;
+            }
+            // Otherwise add the member to the end of the list
+            else
+            { _Members.Add(declaration); }
         }
 
         void IDeclarationContainer.RemoveDeclaration(TranslatedDeclaration declaration)
         {
-            Debug.Assert(ReferenceEquals(declaration.Parent, this));
-            bool removed = Members.Remove(declaration);
-            Debug.Assert(removed);
+            Debug.Assert(ReferenceEquals(declaration.Parent, this), "Only members which have us as parents should be removed.");
+
+            // Find the index of the declaration to be removed
+            int i = _Members.IndexOf(declaration);
+
+            // If the delcaration isn't a member of this record, assert and do nothing
+            if (i == -1)
+            {
+                Debug.Assert(false, "The index of a member belonging to us should be able to be found.");
+                return;
+            }
+
+            // Remove the member
+            _Members.RemoveAt(i);
+
+            // If this member was before the insertion index, decrement the insertion index
+            if (i < InsertNewMembersHere)
+            { InsertNewMembersHere--; }
         }
 
-        internal TranslatedRecord(IDeclarationContainer container, RecordDecl record)
+        internal unsafe TranslatedRecord(IDeclarationContainer container, RecordDecl record)
             : base(container)
         {
             if (!record.Handle.IsDefinition)
             { throw new ArgumentException("Only defining records can be translated!"); }
 
             Record = record;
+            Members = _Members.AsReadOnly();
 
-            // Add methods
-            if (Record is CXXRecordDecl cxxRecord)
-            {
-                foreach (CXXMethodDecl method in cxxRecord.Methods)
-                { new TranslatedFunction(this, method); }
-            }
+            // Process the layout
+            Size = ProcessLayout();
 
             // Process any other nested cursors which aren't fields or methods
             foreach (Cursor cursor in Record.CursorChildren)
             {
-                // Fields are processed on-demand when we get the record layout
-                if (cursor is FieldDecl)
-                { continue; }
-
-                // Methods were processed above
-                if (cursor is FunctionDecl)
-                { continue; }
-
-                // Base specifiers are processed on-demand when we get the record layout
-                //TODO: Consume the cursor?
-                if (cursor is CXXBaseSpecifier)
-                { continue; }
-
-                // Access specifiers do not have a direct impact on the transaltion
-                // The information they provide is available on the individual members
-                if (cursor is AccessSpecDecl)
+                // Fields were processed earlier when we processed the layout so they have special handling.
+                if (cursor is FieldDecl field)
                 {
-                    File.Ignore(cursor);
+                    HandleFieldFoundWhileProcessingChildren(field);
                     continue;
                 }
 
-                // Skip anything that is an attribute
-                // (Don't ignore/consume them though, there's logic in TranslatedFile to ignore attributes that don't affect output.)
-                if (cursor is Attr)
-                { continue; }
-
+                // All other children are handled by the normal cursor processing.
                 File.ProcessCursor(this, cursor);
             }
         }
 
-        private unsafe void Translate(CodeWriter writer, PathogenRecordLayout* layout)
+        private unsafe long ProcessLayout()
         {
-            //TODO: Use context to emit namespace and enclosing types.
+            PathogenRecordLayout* layout = null;
+            try
+            {
+                layout = PathogenExtensions.pathogen_GetRecordLayout(Record.Handle);
+
+                if (layout == null)
+                {
+                    File.Diagnostic(Severity.Fatal, Record, $"Failed to get the record layout of {Record.Name}");
+                    return 0;
+                }
+
+                // Add fields from layout
+                for (PathogenRecordField* field = layout->FirstField; field != null; field = field->NextField)
+                { TranslatedField.Create(this, field); }
+
+                //TODO: VTable stuff
+
+                return layout->Size;
+            }
+            finally
+            {
+                if (layout != null)
+                { PathogenExtensions.pathogen_DeleteRecordLayout(layout); }
+            }
+        }
+
+        /// <summary>Handle a field found while processing cursors which were children of this record.</summary>
+        /// <param name="field">The field to handle.</param>
+        /// <remarks>
+        /// Fields are added as members to this record by looking at the field layout. As such, we've already added them by the time we handle field declarations.
+        /// 
+        /// This method does two things:
+        /// 1) It ensures the processed field cursor has a corresponding member in this record.
+        /// 2) It uses the processed field cursor to maintain member order from the input file.
+        ///    (We can't just move the found fields to the end of the record because that would result in implementation details like virtual bases being at the start of the translation.)
+        ///    In short, it ensures that new members are inserted before the field after the one specified by <paramref name="fieldDeclaration"/>.
+        /// </remarks>
+        private void HandleFieldFoundWhileProcessingChildren(FieldDecl fieldDeclaration)
+        {
+            bool foundCorrespondingField = false;
+
+            int newInsertNewMembersHere = 0;
+            foreach (TranslatedDeclaration member in Members)
+            {
+                if (member is TranslatedField field)
+                {
+                    // If we already have our corresponding field, we've found the InsertNewMembersHere index (which is the field following the one we are processing) so stop searching
+                    if (foundCorrespondingField)
+                    { break; }
+
+                    // Check if we've found the corresponding field
+                    // (Note we keep iterating through members to update InsertNewMembersHere until we find the subsequent field.)
+                    if (field is TranslatedNormalField normalField && normalField.Field == fieldDeclaration)
+                    { foundCorrespondingField = true; }
+                }
+
+                // Keep track of the new index for insertion
+                newInsertNewMembersHere++;
+            }
+
+            // If we found the corresponding field, update our insertion point
+            if (foundCorrespondingField)
+            { InsertNewMembersHere = newInsertNewMembersHere; }
+            // Otherwise we complain about the unexpected field (keeping the old insertion point.)
+            else
+            { File.Diagnostic(Severity.Warning, fieldDeclaration, "Field does not exist in the record's layout."); }
+        }
+
+        public override void Translate(CodeWriter writer)
+        {
             writer.Using("System.Runtime.InteropServices");
 
             //TODO
@@ -91,142 +171,16 @@ namespace ClangSharpTest2020
 
             writer.EnsureSeparation();
             //TODO: Documentation comment
-            writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size = {layout->Size})]");
+            writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size = {Size})]");
             // Records are translated as ref structs to prevent storing them on the managed heap.
             writer.WriteLine($"public unsafe ref partial struct {SanitizeIdentifier(TranslatedName)}");
             using (writer.Block())
             {
-                const string VTableTypeName = "VirtualMethodTable";
-                const string VTableFieldName = "VirtualMethodTablePointer";
-
-                // Write out fields
-                for (PathogenRecordField* field = layout->FirstField; field != null; field = field->NextField)
-                {
-                    bool isBitField = field->Kind == PathogenRecordFieldKind.Normal && field->IsBitField != 0;
-                    bool isNonPrimaryBase = (field->Kind == PathogenRecordFieldKind.VirtualBase || field->Kind == PathogenRecordFieldKind.NonVirtualBase) && field->IsPrimaryBase == 0;
-                    bool isUnsupportedKind = false;
-
-                    FieldDecl fieldDeclaration = field->Kind == PathogenRecordFieldKind.Normal ? (FieldDecl)File.FindCursor(field->FieldDeclaration) : null;
-
-                    CXCursor diagnosticCursor = field->Kind == PathogenRecordFieldKind.Normal ? field->FieldDeclaration : Record.Handle;
-
-                    writer.EnsureSeparation();
-                    //TODO: Documentation comment
-
-                    // We might not be properly translating these field kinds
-                    switch (field->Kind)
-                    {
-                        case PathogenRecordFieldKind.VirtualBase:
-                        case PathogenRecordFieldKind.VirtualBaseTablePtr:
-                        case PathogenRecordFieldKind.VTorDisp:
-                            File.Diagnostic(Severity.Warning, diagnosticCursor, $"{field->Kind} fields may not be translated correctly.");
-                            isUnsupportedKind = true;
-                            break;
-                    }
-
-                    if (!isUnsupportedKind)
-                    {
-                        if (isBitField)
-                        { File.Diagnostic(Severity.Warning, diagnosticCursor, $"Bitfields are very lazily translated, consider improving."); }
-
-                        //TODO: For some reason this can happen with some records with only one base. Not sure why.
-                        // This warning is really only of concern when the base is virtual, add a check for that here.
-                        //if (isNonPrimaryBase)
-                        //{ File.Diagnostic(TranslationDiagnosticSeverity.Warning, diagnosticCursor, $"Non-primary {field->Kind} fields may not be translated correctly."); }
-                    }
-
-#if VERBOSE_MODE
-                    // Emit verbose field information
-                    writer.Write($"// {field->Kind}");
-
-                    if (isNonPrimaryBase)
-                    { writer.Write("(NonPrimary)"); }
-
-                    writer.Write($" {field->Type} {field->Name} @ {field->Offset}");
-
-                    if (isBitField)
-                    { writer.Write($"[{field->BitFieldStart}..{field->BitFieldStart + field->BitFieldWidth}]"); }
-
-                    writer.WriteLine();
-#endif
-
-                    // Emit the field
-                    {
-                        //TODO
-                        ClangType anonymousTypeCheck = File.FindType(field->Type);
-                        bool isAnonymousType = false;
-                        if (anonymousTypeCheck is RecordType anonymousRecordCheck && String.IsNullOrEmpty(anonymousRecordCheck.Decl.Name))
-                        { isAnonymousType = true; }
-                        if (anonymousTypeCheck is EnumType anonymousEnumCheck && String.IsNullOrEmpty(anonymousEnumCheck.Decl.Name))
-                        { isAnonymousType = true; }
-                        using var __ = writer.DisableScope(isAnonymousType, File, field->Kind == PathogenRecordFieldKind.Normal ? field->FieldDeclaration : Record.Handle, "Unimplemented translation: Field of anonyomous type.");
-
-                        // Field offset
-                        writer.Write($"[FieldOffset({field->Offset})] ");
-
-                        // Field access
-                        string accessModifier = field->Kind == PathogenRecordFieldKind.Normal ? "public" : "internal";
-
-                        if (fieldDeclaration is object)
-                        {
-                            if (fieldDeclaration.Access == CX_CXXAccessSpecifier.CX_CXXPrivate || fieldDeclaration.Access == CX_CXXAccessSpecifier.CX_CXXProtected)
-                            { accessModifier = "private"; }
-                        }
-
-                        writer.Write($"{accessModifier} ");
-
-                        // Field type
-                        if (field->Kind == PathogenRecordFieldKind.VTablePtr)
-                        { writer.Write($"{VTableTypeName}*"); }
-                        else
-                        {
-                            ClangType type = File.FindType(field->Type);
-                            File.WriteType(writer, type, field->FieldDeclaration, TypeTranslationContext.ForField);
-                        }
-
-                        writer.Write(' ');
-
-                        // Field name
-                        if (field->Kind == PathogenRecordFieldKind.VTablePtr)
-                        { writer.WriteIdentifier(VTableFieldName); }
-                        else
-                        { writer.WriteIdentifier(field->Name.ToString()); }
-
-                        // Done.
-                        writer.WriteLine(';');
-
-                        // Bitfield constants
-                        if (isBitField)
-                        {
-                            writer.WriteLine();
-                            writer.WriteLine($"{accessModifier} const int {field->Name}Shift = {field->BitFieldStart};");
-
-                            writer.Write($"{accessModifier} const int {field->Name}Mask = 0b");
-                            for (int i = 0; i < field->BitFieldWidth; i++)
-                            { writer.Write('1'); }
-                            writer.WriteLine(";");
-                        }
-
-                        //TODO: If the field is a non-virtual base that corresponds to a virtual class, add an alias property for the vTable that uses our specific vTable type.
-                    }
-
-                    // Mark the field as consumed
-                    //TODO: This might be overzealous. Also we aren't consuming any default value stuff, should we?
-                    if (field->Kind == PathogenRecordFieldKind.Normal)
-                    {
-                        //TODO: This can happen with anonyomous unions, need to figure out how to handle this appropriately.
-                        if (field->FieldDeclaration.IsNull)
-                        { File.Diagnostic(Severity.Warning, Record, $"{Record.Name} contains a field with no definition."); }
-                        else
-                        //TODO: This causes the type reference to be consumed multiple times when multiple fields are declared on the same line.
-                        { File.ConsumeRecursive(field->FieldDeclaration); }
-                    }
-                }
-
                 // Write out members
-                foreach (TranslatedDeclaration member in Members)
+                foreach (TranslatedDeclaration member in _Members)
                 { member.Translate(writer); }
 
+#if false
                 // Write out virtual methods
                 if (layout->FirstVTable != null)
                 {
@@ -302,32 +256,26 @@ namespace ClangSharpTest2020
                         }
                     }
                 }
+#endif
             }
 
             // Mark the record as consumed
             File.Consume(Record);
         }
 
-        public unsafe override void Translate(CodeWriter writer)
+        private Dictionary<PathogenRecordFieldKind, int> UnnamedFieldCounts = null;
+        internal string GetNameForUnnamedField(PathogenRecordFieldKind forKind)
         {
-            PathogenRecordLayout* layout = null;
-            try
-            {
-                layout = PathogenExtensions.pathogen_GetRecordLayout(Record.Handle);
+            if (UnnamedFieldCounts is null)
+            { UnnamedFieldCounts = new Dictionary<PathogenRecordFieldKind, int>(); }
 
-                if (layout == null)
-                {
-                    File.Diagnostic(Severity.Fatal, Record, $"Failed top get the record layout of {Record.Name}");
-                    return;
-                }
+            int oldCount;
 
-                Translate(writer, layout);
-            }
-            finally
-            {
-                if (layout != null)
-                { PathogenExtensions.pathogen_DeleteRecordLayout(layout); }
-            }
+            if (!UnnamedFieldCounts.TryGetValue(forKind, out oldCount))
+            { oldCount = 0; }
+
+            UnnamedFieldCounts[forKind] = oldCount + 1;
+            return $"__unnamed{forKind}{oldCount}";
         }
     }
 }
