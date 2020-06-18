@@ -157,7 +157,12 @@ namespace ClangSharpTest2020
                 using (writer.Block())
                 {
                     writer.WriteLine($"fixed ({ThisTypeSanatized}* thisP = &this)");
-                    writer.WriteLine($"{{ {SanitizeIdentifier(DllImportName)}(thisP); }}");
+                    writer.Write("{ ");
+
+                    if (Function.ReturnType.Kind != CXTypeKind.CXType_Void)
+                    { writer.Write("return "); }
+
+                    writer.WriteLine($"{SanitizeIdentifier(DllImportName)}(thisP); }}");
                 }
             }
         }
