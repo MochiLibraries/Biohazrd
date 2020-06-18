@@ -96,7 +96,7 @@ namespace ClangSharpTest2020
             { IndentLevel = oldIndentLevel; }
         }
 
-        public LeftAdjustedScope DisableScope(bool disabled, TranslatedFile file, ClangSharp.Cursor context, string message)
+        public LeftAdjustedScope DisableScope(bool disabled, TranslatedFile file, ClangSharp.Interop.CXCursor context, string message)
         {
             if (!disabled)
             { return default; }
@@ -116,6 +116,9 @@ namespace ClangSharpTest2020
             IsAtStartOfBlock = true;
             return ret;
         }
+
+        public LeftAdjustedScope DisableScope(bool disabled, TranslatedFile file, ClangSharp.Cursor context, string message)
+            => DisableScope(disabled, file, context.Handle, message);
 
         public readonly struct LeftAdjustedScope : IDisposable
         {

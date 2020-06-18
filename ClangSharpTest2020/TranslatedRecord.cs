@@ -152,6 +152,15 @@ namespace ClangSharpTest2020
 
                     // Emit the field
                     {
+                        //TODO
+                        ClangType anonymousTypeCheck = File.FindType(field->Type);
+                        bool isAnonymousType = false;
+                        if (anonymousTypeCheck is RecordType anonymousRecordCheck && String.IsNullOrEmpty(anonymousRecordCheck.Decl.Name))
+                        { isAnonymousType = true; }
+                        if (anonymousTypeCheck is EnumType anonymousEnumCheck && String.IsNullOrEmpty(anonymousEnumCheck.Decl.Name))
+                        { isAnonymousType = true; }
+                        using var __ = writer.DisableScope(isAnonymousType, File, field->Kind == PathogenRecordFieldKind.Normal ? field->FieldDeclaration : Record.Handle, "Unimplemented translation: Field of anonyomous type.");
+
                         // Field offset
                         writer.Write($"[FieldOffset({field->Offset})] ");
 
