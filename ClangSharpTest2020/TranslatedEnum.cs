@@ -9,8 +9,15 @@ namespace ClangSharpTest2020
         private readonly EnumDecl EnumDeclaration;
         private readonly List<EnumConstant> Values = new List<EnumConstant>();
 
-        public override string TranslatedName => EnumDeclaration.Name;
-        public override bool CanBeRoot => true;
+        public override string TranslatedName { get; }
+
+        private string Accessibility => "public"; //TODO
+
+        private readonly bool WasAnonymous = false;
+        public override bool CanBeRoot => !WillTranslateAsLooseConstants;
+        // Anonyomous enums which are not enum class will be translated as loose constants instead of a normal enum type.
+        //TODO: Don't do this when the anonyomous enum is used to type a field. Instead we should get our name from that field. (IE: Name ourselves <FieldName>Enum)
+        private bool WillTranslateAsLooseConstants => WasAnonymous && !EnumDeclaration.IsClass;
 
         private struct EnumConstant
         {
@@ -69,6 +76,14 @@ namespace ClangSharpTest2020
             EnumDeclaration = enumDeclaration;
             File.Consume(EnumDeclaration);
 
+            TranslatedName = EnumDeclaration.Name;
+
+            if (String.IsNullOrEmpty(TranslatedName))
+            {
+                TranslatedName = Parent.GetNameForUnnamed("Enum");
+                WasAnonymous = true;
+            }
+
             // Enumerate all of the values for this enum
             foreach (Cursor cursor in EnumDeclaration.CursorChildren)
             {
@@ -81,11 +96,14 @@ namespace ClangSharpTest2020
 
         public override void Translate(CodeWriter writer)
         {
-            //TODO
-            using var _ = writer.DisableScope(String.IsNullOrEmpty(TranslatedName), File, EnumDeclaration, "Unimplemented translation: Anonymous enum");
+            if (WillTranslateAsLooseConstants)
+            {
+                TranslateAsLooseConstants(writer);
+                return;
+            }
 
             writer.EnsureSeparation();
-            writer.Write("enum ");
+            writer.Write($"{Accessibility} enum ");
             writer.WriteIdentifier(TranslatedName);
 
             // If the enum has a integer type besides int, emit the base specifier
@@ -147,6 +165,27 @@ namespace ClangSharpTest2020
                 // If constants were written, add the newline for the final constant
                 if (!first)
                 { writer.WriteLine(); }
+            }
+        }
+
+        private void TranslateAsLooseConstants(CodeWriter writer)
+        {
+            writer.EnsureSeparation();
+
+            foreach (EnumConstant value in Values)
+            {
+                writer.Write($"{Accessibility} const ");
+                File.WriteType(writer, EnumDeclaration.IntegerType, value.Declaration, TypeTranslationContext.ForEnumUnderlyingType);
+                writer.Write(" ");
+                writer.WriteIdentifier(value.Name);
+                writer.Write(" = ");
+
+                if (value.IsHexValue)
+                { writer.Write($"0x{value.Value:X}"); }
+                else
+                { writer.Write(value.Value); }
+
+                writer.WriteLine(";");
             }
         }
     }
