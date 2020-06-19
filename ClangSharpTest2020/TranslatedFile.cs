@@ -599,8 +599,9 @@ namespace ClangSharpTest2020
 
                 // Records and enums
                 //TODO: Deal with namespaces and such
+                //TODO: This needs to deal with types which we've renamed when translated. (We avoid renaming, but it's necessary for anonymous types.)
                 CXType_Record => (CodeWriter.SanitizeIdentifier(((RecordType)type).Decl.Name), 0),
-                CXType_Enum => (CodeWriter.SanitizeIdentifier(((EnumType)type).Decl.Name), 4),
+                CXType_Enum => (CodeWriter.SanitizeIdentifier(((EnumType)type).Decl.Name), 4), //TODO: Deal with other-sized enums.
 
                 // If we got this far, we don't know how to translate this type
                 _ => (null, 0)
@@ -613,6 +614,19 @@ namespace ClangSharpTest2020
             {
                 Diagnostic(Severity.Error, $"sizeof({type}) is {type.Handle.SizeOf}, but the translated sizeof({typeName}) is {cSharpTypeSize}.");
                 Debug.Assert(false, "This size check shouldn't fail.");
+                typeName = null;
+            }
+
+            // If the typename is an empty string, it's an anonymous enum or record
+            if (typeName is object && typeName.Length == 0)
+            {
+                Debug.Assert(type.Kind == CXType_Record || type.Kind == CXTypeKind.CXType_Enum, "Only records or enums are expected to be anonymous.");
+                Diagnostic(Severity.Warning, associatedCursor, "Tried to translate anonymous type.");
+
+                if (type is TagType tagType)
+                { Diagnostic(Severity.Note, tagType.Decl, "The anonymous type was declared here."); }
+
+                // Set the type name to null so that the fallback logic runs
                 typeName = null;
             }
 
