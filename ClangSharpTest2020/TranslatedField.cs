@@ -29,7 +29,7 @@ namespace ClangSharpTest2020
             // Give unnamed fields a default name
             if (String.IsNullOrEmpty(TranslatedName))
             {
-                TranslatedName = Record.GetNameForUnnamedField(field->Kind);
+                TranslatedName = Record.GetNameForUnnamed(field->Kind.ToString());
                 File.Diagnostic(Severity.Warning, Context, $"Nameless field at offset {Offset} in {Record.TranslatedName} automatically renamed to {TranslatedName}");
             }
         }

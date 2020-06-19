@@ -17,7 +17,7 @@ namespace ClangSharpTest2020
             // We do not support more than one VTable field
             if (Record.Members.Any(m => m is TranslatedVTableField && m != this))
             {
-                TranslatedName = Record.GetNameForUnnamedField(field->Kind);
+                TranslatedName = Record.GetNameForUnnamed(field->Kind.ToString());
                 File.Diagnostic(Severity.Warning, Context, $"Record layout contains more than one non-virtual base field, renamed redundant base to {TranslatedName}.");
             }
         }

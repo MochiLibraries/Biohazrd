@@ -671,6 +671,13 @@ namespace ClangSharpTest2020
         internal void WriteType(CodeWriter writer, ClangType type, Cursor associatedCursor, TypeTranslationContext context)
             => WriteType(writer, type, associatedCursor.Handle, context);
 
+        internal string GetNameForUnnamed(string category)
+            // Names of declarations at the file level should be library-unique, so it names unnamed things.
+            => Library.GetNameForUnnamed(category);
+
+        string IDeclarationContainer.GetNameForUnnamed(string category)
+            => GetNameForUnnamed(category);
+
         public void Dispose()
             => TranslationUnit?.Dispose();
     }

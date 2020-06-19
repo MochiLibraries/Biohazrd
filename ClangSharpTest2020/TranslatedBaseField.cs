@@ -16,7 +16,7 @@ namespace ClangSharpTest2020
             // We do not expect more than one base field
             if (Record.Members.Any(m => m is TranslatedBaseField && m != this))
             {
-                TranslatedName = Record.GetNameForUnnamedField(field->Kind);
+                TranslatedName = Record.GetNameForUnnamed(field->Kind.ToString());
                 File.Diagnostic(Severity.Warning, Context, $"Record layout contains more than one non-virtual base field, renamed redundant base to {TranslatedName}.");
             }
         }

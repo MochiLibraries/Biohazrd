@@ -80,6 +80,10 @@ namespace ClangSharpTest2020
             }
         }
 
+        private readonly UnnamedNamer UnnamedNamer = new UnnamedNamer();
+        internal string GetNameForUnnamed(string category)
+            => UnnamedNamer.GetName(category);
+
         internal void Diagnostic(in TranslationDiagnostic diagnostic)
         {
             if (diagnostic.IsError)

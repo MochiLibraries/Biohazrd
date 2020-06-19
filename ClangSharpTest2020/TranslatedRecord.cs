@@ -14,7 +14,8 @@ namespace ClangSharpTest2020
         private readonly List<TranslatedDeclaration> _Members = new List<TranslatedDeclaration>();
         public ReadOnlyCollection<TranslatedDeclaration> Members { get; }
 
-        public override string TranslatedName => Record.Name;
+        public override string TranslatedName { get; }
+        private readonly bool WasAnonymous = false;
         public long Size { get; }
 
         public override bool CanBeRoot => true;
@@ -76,6 +77,21 @@ namespace ClangSharpTest2020
 
             Record = record;
             Members = _Members.AsReadOnly();
+
+            TranslatedName = Record.Name;
+
+            if (String.IsNullOrEmpty(TranslatedName))
+            {
+                WasAnonymous = true;
+
+                // Note: Do not assert Record.IsAnonymousStructOrUnion here. It is false when an anonymous union has a named field.
+                if (Record.IsUnion)
+                { TranslatedName = Parent.GetNameForUnnamed("Union"); }
+                else if (Record is CXXRecordDecl cxxRecord && cxxRecord.IsClass)
+                { TranslatedName = Parent.GetNameForUnnamed("Class"); }
+                else
+                { TranslatedName = Parent.GetNameForUnnamed("Struct"); }
+            }
 
             // Process the layout
             long size;
@@ -240,19 +256,22 @@ namespace ClangSharpTest2020
             File.Consume(Record);
         }
 
-        private Dictionary<PathogenRecordFieldKind, int> UnnamedFieldCounts = null;
-        internal string GetNameForUnnamedField(PathogenRecordFieldKind forKind)
+        private UnnamedNamer UnnamedNamer = null;
+        internal string GetNameForUnnamed(string category)
         {
-            if (UnnamedFieldCounts is null)
-            { UnnamedFieldCounts = new Dictionary<PathogenRecordFieldKind, int>(); }
+            // If this record was unnamed its self, it uses its parent for the name
+            // This makes it so that unnamed counting is relative to the nearest nammed record or the file if we're an unnamed type at root.
+            // This also prevents nested anonyomous types from using the same name, which causes CS0542: member names cannot be the same as their enclosing type
+            if (WasAnonymous)
+            { return Parent.GetNameForUnnamed(category); }
 
-            int oldCount;
+            if (UnnamedNamer is null)
+            { UnnamedNamer = new UnnamedNamer(); }
 
-            if (!UnnamedFieldCounts.TryGetValue(forKind, out oldCount))
-            { oldCount = 0; }
-
-            UnnamedFieldCounts[forKind] = oldCount + 1;
-            return $"__unnamed{forKind}{oldCount}";
+            return UnnamedNamer.GetName(category);
         }
+
+        string IDeclarationContainer.GetNameForUnnamed(string category)
+            => GetNameForUnnamed(category);
     }
 }
