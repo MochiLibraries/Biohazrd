@@ -164,7 +164,7 @@ namespace ClangSharpTest2020
                     string vTableEntry = Record.VTable.GetVTableEntryNameForMethod(this);
 
                     if (vTableEntry is null)
-                    { }
+                    { vTableAccessFailure = "Could not find entry in virtual method table."; }
                     else
                     { vTableAccess = $"{SanitizeIdentifier(Record.VTableField.TranslatedName)}->{SanitizeIdentifier(vTableEntry)}"; }
                 }
@@ -196,7 +196,7 @@ namespace ClangSharpTest2020
                     using (writer.Indent())
                     {
                         writer.Using("System");
-                        writer.WriteLine($"=> new PlatformNotSupportedException(\"Virtual method not available: {SanitizeStringLiteral(vTableAccessFailure)}\");");
+                        writer.WriteLine($"=> throw new PlatformNotSupportedException(\"Virtual method not available: {SanitizeStringLiteral(vTableAccessFailure)}\");");
                     }
                 }
                 else
