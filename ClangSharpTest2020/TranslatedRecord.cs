@@ -19,6 +19,9 @@ namespace ClangSharpTest2020
 
         public override bool CanBeRoot => true;
 
+        internal TranslatedVTableField VTableField { get; }
+        internal TranslatedVTable VTable { get; }
+
         /// <summary>The insertion point for new members.</summary>
         /// <remarks>
         /// If -1, new members are added to the end of the members list.
@@ -75,7 +78,13 @@ namespace ClangSharpTest2020
             Members = _Members.AsReadOnly();
 
             // Process the layout
-            Size = ProcessLayout();
+            long size;
+            TranslatedVTableField vTableField;
+            TranslatedVTable vTable;
+            ProcessLayout(out size, out vTableField, out vTable);
+            Size = size;
+            VTableField = vTableField;
+            VTable = vTable;
 
             // Process any other nested cursors which aren't fields or methods
             foreach (Cursor cursor in Record.CursorChildren)
@@ -92,7 +101,7 @@ namespace ClangSharpTest2020
             }
         }
 
-        private unsafe long ProcessLayout()
+        private unsafe void ProcessLayout(out long recordSize, out TranslatedVTableField vTableField, out TranslatedVTable vTable)
         {
             PathogenRecordLayout* layout = null;
             try
@@ -102,16 +111,47 @@ namespace ClangSharpTest2020
                 if (layout == null)
                 {
                     File.Diagnostic(Severity.Fatal, Record, $"Failed to get the record layout of {Record.Name}");
-                    return 0;
+                    recordSize = 0;
+                    vTableField = null;
+                    vTable = null;
+                    return;
                 }
 
                 // Add fields from layout
+                vTableField = null;
                 for (PathogenRecordField* field = layout->FirstField; field != null; field = field->NextField)
-                { TranslatedField.Create(this, field); }
+                {
+                    TranslatedField newField = TranslatedField.Create(this, field);
 
-                //TODO: VTable stuff
+                    if (newField is TranslatedVTableField newVTableField)
+                    {
+                        if (vTableField is null)
+                        { vTableField = newVTableField; }
+                        else
+                        { File.Diagnostic(Severity.Warning, Record, $"Unimplemented translation: Record has more than one vTable pointer. (First at {vTableField.Offset}, another at {newField.Offset}.)"); }
+                    }
+                }
 
-                return layout->Size;
+                // Add vTable type
+                if (layout->FirstVTable != null)
+                {
+                    //TODO: Support vTable pointer in base class
+                    if (vTableField is null)
+                    {
+                        File.Diagnostic(Severity.Warning, Record, "Unimplemented translation: Record has vTable but no vTable pointer.");
+                        vTable = null;
+                    }
+                    else
+                    { vTable = new TranslatedVTable(vTableField, layout->FirstVTable); }
+
+                    if (layout->FirstVTable->NextVTable != null)
+                    { File.Diagnostic(Severity.Warning, Record, $"Unimplemented translation: Record has more than on vTable."); }
+                }
+                else
+                { vTable = null; }
+
+                // Return the size
+                recordSize = layout->Size;
             }
             finally
             {
@@ -179,84 +219,6 @@ namespace ClangSharpTest2020
                 // Write out members
                 foreach (TranslatedDeclaration member in _Members)
                 { member.Translate(writer); }
-
-#if false
-                // Write out virtual methods
-                if (layout->FirstVTable != null)
-                {
-                    PathogenVTable* vTable = layout->FirstVTable;
-
-                    // Determine vTable entry names
-                    string[] vTableEntryNames = new string[vTable->EntryCount];
-                    {
-                        bool foundFirstFunctionPointer = false;
-                        for (int i = 0; i < vTable->EntryCount; i++)
-                        {
-                            PathogenVTableEntry* entry = &vTable->Entries[i];
-
-                            if (entry->Kind.IsFunctionPointerKind())
-                            { foundFirstFunctionPointer = true; }
-                            else if (!foundFirstFunctionPointer)
-                            {
-                                // We skip all vtable entries until the first field since that's where the vTable pointer will actually point
-                                //TODO: This should be accurate for both Itanium and Microsoft ABIs, but it'd be ideal if PathogenLayoutExtensions just gave this to us.
-                                vTableEntryNames[i] = null;
-                                continue;
-                            }
-
-                            if (entry->Kind == PathogenVTableEntryKind.FunctionPointer)
-                            {
-                                CXXMethodDecl method = (CXXMethodDecl)File.FindCursor(entry->MethodDeclaration);
-                                vTableEntryNames[i] = $"{method.Name}_{i}";
-                            }
-                            else
-                            { vTableEntryNames[i] = $"__{entry->Kind}_{i}"; }
-                        }
-                    }
-
-                    // Write out virtual methods
-                    //TODO
-
-                    // Write out vTable type
-                    {
-                        writer.EnsureSeparation();
-                        writer.WriteLine("[StructLayout(LayoutKind.Sequential)]");
-                        writer.WriteLine($"public unsafe struct {SanitizeIdentifier(VTableTypeName)}");
-                        using (writer.Block())
-                        {
-                            foreach (string fieldName in vTableEntryNames)
-                            {
-                                // Skip unnamed entries (these exist before the first entry where the vTable pointer points
-                                if (fieldName == null)
-                                { continue; }
-
-                                //TODO: Use function pointer types in C#9
-                                writer.WriteLine($"public void* {SanitizeIdentifier(fieldName)};");
-                            }
-                        }
-                    }
-
-                    // If there's additional vtables, emit warnings since we don't know how to translate them.
-                    if (vTable->NextVTable != null)
-                    {
-                        File.Diagnostic(Severity.Warning, Record, $"Record {Record.Name} has more than one vtable, only the first vtable was translated.");
-
-                        for (PathogenVTable* additionalVTable = vTable->NextVTable; additionalVTable != null; additionalVTable = additionalVTable->NextVTable)
-                        {
-                            for (int i = 0; i < additionalVTable->EntryCount; i++)
-                            {
-                                PathogenVTableEntry* entry = &additionalVTable->Entries[i];
-
-                                if (!entry->Kind.IsFunctionPointerKind())
-                                { continue; }
-
-                                Cursor methodCursor = File.FindCursor(entry->MethodDeclaration);
-                                File.Diagnostic(Severity.Warning, methodCursor, $"{Record.Name}::{methodCursor} will not be translated because it exists in a non-primary vtable.");
-                            }
-                        }
-                    }
-                }
-#endif
             }
 
             // Mark the record as consumed

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -172,6 +173,7 @@ namespace ClangSharpTest2020
         public void WriteIdentifier(string identifier)
             => Write(SanitizeIdentifier(identifier));
 
+        //TODO: Handle illegal identifier characters
         public static string SanitizeIdentifier(string identifier)
         {
             switch (identifier)
@@ -257,6 +259,83 @@ namespace ClangSharpTest2020
                 default:
                     return identifier;
             }
+        }
+
+        public static string SanitizeStringLiteral(string value)
+        {
+            // Based on https://github.com/dotnet/csharplang/blob/0e365431d7ac2a6250089be9e77728ba2742d450/spec/lexical-structure.md#string-literals
+            StringBuilder ret = null;
+
+            for (int i = 0; i < value.Length; i++)
+            {
+                char character = value[i];
+
+                // Basic replacements
+                string replacement = character switch
+                {
+                    // Forbidden by single_regular_string_literal_character
+                    '\\' => @"\\", // Backslash
+                    '"' => "\\\"", // Double quote
+                    // new_line_character
+                    '\n' => @"\n", // Line feed
+                    '\r' => @"\r", // Carriage return
+                    '\x0085' => @"\x0085", // Next line character (NEL)
+                    '\x2028' => @"\x2028", // Unicode line separator
+                    '\x2029' => @"\x2029", // Unicode paragraph separator
+                    // Not forbidden, but these are unprintable simple_escape_sequence values not covered above
+                    '\0' => @"\0", // Null
+                    '\a' => @"\a", // Alert
+                    '\b' => @"\b", // Backspace
+                    '\f' => @"\f", // Form feed
+                    '\t' => @"\t", // Tab
+                    '\v' => @"\v", // Vertical tab
+
+                    _ => null
+                };
+
+                // More complex replacements
+                // Technically the compiler should gladly parse a file with any of these in a string literal, but they have the potential to make the string hard to read in an editor.
+                // (Although on the flip side, some of these are printable when used in the correct context. So this might mangle certain non-English text.)
+                if (replacement is null)
+                {
+                    switch (CharUnicodeInfo.GetUnicodeCategory(character))
+                    {
+                        case UnicodeCategory.Control:
+                        case UnicodeCategory.Format:
+                        case UnicodeCategory.LineSeparator:
+                        case UnicodeCategory.ModifierLetter:
+                        case UnicodeCategory.ModifierSymbol:
+                        case UnicodeCategory.NonSpacingMark:
+                        case UnicodeCategory.OtherNotAssigned:
+                        case UnicodeCategory.ParagraphSeparator:
+                        case UnicodeCategory.PrivateUse:
+                        case UnicodeCategory.SpacingCombiningMark:
+                        case UnicodeCategory.Surrogate:
+                        {
+                            ushort codePoint = (ushort)character;
+                            replacement = $"\\x{codePoint:X4}";
+                        }
+                        break;
+                    }
+                }
+
+                // If we have no replacement nor string builder, just keep checking
+                if (replacement is null && ret is null)
+                { continue; }
+
+                // If this is the first replacement, initialize the StringBuilder
+                // (Capacity is +10 as a guess that most strings won't need more than 10 basic character replacements.)
+                if (ret is null)
+                { ret = new StringBuilder(value, 0, i, value.Length + 10); }
+
+                // Append the character or the replacement
+                if (replacement is null)
+                { ret.Append(replacement); }
+                else
+                { ret.Append(character); }
+            }
+
+            return ret?.ToString() ?? value;
         }
 
         public void EnsureSeparation()

@@ -1,6 +1,7 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using static ClangSharpTest2020.CodeWriter;
 
@@ -68,13 +69,17 @@ namespace ClangSharpTest2020
             => File.WriteType(writer, Function.ReturnType, Function, TypeTranslationContext.ForReturn);
 
         private bool FirstParameterListWrite = true;
-        private void WriteParameterList(CodeWriter writer, bool includeThis)
+        private const string DummyThisNameSanatized = "@this";
+        private void WriteParameterList(CodeWriter writer, bool includeThis, bool forArgumentList = false)
         {
             bool first = true;
 
             if (includeThis && IsInstanceMethod)
             {
-                writer.Write($"{ThisTypeSanatized}* __this");
+                if (!forArgumentList)
+                { writer.Write($"{ThisTypeSanatized}* "); }
+
+                writer.Write(DummyThisNameSanatized);
                 first = false;
             }
 
@@ -86,8 +91,12 @@ namespace ClangSharpTest2020
                 else
                 { writer.Write(", "); }
 
-                File.WriteType(writer, parameter.Type, parameter, TypeTranslationContext.ForParameter);
-                writer.Write(' ');
+                if (!forArgumentList)
+                {
+                    File.WriteType(writer, parameter.Type, parameter, TypeTranslationContext.ForParameter);
+                    writer.Write(' ');
+                }
+
                 if (String.IsNullOrEmpty(parameter.Name))
                 {
                     writer.WriteIdentifier($"__unnamed{parameterNumber}");
@@ -137,6 +146,40 @@ namespace ClangSharpTest2020
 
         private void TranslateTrampoline(CodeWriter writer)
         {
+            // Build vTable access
+            // (We do this now so we can obsolete the method if we can't get it.)
+            string vTableAccess = null;
+            string vTableAccessFailure = null;
+
+            if (IsVirtual)
+            {
+                if (Record is null)
+                { vTableAccessFailure = "Virtual method has no associated class."; }
+                else if (Record.VTableField is null)
+                { vTableAccessFailure = "Class has no vTable pointer."; }
+                else if (Record.VTable is null)
+                { vTableAccessFailure = "Class has no virtual method table."; }
+                else
+                {
+                    string vTableEntry = Record.VTable.GetVTableEntryNameForMethod(this);
+
+                    if (vTableEntry is null)
+                    { }
+                    else
+                    { vTableAccess = $"{SanitizeIdentifier(Record.VTableField.TranslatedName)}->{SanitizeIdentifier(vTableEntry)}"; }
+                }
+
+                Debug.Assert(vTableAccess is object || vTableAccessFailure is object, "We should have either vTable access code or an error indicating why we don't.");
+            }
+
+            // Write out the vTable access couldn't be built
+            if (vTableAccessFailure is object)
+            {
+                writer.Using("System");
+                writer.Write($"[Obsolete(\"Method not translated: {SanitizeStringLiteral(vTableAccessFailure)}\", error: true)]");
+                File.Diagnostic(Severity.Warning, Function, $"Can't translate virtual method: {vTableAccessFailure}");
+            }
+
             // Translate the method signature
             writer.EnsureSeparation();
             writer.Write($"{TranslatedAccessibility} unsafe ");
@@ -148,21 +191,44 @@ namespace ClangSharpTest2020
             // Translate the dispatch
             if (IsVirtual)
             {
-                using (writer.Indent())
-                { writer.WriteLine("=> throw null; //TODO: Virtual dispatch"); }  //TODO
+                if (vTableAccessFailure is object)
+                {
+                    using (writer.Indent())
+                    {
+                        writer.Using("System");
+                        writer.WriteLine($"=> new PlatformNotSupportedException(\"Virtual method not available: {SanitizeStringLiteral(vTableAccessFailure)}\");");
+                    }
+                }
+                else
+                {
+                    using (writer.Block())
+                    {
+                        writer.WriteLine($"fixed ({ThisTypeSanatized}* {DummyThisNameSanatized} = &this)");
+                        writer.Write("{ ");
+
+                        if (Function.ReturnType.Kind != CXTypeKind.CXType_Void)
+                        { writer.Write("return "); }
+
+                        writer.Write($"{vTableAccess}(");
+                        WriteParameterList(writer, includeThis: true, forArgumentList: true);
+                        writer.WriteLine("); }");
+                    }
+                }
             }
             else
             {
                 // Once https://github.com/dotnet/csharplang/issues/1792 is implemented, this fixed statement should be removed.
                 using (writer.Block())
                 {
-                    writer.WriteLine($"fixed ({ThisTypeSanatized}* thisP = &this)");
+                    writer.WriteLine($"fixed ({ThisTypeSanatized}* {DummyThisNameSanatized} = &this)");
                     writer.Write("{ ");
 
                     if (Function.ReturnType.Kind != CXTypeKind.CXType_Void)
                     { writer.Write("return "); }
 
-                    writer.WriteLine($"{SanitizeIdentifier(DllImportName)}(thisP); }}");
+                    writer.Write($"{SanitizeIdentifier(DllImportName)}(");
+                    WriteParameterList(writer, includeThis: true, forArgumentList: true);
+                    writer.WriteLine("); }");
                 }
             }
         }
@@ -185,6 +251,24 @@ namespace ClangSharpTest2020
             // Translate trampoline
             if (IsInstanceMethod)
             { TranslateTrampoline(writer); }
+        }
+
+        public void TranslateFunctionPointerType(CodeWriter writer)
+        {
+            writer.Write($"delegate* {CallingConvention.ToString().ToLowerInvariant()}<");
+
+            if (IsInstanceMethod)
+            { writer.Write($"{ThisTypeSanatized}*, "); }
+
+            foreach (ParmVarDecl parameter in Function.Parameters)
+            {
+                File.WriteType(writer, parameter.Type, parameter, TypeTranslationContext.ForParameter);
+                writer.Write(", ");
+            }
+
+            WriteReturnType(writer);
+
+            writer.Write('>');
         }
     }
 }
