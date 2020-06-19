@@ -86,6 +86,24 @@ namespace ClangSharpTest2020
             VTableField = vTableField;
             VTable = vTable;
 
+            // Determine the initial position for new members
+            // This will be the index of either:
+            // * The first normal field
+            // * The first unimplemented field
+            // * The first non-field
+            // * The end of the list
+            for (InsertNewMembersHere = 0; InsertNewMembersHere < Members.Count; InsertNewMembersHere++)
+            {
+                TranslatedDeclaration member = Members[InsertNewMembersHere];
+
+                if (member is TranslatedNormalField)
+                { break; }
+                else if (member is TranslatedUnimplementedField)
+                { break; }
+                else if (!(member is TranslatedField))
+                { break; }
+            }
+
             // Process any other nested cursors which aren't fields or methods
             foreach (Cursor cursor in Record.CursorChildren)
             {
@@ -175,28 +193,25 @@ namespace ClangSharpTest2020
         {
             bool foundCorrespondingField = false;
 
-            int newInsertNewMembersHere = 0;
+            int fieldIndex = 0;
             foreach (TranslatedDeclaration member in Members)
             {
                 if (member is TranslatedField field)
                 {
-                    // If we already have our corresponding field, we've found the InsertNewMembersHere index (which is the field following the one we are processing) so stop searching
-                    if (foundCorrespondingField)
-                    { break; }
-
                     // Check if we've found the corresponding field
-                    // (Note we keep iterating through members to update InsertNewMembersHere until we find the subsequent field.)
                     if (field is TranslatedNormalField normalField && normalField.Field == fieldDeclaration)
-                    { foundCorrespondingField = true; }
+                    {
+                        foundCorrespondingField = true;
+                        break;
+                    }
                 }
 
-                // Keep track of the new index for insertion
-                newInsertNewMembersHere++;
+                fieldIndex++;
             }
 
-            // If we found the corresponding field, update our insertion point
+            // If we found the corresponding field, update our insertion point to be right after this field
             if (foundCorrespondingField)
-            { InsertNewMembersHere = newInsertNewMembersHere; }
+            { InsertNewMembersHere = fieldIndex + 1; }
             // Otherwise we complain about the unexpected field (keeping the old insertion point.)
             else
             { File.Diagnostic(Severity.Warning, fieldDeclaration, "Field does not exist in the record's layout."); }
