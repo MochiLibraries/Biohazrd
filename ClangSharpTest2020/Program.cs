@@ -149,7 +149,10 @@ namespace ClangSharpTest2020
 
             const string outputDirectory = "Output";
             if (Directory.Exists(outputDirectory))
-            { Directory.Delete(outputDirectory, recursive: true); }
+            {
+                foreach (string file in Directory.EnumerateFiles(outputDirectory))
+                { File.Delete(file); }
+            }
 
             using WorkingDirectoryScope _ = new WorkingDirectoryScope(outputDirectory);
             using TranslatedLibrary library = new TranslatedLibrary(clangCommandLineArgs);
