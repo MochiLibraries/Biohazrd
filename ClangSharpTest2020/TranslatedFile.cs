@@ -148,7 +148,7 @@ namespace ClangSharpTest2020
 
             // Write out a static class containing all of the loose declarations
             writer.EnsureSeparation();
-            writer.WriteLine($"public static partial class {LooseDeclarationsTypeName}");
+            writer.WriteLine($"public static unsafe partial class {LooseDeclarationsTypeName}");
             using (writer.Block())
             {
                 foreach (TranslatedDeclaration declaration in LooseDeclarations)
