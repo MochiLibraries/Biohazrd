@@ -258,6 +258,8 @@ namespace ClangSharpTest2020
             //TODO: Documentation comment
             writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size = {Size})]");
             // Records are translated as ref structs to prevent storing them on the managed heap.
+            // If we decide to support normal structs later on, the following uses of Unsafe become invalid:
+            // * TranslatedNormalField.TranslateConstantArrayField
             writer.WriteLine($"public unsafe ref partial struct {SanitizeIdentifier(TranslatedName)}");
             using (writer.Block())
             {

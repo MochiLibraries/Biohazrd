@@ -61,7 +61,8 @@ namespace ClangSharpTest2020
                                 if (context == TypeTranslationContext.ForReturn)
                                 { Diagnostic(Severity.Error, associatedCursor, "Cannot translate constant-sized array return type."); }
                                 else if (context == TypeTranslationContext.ForField)
-                                { Diagnostic(Severity.Warning, associatedCursor, "Constant-sized arrays are not fully supported. Only first element was translated."); }
+                                // Don't reduce this type any further, these need special translation.
+                                { return; }
                                 else if (context == TypeTranslationContext.ForParameter)
                                 { Diagnostic(Severity.Warning, associatedCursor, "The size of the array for this parameter won't be translated."); }
                                 break;
@@ -90,6 +91,9 @@ namespace ClangSharpTest2020
                 }
             }
         }
+
+        internal void ReduceType(ClangType type, Cursor associatedCursor, TypeTranslationContext context, out ClangType reducedType, out int levelsOfIndirection)
+            => ReduceType(type, associatedCursor.Handle, context, out reducedType, out levelsOfIndirection);
 
         internal void WriteType(CodeWriter writer, ClangType type, CXCursor associatedCursor, TypeTranslationContext context)
         {
