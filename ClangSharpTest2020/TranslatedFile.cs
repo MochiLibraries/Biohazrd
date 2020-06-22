@@ -363,18 +363,21 @@ namespace ClangSharpTest2020
             }
 
             // Ignore unimportant (to us) attributes on declarations
-            if (cursor is Decl decl)
+            if (cursor is Attr attribute)
             {
-                foreach (Attr attribute in decl.Attrs)
+                switch (attribute.Kind)
                 {
-                    switch (attribute.Kind)
-                    {
-                        case CX_AttrKind.CX_AttrKind_DLLExport:
-                        case CX_AttrKind.CX_AttrKind_DLLImport:
-                            Ignore(attribute);
-                            break;
-                    }
+                    case CX_AttrKind.CX_AttrKind_DLLExport:
+                    case CX_AttrKind.CX_AttrKind_DLLImport:
+                    case CX_AttrKind.CX_AttrKind_Aligned:
+                        Ignore(attribute);
+                        break;
+                    default:
+                        Diagnostic(Severity.Warning, attribute, $"Attribute of unrecognized kind: {attribute.Kind}");
+                        break;
                 }
+
+                return;
             }
 
             // Namespace using directives do not impact the output
