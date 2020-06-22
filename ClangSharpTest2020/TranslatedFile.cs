@@ -24,6 +24,8 @@ namespace ClangSharpTest2020
         private readonly List<TranslatedDeclaration> LooseDeclarations = new List<TranslatedDeclaration>();
         public bool IsEmptyTranslation => IndependentDeclarations.Count == 0 && LooseDeclarations.Count == 0;
 
+        private readonly Dictionary<Decl, TranslatedDeclaration> DeclarationLookup = new Dictionary<Decl, TranslatedDeclaration>();
+
         public string FilePath { get; }
         private readonly TranslationUnit TranslationUnit;
 
@@ -138,6 +140,39 @@ namespace ClangSharpTest2020
             { removed = LooseDeclarations.Remove(declaration); }
 
             Debug.Assert(removed);
+        }
+
+        internal void AddDeclarationAssociation(Decl declaration, TranslatedDeclaration translatedDeclaration)
+        {
+            if (DeclarationLookup.TryGetValue(declaration, out TranslatedDeclaration otherDeclaration))
+            {
+                Diagnostic
+                (
+                    Severity.Error,
+                    declaration,
+                    $"More than one translation corresponds to {declaration.CursorKindDetailed()} '{declaration.Spelling}' (Newest: {translatedDeclaration.GetType().Name}, Other: {otherDeclaration.GetType().Name})"
+                );
+                return;
+            }
+
+            DeclarationLookup.Add(declaration, translatedDeclaration);
+        }
+
+        internal void RemoveDeclarationAssociation(Decl declaration, TranslatedDeclaration translatedDeclaration)
+        {
+            if (DeclarationLookup.TryGetValue(declaration, out TranslatedDeclaration otherDeclaration) && !ReferenceEquals(otherDeclaration, translatedDeclaration))
+            {
+                Diagnostic
+                (
+                    Severity.Error,
+                    declaration,
+                    $"Tried to remove association between {declaration.CursorKindDetailed()} '{declaration.Spelling}' and a {translatedDeclaration.GetType().Name}, but it's associated with a (different) {otherDeclaration.GetType().Name}"
+                );
+                return;
+            }
+
+            bool removed = DeclarationLookup.Remove(declaration, out otherDeclaration);
+            Debug.Assert(removed && ReferenceEquals(translatedDeclaration, otherDeclaration));
         }
 
         private void TranslateLooseDeclarations(CodeWriter writer)
@@ -562,10 +597,10 @@ namespace ClangSharpTest2020
                 }
             } while (keepGoing);
 
-            // Determine the type name
+            // Determine the type name for built-in types
             //TODO: Limit to what C# allows when context is ForEnumUnderlyingType
             //TODO: Support function pointers (CXType_FunctionProto)
-            (string typeName, int cSharpTypeSize) = type.Kind switch
+            (string typeName, long cSharpTypeSize) = type.Kind switch
             {
                 CXType_Void => ("void", 0),
                 CXType_Bool => ("bool", sizeof(bool)),
@@ -597,15 +632,51 @@ namespace ClangSharpTest2020
                 CXType_Float => ("float", sizeof(float)),
                 CXType_Double => ("double", sizeof(double)),
 
-                // Records and enums
-                //TODO: Deal with namespaces and such
-                //TODO: This needs to deal with types which we've renamed when translated. (We avoid renaming, but it's necessary for anonymous types.)
-                CXType_Record => (CodeWriter.SanitizeIdentifier(((RecordType)type).Decl.Name), 0),
-                CXType_Enum => (CodeWriter.SanitizeIdentifier(((EnumType)type).Decl.Name), 4), //TODO: Deal with other-sized enums.
-
                 // If we got this far, we don't know how to translate this type
                 _ => (null, 0)
             };
+
+            // Handle records and enums
+            //TODO: Deal with namespaces and such
+            if (type.Kind == CXType_Record || type.Kind == CXType_Enum)
+            {
+                Debug.Assert(typeName is null, "The type name should not be available at this point.");
+                TagType tagType = (TagType)type;
+
+                // Try to get the translated declaration for the type
+                if (DeclarationLookup.TryGetValue(tagType.Decl, out TranslatedDeclaration declaration))
+                {
+                    typeName = CodeWriter.SanitizeIdentifier(declaration.TranslatedName);
+
+                    if (declaration is TranslatedRecord record)
+                    { cSharpTypeSize = record.Size; }
+                    else if (declaration is TranslatedEnum translatedEnum)
+                    {
+                        cSharpTypeSize = 0; //TODO: TranslatedEnum should track/expose this, but it doesn't.
+
+                        // If the enum is translated as loose constants, we translate the underlying integer type instead
+                        if (translatedEnum.WillTranslateAsLooseConstants)
+                        {
+                            WriteType(writer, translatedEnum.EnumDeclaration.IntegerType, associatedCursor, context);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        Debug.Assert(false, "It's expected that we have either a record or an enum.");
+                        cSharpTypeSize = 0;
+                    }
+                }
+                // Otherwise default to translating the name literally
+                else
+                {
+                    //TODO: We want this case to be rare and/or non-existent.
+                    // We need to be smarter about how we translate entire libraries for that to happen though since
+                    // right now these types are typically records outside of the file we're directly processing.
+                    typeName = CodeWriter.SanitizeIdentifier(tagType.Decl.Name);
+                    cSharpTypeSize = 0;
+                }
+            }
 
             // If the size of the C# type is known, we try to sanity-check it
             // If the check fails, we erase the type name and let the substitute logic run below

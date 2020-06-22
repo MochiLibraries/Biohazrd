@@ -31,14 +31,6 @@ namespace ClangSharpTest2020
 
         public override void Translate(CodeWriter writer)
         {
-            //TODO: Anonymous types
-            bool isAnonymousType = false;
-            if (FieldType is RecordType anonymousRecordCheck && String.IsNullOrEmpty(anonymousRecordCheck.Decl.Name))
-            { isAnonymousType = true; }
-            if (FieldType is EnumType anonymousEnumCheck && String.IsNullOrEmpty(anonymousEnumCheck.Decl.Name))
-            { isAnonymousType = true; }
-            using var __ = writer.DisableScope(isAnonymousType, File, Context, "Unimplemented translation: Field of anonyomous type.");
-
             //TODO: Bitfields
             using var _bitfields = writer.DisableScope(IsBitField, File, Context, "Unimplemented translation: Bitfields.");
 

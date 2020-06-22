@@ -26,7 +26,7 @@ namespace ClangSharpTest2020
         }
 
         internal TranslatedVTableField(TranslatedRecord record, TranslatedBaseField baseField)
-            : base(record, 0, record.Record.Handle, "AliasedVirtualMethodPointer", fieldType: null)
+            : base(record, declaration: null, 0, record.Record.Handle, "AliasedVirtualMethodPointer", fieldType: null)
         {
             // This constructor should only be used when the record does not have its own VTable field
             if (Record.Members.Any(m => m is TranslatedVTable && m != this))

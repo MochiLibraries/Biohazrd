@@ -6,7 +6,7 @@ namespace ClangSharpTest2020
 {
     public sealed class TranslatedEnum : TranslatedDeclaration
     {
-        private readonly EnumDecl EnumDeclaration;
+        internal EnumDecl EnumDeclaration { get; }
         private readonly List<EnumConstant> Values = new List<EnumConstant>();
 
         public override string TranslatedName { get; }
@@ -17,7 +17,7 @@ namespace ClangSharpTest2020
         public override bool CanBeRoot => !WillTranslateAsLooseConstants;
         // Anonyomous enums which are not enum class will be translated as loose constants instead of a normal enum type.
         //TODO: Don't do this when the anonyomous enum is used to type a field. Instead we should get our name from that field. (IE: Name ourselves <FieldName>Enum)
-        private bool WillTranslateAsLooseConstants => WasAnonymous && !EnumDeclaration.IsClass;
+        public bool WillTranslateAsLooseConstants => WasAnonymous && !EnumDeclaration.IsClass;
 
         private struct EnumConstant
         {
@@ -74,6 +74,7 @@ namespace ClangSharpTest2020
             : base(container)
         {
             EnumDeclaration = enumDeclaration;
+            Declaration = EnumDeclaration;
             File.Consume(EnumDeclaration);
 
             TranslatedName = EnumDeclaration.Name;

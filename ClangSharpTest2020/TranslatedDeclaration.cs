@@ -1,4 +1,6 @@
-﻿namespace ClangSharpTest2020
+﻿using ClangSharp;
+
+namespace ClangSharpTest2020
 {
     public abstract class TranslatedDeclaration
     {
@@ -13,11 +15,47 @@
                 if (ReferenceEquals(_parent, value))
                 { return; }
 
+                bool needToSyncDeclarationAssociation = _declaration is object && !ReferenceEquals(File, value?.File);
+
                 if (_parent is object)
-                { _parent.RemoveDeclaration(this); }
+                {
+                    _parent.RemoveDeclaration(this);
+
+                    // Remove our association from the old file
+                    if (needToSyncDeclarationAssociation)
+                    { File?.RemoveDeclarationAssociation(Declaration, this); }
+                }
 
                 _parent = value;
                 _parent?.AddDeclaration(this);
+
+                // Add our association to the old file
+                if (needToSyncDeclarationAssociation)
+                { File?.AddDeclarationAssociation(Declaration, this); }
+            }
+        }
+
+        private Decl _declaration;
+        internal Decl Declaration
+        {
+            get => _declaration;
+            private protected set
+            {
+                if (ReferenceEquals(_declaration, value))
+                { return; }
+
+                if (File is null)
+                { return; }
+
+                // Remove old association
+                if (_declaration is object)
+                { File.RemoveDeclarationAssociation(_declaration, this); }
+
+                // Add new association
+                _declaration = value;
+
+                if (_declaration is object)
+                { File.AddDeclarationAssociation(_declaration, this); }
             }
         }
 

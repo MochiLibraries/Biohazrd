@@ -30,6 +30,7 @@ namespace ClangSharpTest2020
             : base(container)
         {
             Function = function;
+            Declaration = Function;
 
             // Determine the calling convention of the function
             // https://github.com/llvm/llvm-project/blob/91801a7c34d08931498304d93fd718aeeff2cbc7/clang/include/clang/Basic/Specifiers.h#L269-L289

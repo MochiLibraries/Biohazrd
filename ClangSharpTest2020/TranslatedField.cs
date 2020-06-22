@@ -1,4 +1,5 @@
-﻿using ClangSharp.Interop;
+﻿using ClangSharp;
+using ClangSharp.Interop;
 using System;
 using ClangType = ClangSharp.Type;
 
@@ -19,10 +20,11 @@ namespace ClangSharpTest2020
 
         /// <summary>Constructs a field for a synthesized field.</summary>
         /// <param name="fieldType">The type for the field. Can be null if <see cref="TranslateType(CodeWriter)"/> is overridden.</param>
-        private protected TranslatedField(TranslatedRecord record, long offset, CXCursor context, string translatedName, ClangType fieldType)
+        private protected TranslatedField(TranslatedRecord record, Decl declaration, long offset, CXCursor context, string translatedName, ClangType fieldType)
             : base(record)
         {
             Record = record;
+            Declaration = declaration;
             Offset = offset;
             Context = context;
             TranslatedName = translatedName;
@@ -33,6 +35,7 @@ namespace ClangSharpTest2020
             : base(record)
         {
             Record = record;
+            Declaration = field->Kind == PathogenRecordFieldKind.Normal ? (Decl)File.FindCursor(field->FieldDeclaration) : null;
             Offset = field->Offset;
             Context = field->Kind == PathogenRecordFieldKind.Normal ? field->FieldDeclaration : Record.Record.Handle;
             TranslatedName = field->Name.ToString();

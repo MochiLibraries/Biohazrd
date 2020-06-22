@@ -76,6 +76,7 @@ namespace ClangSharpTest2020
             { throw new ArgumentException("Only defining records can be translated!"); }
 
             Record = record;
+            Declaration = Record;
             Members = _Members.AsReadOnly();
 
             TranslatedName = Record.Name;
