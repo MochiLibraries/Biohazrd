@@ -32,38 +32,12 @@ namespace ClangSharpTest2020
             Function = function;
             Declaration = Function;
 
-            // Determine the calling convention of the function
-            // https://github.com/llvm/llvm-project/blob/91801a7c34d08931498304d93fd718aeeff2cbc7/clang/include/clang/Basic/Specifiers.h#L269-L289
-            // https://clang.llvm.org/docs/AttributeReference.html#calling-conventions
-            // We generally expect this to always be cdecl on x64. (Clang supports some special calling conventions on x64, but C# doesn't support them.)
+            string errorMessage;
             CXCallingConv clangCallingConvention = Function.GetCallingConvention();
+            CallingConvention = clangCallingConvention.GetCSharpCallingConvention(out errorMessage);
 
-            switch (clangCallingConvention)
-            {
-                case CXCallingConv.CXCallingConv_C:
-                    CallingConvention = CallingConvention.Cdecl;
-                    break;
-                case CXCallingConv.CXCallingConv_X86StdCall:
-                    CallingConvention = CallingConvention.StdCall;
-                    break;
-                case CXCallingConv.CXCallingConv_X86FastCall:
-                    CallingConvention = CallingConvention.FastCall;
-                    break;
-                case CXCallingConv.CXCallingConv_X86ThisCall:
-                    CallingConvention = CallingConvention.ThisCall;
-                    break;
-                case CXCallingConv.CXCallingConv_Win64:
-                    CallingConvention = CallingConvention.Winapi;
-                    break;
-                case CXCallingConv.CXCallingConv_Invalid:
-                    CallingConvention = default;
-                    File.Diagnostic(Severity.Error, function, "Could not determine function's calling convention.");
-                    break;
-                default:
-                    CallingConvention = default;
-                    File.Diagnostic(Severity.Error, function, $"Function uses unsupported calling convention '{clangCallingConvention}'.");
-                    break;
-            }
+            if (errorMessage is object)
+            { File.Diagnostic(Severity.Error, Function, errorMessage); }
         }
 
         private void WriteReturnType(CodeWriter writer)

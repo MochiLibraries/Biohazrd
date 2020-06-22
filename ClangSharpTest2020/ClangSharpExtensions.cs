@@ -3,6 +3,7 @@ using ClangSharp.Interop;
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using ClangType = ClangSharp.Type;
 using Type = System.Type;
 
@@ -145,6 +146,34 @@ namespace ClangSharpTest2020
             { return functionType.CallConv; }
             else
             { throw new NotSupportedException($"The function has an unexpected value for `{nameof(function.Type)}`."); }
+        }
+
+        public static CallingConvention GetCSharpCallingConvention(this CXCallingConv clangCallingConvention, out string errorMessage)
+        {
+            errorMessage = null;
+
+            // https://github.com/llvm/llvm-project/blob/91801a7c34d08931498304d93fd718aeeff2cbc7/clang/include/clang/Basic/Specifiers.h#L269-L289
+            // https://clang.llvm.org/docs/AttributeReference.html#calling-conventions
+            // We generally expect this to always be cdecl on x64. (Clang supports some special calling conventions on x64, but C# doesn't support them.)
+            switch (clangCallingConvention)
+            {
+                case CXCallingConv.CXCallingConv_C:
+                    return CallingConvention.Cdecl;
+                case CXCallingConv.CXCallingConv_X86StdCall:
+                    return CallingConvention.StdCall;
+                case CXCallingConv.CXCallingConv_X86FastCall:
+                    return CallingConvention.FastCall;
+                case CXCallingConv.CXCallingConv_X86ThisCall:
+                    return CallingConvention.ThisCall;
+                case CXCallingConv.CXCallingConv_Win64:
+                    return CallingConvention.Winapi;
+                case CXCallingConv.CXCallingConv_Invalid:
+                    errorMessage = "Could not determine function's calling convention.";
+                    return default;
+                default:
+                    errorMessage = $"Function uses unsupported calling convention '{clangCallingConvention}'.";
+                    return default;
+            }
         }
     }
 }

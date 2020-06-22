@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using static ClangSharp.Interop.CXTypeKind;
 using ClangType = ClangSharp.Type;
 
@@ -600,6 +601,14 @@ namespace ClangSharpTest2020
                 }
             } while (keepGoing);
 
+            // Handle function pointers
+            if (type.Kind == CXTypeKind.CXType_FunctionProto)
+            {
+                FunctionProtoType functionType = (FunctionProtoType)type;
+                WriteFunctionType(writer, functionType, associatedCursor, context);
+                return;
+            }
+
             // Determine the type name for built-in types
             //TODO: Limit to what C# allows when context is ForEnumUnderlyingType
             //TODO: Support function pointers (CXType_FunctionProto)
@@ -758,6 +767,33 @@ namespace ClangSharpTest2020
 
         internal void WriteType(CodeWriter writer, ClangType type, Cursor associatedCursor, TypeTranslationContext context)
             => WriteType(writer, type, associatedCursor.Handle, context);
+
+        private void WriteFunctionType(CodeWriter writer, FunctionProtoType functionType, CXCursor associatedCursor, TypeTranslationContext context)
+        {
+            // Get the calling convention
+            string errorMessage;
+            CallingConvention callingConvention = functionType.CallConv.GetCSharpCallingConvention(out errorMessage);
+
+            if (errorMessage is object)
+            {
+                Diagnostic(Severity.Warning, associatedCursor, $"Error while translating function pointer type: {errorMessage}");
+                writer.Write("void*");
+                return;
+            }
+
+            // Write out the type
+            writer.Write($"delegate* {callingConvention.ToString().ToLowerInvariant()}<");
+
+            foreach (ClangType parameterType in functionType.ParamTypes)
+            {
+                WriteType(writer, parameterType, associatedCursor, TypeTranslationContext.ForParameter);
+                writer.Write(", ");
+            }
+
+            WriteType(writer, functionType.ReturnType, associatedCursor, TypeTranslationContext.ForReturn);
+
+            writer.Write('>');
+        }
 
         internal string GetNameForUnnamed(string category)
             // Names of declarations at the file level should be library-unique, so it names unnamed things.
