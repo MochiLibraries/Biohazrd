@@ -146,6 +146,8 @@ namespace ClangSharpTest2020
 
         private void TranslateTrampoline(CodeWriter writer)
         {
+            writer.EnsureSeparation();
+
             // Build vTable access
             // (We do this now so we can obsolete the method if we can't get it.)
             string vTableAccess = null;
@@ -176,12 +178,11 @@ namespace ClangSharpTest2020
             if (vTableAccessFailure is object)
             {
                 writer.Using("System");
-                writer.Write($"[Obsolete(\"Method not translated: {SanitizeStringLiteral(vTableAccessFailure)}\", error: true)]");
+                writer.WriteLine($"[Obsolete(\"Method not translated: {SanitizeStringLiteral(vTableAccessFailure)}\", error: true)]");
                 File.Diagnostic(Severity.Warning, Function, $"Can't translate virtual method: {vTableAccessFailure}");
             }
 
             // Translate the method signature
-            writer.EnsureSeparation();
             writer.Write($"{TranslatedAccessibility} unsafe ");
             WriteReturnType(writer);
             writer.Write($" {SanitizeIdentifier(TranslatedName)}(");
