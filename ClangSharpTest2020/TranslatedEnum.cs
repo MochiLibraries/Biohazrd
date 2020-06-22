@@ -38,7 +38,8 @@ namespace ClangSharpTest2020
 
                 if (integerLiteral is null)
                 {
-                    HasExplicitValue = false;
+                    // We still might have an explicit value even if the previous check failed since it only looks for basic integer values.
+                    HasExplicitValue = declaration.CursorChildren.Count > 0;
                     IsHexValue = false;
                 }
                 else
@@ -132,6 +133,7 @@ namespace ClangSharpTest2020
                     bool writeOutValue = false;
 
                     // If the constant has an explicit value in C++, we'll put one in the translation too.
+                    //TODO: It'd be nice if we wrote out the expression that created the value into a (doc?) comment. (It's nice for combined enum flags.)
                     if (value.HasExplicitValue)
                     { writeOutValue = true; }
                     // If the value isn't what we expect, write it out explicitly and warn since we don't expect this to happen.
