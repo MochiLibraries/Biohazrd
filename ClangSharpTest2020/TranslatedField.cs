@@ -17,6 +17,18 @@ namespace ClangSharpTest2020
         protected ClangType FieldType { get; }
         protected CXCursor Context { get; }
 
+        /// <summary>Constructs a field for a synthesized field.</summary>
+        /// <param name="fieldType">The type for the field. Can be null if <see cref="TranslateType(CodeWriter)"/> is overridden.</param>
+        private protected TranslatedField(TranslatedRecord record, long offset, CXCursor context, string translatedName, ClangType fieldType)
+            : base(record)
+        {
+            Record = record;
+            Offset = offset;
+            Context = context;
+            TranslatedName = translatedName;
+            FieldType = fieldType;
+        }
+
         private protected unsafe TranslatedField(TranslatedRecord record, PathogenRecordField* field)
             : base(record)
         {

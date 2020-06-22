@@ -153,6 +153,7 @@ namespace ClangSharpTest2020
 
                 // Add fields from layout
                 vTableField = null;
+                TranslatedBaseField baseFieldAt0 = null;
                 for (PathogenRecordField* field = layout->FirstField; field != null; field = field->NextField)
                 {
                     TranslatedField newField = TranslatedField.Create(this, field);
@@ -164,17 +165,29 @@ namespace ClangSharpTest2020
                         else
                         { File.Diagnostic(Severity.Warning, Record, $"Unimplemented translation: Record has more than one vTable pointer. (First at {vTableField.Offset}, another at {newField.Offset}.)"); }
                     }
+
+                    if (newField is TranslatedBaseField newBaseField && newBaseField.Offset == 0)
+                    {
+                        Debug.Assert(baseFieldAt0 is null, "It shouldn't be possible for more than one base field to be at offset 0.");
+                        baseFieldAt0 = newBaseField;
+                    }
                 }
 
                 // Add vTable type
                 if (layout->FirstVTable != null)
                 {
-                    //TODO: Support vTable pointer in base class
+                    // Synthesize a vTable field 
                     if (vTableField is null)
                     {
-                        File.Diagnostic(Severity.Warning, Record, "Unimplemented translation: Record has vTable but no vTable pointer.");
-                        vTable = null;
+                        if (baseFieldAt0 is null)
+                        { File.Diagnostic(Severity.Warning, Record, "Unimplemented translation: Record has vTable but no vTable pointer nor base at offset 0."); }
+                        else
+                        { vTableField = new TranslatedVTableField(this, baseFieldAt0); }
                     }
+
+                    // If we don't have a vTable field and we couldn't synthesize a vTable field, we can't have a vTable
+                    if (vTableField is null)
+                    { vTable = null; }
                     else
                     { vTable = new TranslatedVTable(vTableField, layout->FirstVTable); }
 
