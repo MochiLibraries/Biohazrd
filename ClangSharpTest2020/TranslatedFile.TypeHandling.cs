@@ -20,28 +20,27 @@ namespace ClangSharpTest2020
             return TranslationUnit.GetOrCreate(typeHandle);
         }
 
-        internal void WriteType(CodeWriter writer, ClangType type, CXCursor associatedCursor, TypeTranslationContext context)
+        internal void ReduceType(ClangType type, CXCursor associatedCursor, TypeTranslationContext context, out ClangType reducedType, out int levelsOfIndirection)
         {
-            int levelsOfIndirection = 0;
-            ClangType unreducedType = type;
+            reducedType = type;
+            levelsOfIndirection = 0;
 
             // Walk the type up until we find the type we actually want to print
             // This also figures out how many levels of indirection the type has
-            bool keepGoing = true;
-            do
+            while (true)
             {
-                switch (type)
+                switch (reducedType)
                 {
                     // Elaborated types are namespace-qualified types like physx::PxU32 instead of just PxU32.
                     case ElaboratedType elaboratedType:
-                        type = elaboratedType.NamedType;
+                        reducedType = elaboratedType.NamedType;
                         break;
                     // For now, we discard typedefs and translate the type they alias
                     case TypedefType typedefType:
-                        type = typedefType.CanonicalType;
+                        reducedType = typedefType.CanonicalType;
                         break;
                     case PointerType pointerType:
-                        type = pointerType.PointeeType;
+                        reducedType = pointerType.PointeeType;
                         levelsOfIndirection++;
                         break;
                     case ReferenceType referenceType:
@@ -51,7 +50,7 @@ namespace ClangSharpTest2020
                         { Diagnostic(Severity.Warning, associatedCursor, "Found RValue reference type. This type may not be translated correctly (due to lack of real-world samples.)"); }
 
                         // References are translated as pointers
-                        type = referenceType.PointeeType;
+                        reducedType = referenceType.PointeeType;
                         levelsOfIndirection++;
                         break;
                     case ArrayType arrayType:
@@ -75,7 +74,7 @@ namespace ClangSharpTest2020
                                 { Diagnostic(Severity.Error, associatedCursor, "Incomplete array types are only supported as parameters."); }
                                 break;
                             default:
-                                Diagnostic(Severity.Error, associatedCursor, $"Don't know how to translate array type {type.GetType().Name} ({type.Kind})");
+                                Diagnostic(Severity.Error, associatedCursor, $"Don't know how to translate array type {reducedType.GetType().Name} ({reducedType.Kind})");
                                 break;
                         }
 
@@ -83,15 +82,29 @@ namespace ClangSharpTest2020
                         if (context != TypeTranslationContext.ForField)
                         { levelsOfIndirection++; }
 
-                        type = arrayType.ElementType;
+                        reducedType = arrayType.ElementType;
                         break;
                     default:
                         // If we got this far, we either encountered a type we can't deal with or we hit a type we can translate.
-                        keepGoing = false;
-                        break;
+                        return;
                 }
-            } while (keepGoing);
+            }
+        }
 
+        internal void WriteType(CodeWriter writer, ClangType type, CXCursor associatedCursor, TypeTranslationContext context)
+        {
+            ClangType reducedType;
+            int levelsOfIndirection;
+            ReduceType(type, associatedCursor, context, out reducedType, out levelsOfIndirection);
+
+            WriteReducedType(writer, reducedType, levelsOfIndirection, type, associatedCursor, context);
+        }
+
+        internal void WriteType(CodeWriter writer, ClangType type, Cursor associatedCursor, TypeTranslationContext context)
+            => WriteType(writer, type, associatedCursor.Handle, context);
+
+        internal void WriteReducedType(CodeWriter writer, ClangType type, int levelsOfIndirection, ClangType unreducedType, CXCursor associatedCursor, TypeTranslationContext context)
+        {
             // Handle function pointers
             if (type.Kind == CXTypeKind.CXType_FunctionProto)
             {
@@ -256,8 +269,8 @@ namespace ClangSharpTest2020
             { writer.Write('*'); }
         }
 
-        internal void WriteType(CodeWriter writer, ClangType type, Cursor associatedCursor, TypeTranslationContext context)
-            => WriteType(writer, type, associatedCursor.Handle, context);
+        internal void WriteReducedType(CodeWriter writer, ClangType type, int levelsOfIndirection, ClangType unreducedType, Cursor associatedCursor, TypeTranslationContext context)
+            => WriteReducedType(writer, type, levelsOfIndirection, unreducedType, associatedCursor.Handle, context);
 
         private void WriteFunctionType(CodeWriter writer, FunctionProtoType functionType, CXCursor associatedCursor, TypeTranslationContext context)
         {
