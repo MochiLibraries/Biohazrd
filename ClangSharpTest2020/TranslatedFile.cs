@@ -467,7 +467,12 @@ namespace ClangSharpTest2020
             }
 
             // Handle static fields and globals
-            //TODO
+            //TODO: Constants need special treatment here.
+            if (cursor is VarDecl variable)
+            {
+                new TranslatedStaticField(container, variable);
+                return;
+            }
 
             //---------------------------------------------------------------------------------------------------------
             // Failure
@@ -492,11 +497,6 @@ namespace ClangSharpTest2020
             // Typedefs will probably almost always have to be a special case.
             // Sometimes they aren't very meaningful to the translation, and sometimes they have a large impact on how the API is used.
             if (cursor is TypedefDecl)
-            { return true; }
-
-            // Can't translate global variables yet
-            //TODO: Constants deserve special treatment here.
-            if (cursor is VarDecl)
             { return true; }
 
             // If we got this far, the cursor might be supported
