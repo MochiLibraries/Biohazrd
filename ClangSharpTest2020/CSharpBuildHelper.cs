@@ -30,6 +30,7 @@ namespace ClangSharpTest2020
 
             List<MetadataReference> references = new List<MetadataReference>()
             {
+                GetSystemReference("netstandard"),
                 GetSystemReference("System"),
                 GetSystemReference("System.Runtime"),
                 GetSystemReference("System.Runtime.InteropServices"),
