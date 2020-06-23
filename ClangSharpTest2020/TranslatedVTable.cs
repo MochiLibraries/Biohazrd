@@ -113,7 +113,7 @@ namespace ClangSharpTest2020
             // Translate the vtable
             writer.EnsureSeparation();
             writer.WriteLine("[StructLayout(LayoutKind.Sequential)]");
-            writer.WriteLine($"internal unsafe struct {SanitizeIdentifier(TranslatedName)}");
+            writer.WriteLine($"{Accessibility.ToCSharpKeyword()} unsafe struct {SanitizeIdentifier(TranslatedName)}");
             using (writer.Block())
             {
                 bool foundFirstFunctionPointer = false;

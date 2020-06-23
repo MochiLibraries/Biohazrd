@@ -24,13 +24,16 @@ namespace ClangSharpTest2020
 
         public override bool CanBeRoot => false;
 
-        private string TranslatedAccessibility => !(Function is CXXMethodDecl) || Function.Access == CX_CXXAccessSpecifier.CX_CXXPublic ? "public" : "private";
-
         internal TranslatedFunction(IDeclarationContainer container, FunctionDecl function)
             : base(container)
         {
             Function = function;
             Declaration = Function;
+
+            if (!(Function is CXXMethodDecl) || Function.Access == CX_CXXAccessSpecifier.CX_CXXPublic)
+            { Accessibility = AccessModifier.Public; }
+            else
+            { Accessibility = AccessModifier.Private; }
 
             string errorMessage;
             CXCallingConv clangCallingConvention = Function.GetCallingConvention();
@@ -90,7 +93,7 @@ namespace ClangSharpTest2020
 
         private void TranslateDllImport(CodeWriter writer)
         {
-            string accessibility = TranslatedAccessibility;
+            string accessibility = Accessibility.ToCSharpKeyword();
 
             // If this function is an instance method, translate it as private since this p/invoke will be accessed via a trampoline
             if (IsInstanceMethod)
@@ -158,7 +161,7 @@ namespace ClangSharpTest2020
             }
 
             // Translate the method signature
-            writer.Write($"{TranslatedAccessibility} unsafe ");
+            writer.Write($"{Accessibility.ToCSharpKeyword()} unsafe ");
             WriteReturnType(writer);
             writer.Write($" {SanitizeIdentifier(TranslatedName)}(");
             WriteParameterList(writer, includeThis: false);

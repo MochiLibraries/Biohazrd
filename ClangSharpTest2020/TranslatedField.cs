@@ -12,8 +12,6 @@ namespace ClangSharpTest2020
 
         public long Offset { get; }
         public override string TranslatedName { get; }
-
-        protected virtual string AccessModifier => "internal";
         
         protected ClangType FieldType { get; }
         protected CXCursor Context { get; }
@@ -29,6 +27,7 @@ namespace ClangSharpTest2020
             Context = context;
             TranslatedName = translatedName;
             FieldType = fieldType;
+            Accessibility = AccessModifier.Internal;
         }
 
         private protected unsafe TranslatedField(TranslatedRecord record, PathogenRecordField* field)
@@ -40,6 +39,7 @@ namespace ClangSharpTest2020
             Context = field->Kind == PathogenRecordFieldKind.Normal ? field->FieldDeclaration : Record.Record.Handle;
             TranslatedName = field->Name.ToString();
             FieldType = File.FindType(field->Type);
+            Accessibility = AccessModifier.Internal;
 
             // Give unnamed fields a default name
             if (String.IsNullOrEmpty(TranslatedName))
@@ -57,7 +57,7 @@ namespace ClangSharpTest2020
             writer.Using("System.Runtime.InteropServices");
 
             writer.EnsureSeparation();
-            writer.Write($"[FieldOffset({Offset})] {AccessModifier} ");
+            writer.Write($"[FieldOffset({Offset})] {Accessibility.ToCSharpKeyword()} ");
             TranslateType(writer);
             writer.Write(" ");
             writer.WriteIdentifier(TranslatedName);

@@ -16,6 +16,11 @@ namespace ClangSharpTest2020
             VariableDeclaration = variableDeclaration;
             Declaration = VariableDeclaration;
 
+            if (!(VariableDeclaration.CursorParent is RecordDecl) || VariableDeclaration.Access == CX_CXXAccessSpecifier.CX_CXXPublic)
+            { Accessibility = AccessModifier.Public; }
+            else
+            { Accessibility = AccessModifier.Private; }
+
             File.Diagnostic(Severity.Note, VariableDeclaration, "The translation of static fields/globals is slightly lazy. Consider improving.");
         }
 
@@ -30,12 +35,7 @@ namespace ClangSharpTest2020
             writer.Using("System.Runtime.InteropServices"); // For NativeLibrary
             writer.EnsureSeparation();
 
-            if (!(VariableDeclaration.CursorParent is RecordDecl) || VariableDeclaration.Access == CX_CXXAccessSpecifier.CX_CXXPublic)
-            { writer.Write("public"); }
-            else
-            { writer.Write("private"); } //TODO: Protected
-
-            writer.Write(" static readonly ");
+            writer.Write($"{Accessibility.ToCSharpKeyword()} static readonly ");
             TranslateType(writer);
             writer.Write(" ");
             writer.WriteIdentifier(TranslatedName);

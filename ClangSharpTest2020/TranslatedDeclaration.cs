@@ -61,6 +61,8 @@ namespace ClangSharpTest2020
 
         public abstract string TranslatedName { get; }
 
+        public virtual AccessModifier Accessibility { get; set; } = AccessModifier.Internal;
+
         /// <summary>True if this declaration can be translated as a root declaration in C#.</summary>
         public abstract bool CanBeRoot { get; }
 

@@ -77,6 +77,7 @@ namespace ClangSharpTest2020
 
             Record = record;
             Declaration = Record;
+            Accessibility = Declaration.Access.ToTranslationAccessModifier();
             Members = _Members.AsReadOnly();
 
             TranslatedName = Record.Name;
@@ -260,7 +261,7 @@ namespace ClangSharpTest2020
             // Records are translated as ref structs to prevent storing them on the managed heap.
             // If we decide to support normal structs later on, the following uses of Unsafe become invalid:
             // * TranslatedNormalField.TranslateConstantArrayField
-            writer.WriteLine($"public unsafe ref partial struct {SanitizeIdentifier(TranslatedName)}");
+            writer.WriteLine($"{Accessibility.ToCSharpKeyword()} unsafe ref partial struct {SanitizeIdentifier(TranslatedName)}");
             using (writer.Block())
             {
                 // Write out members

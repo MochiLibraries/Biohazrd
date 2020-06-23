@@ -9,8 +9,6 @@ namespace ClangSharpTest2020
     {
         internal FieldDecl Field { get; }
 
-        protected override string AccessModifier { get; }
-
         private readonly bool IsBitField;
 
         internal unsafe TranslatedNormalField(TranslatedRecord record, PathogenRecordField* field)
@@ -22,11 +20,11 @@ namespace ClangSharpTest2020
             Field = (FieldDecl)File.FindCursor(field->FieldDeclaration);
             IsBitField = field->IsBitField != 0;
 
-            AccessModifier = Field.Access switch
+            Accessibility = Field.Access switch
             {
-                CX_CXXAccessSpecifier.CX_CXXPublic => "public",
-                CX_CXXAccessSpecifier.CX_CXXProtected => "private", //TODO: Implement protected access
-                _ => "private"
+                CX_CXXAccessSpecifier.CX_CXXPublic => AccessModifier.Public,
+                CX_CXXAccessSpecifier.CX_CXXProtected => AccessModifier.Private, //TODO: Implement protected access
+                _ => AccessModifier.Private
             };
         }
 
@@ -74,7 +72,7 @@ namespace ClangSharpTest2020
             writer.WriteIdentifier(element0Name);
             writer.WriteLine(';');
 
-            writer.Write($"{AccessModifier} ReadOnlySpan<");
+            writer.Write($"{Accessibility.ToCSharpKeyword()} ReadOnlySpan<");
             File.WriteReducedType(writer, reducedElementType, levelsOfIndirection, FieldType, Field, TypeTranslationContext.ForField);
             writer.Write("> ");
             writer.WriteIdentifier(TranslatedName);

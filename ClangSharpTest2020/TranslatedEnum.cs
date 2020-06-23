@@ -11,8 +11,6 @@ namespace ClangSharpTest2020
 
         public override string TranslatedName { get; }
 
-        private string Accessibility => "public"; //TODO
-
         private readonly bool WasAnonymous = false;
         public override bool CanBeRoot => !WillTranslateAsLooseConstants;
         // Anonyomous enums which are not enum class will be translated as loose constants instead of a normal enum type.
@@ -76,6 +74,7 @@ namespace ClangSharpTest2020
         {
             EnumDeclaration = enumDeclaration;
             Declaration = EnumDeclaration;
+            Accessibility = Declaration.Access.ToTranslationAccessModifier();
             File.Consume(EnumDeclaration);
 
             TranslatedName = EnumDeclaration.Name;
@@ -105,7 +104,7 @@ namespace ClangSharpTest2020
             }
 
             writer.EnsureSeparation();
-            writer.Write($"{Accessibility} enum ");
+            writer.Write($"{Accessibility.ToCSharpKeyword()} enum ");
             writer.WriteIdentifier(TranslatedName);
 
             // If the enum has a integer type besides int, emit the base specifier
@@ -177,7 +176,7 @@ namespace ClangSharpTest2020
 
             foreach (EnumConstant value in Values)
             {
-                writer.Write($"{Accessibility} const ");
+                writer.Write($"{Accessibility.ToCSharpKeyword()} const ");
                 File.WriteType(writer, EnumDeclaration.IntegerType, value.Declaration, TypeTranslationContext.ForEnumUnderlyingType);
                 writer.Write(" ");
                 writer.WriteIdentifier(value.Name);
