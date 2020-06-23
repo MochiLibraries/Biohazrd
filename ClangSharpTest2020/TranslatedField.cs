@@ -52,7 +52,7 @@ namespace ClangSharpTest2020
         protected virtual void TranslateType(CodeWriter writer)
             => File.WriteType(writer, FieldType, Context, TypeTranslationContext.ForField);
 
-        public override void Translate(CodeWriter writer)
+        protected override void TranslateImplementation(CodeWriter writer)
         {
             writer.Using("System.Runtime.InteropServices");
 

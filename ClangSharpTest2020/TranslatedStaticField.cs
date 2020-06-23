@@ -30,7 +30,7 @@ namespace ClangSharpTest2020
             writer.Write("*");
         }
 
-        public override void Translate(CodeWriter writer)
+        protected override void TranslateImplementation(CodeWriter writer)
         {
             writer.Using("System.Runtime.InteropServices"); // For NativeLibrary
             writer.EnsureSeparation();

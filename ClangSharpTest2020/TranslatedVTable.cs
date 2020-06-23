@@ -86,7 +86,7 @@ namespace ClangSharpTest2020
             return null;
         }
 
-        public override void Translate(CodeWriter writer)
+        protected override void TranslateImplementation(CodeWriter writer)
         {
             // Associate VTable entries with translated methods
             // We do this as late as possible to avoid weird behaviors when methods are removed (or maybe even added to) records.

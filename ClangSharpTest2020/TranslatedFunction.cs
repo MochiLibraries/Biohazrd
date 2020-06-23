@@ -212,7 +212,7 @@ namespace ClangSharpTest2020
             }
         }
 
-        public override void Translate(CodeWriter writer)
+        protected override void TranslateImplementation(CodeWriter writer)
         {
             //TODO: Implement these translations
             using var _0 = writer.DisableScope(Function is CXXConstructorDecl, File, Function, "Unimplemented translation: Constructor");

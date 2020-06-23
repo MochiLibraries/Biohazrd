@@ -28,7 +28,7 @@ namespace ClangSharpTest2020
             };
         }
 
-        public override void Translate(CodeWriter writer)
+        protected override void TranslateImplementation(CodeWriter writer)
         {
             //TODO: Bitfields
             using var _bitfields = writer.DisableScope(IsBitField, File, Context, "Unimplemented translation: Bitfields.");
@@ -48,7 +48,7 @@ namespace ClangSharpTest2020
             }
 
             // Perform the translation
-            base.Translate(writer);
+            base.TranslateImplementation(writer);
         }
 
         private void TranslateConstantArrayField(CodeWriter writer, ConstantArrayType constantArrayType)

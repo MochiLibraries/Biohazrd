@@ -95,7 +95,7 @@ namespace ClangSharpTest2020
             }
         }
 
-        public override void Translate(CodeWriter writer)
+        protected override void TranslateImplementation(CodeWriter writer)
         {
             if (WillTranslateAsLooseConstants)
             {

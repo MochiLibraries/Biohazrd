@@ -248,7 +248,7 @@ namespace ClangSharpTest2020
             { File.Diagnostic(Severity.Warning, fieldDeclaration, "Field does not exist in the record's layout."); }
         }
 
-        public override void Translate(CodeWriter writer)
+        protected override void TranslateImplementation(CodeWriter writer)
         {
             writer.Using("System.Runtime.InteropServices");
 

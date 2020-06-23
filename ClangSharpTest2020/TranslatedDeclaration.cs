@@ -69,7 +69,44 @@ namespace ClangSharpTest2020
         private protected TranslatedDeclaration(IDeclarationContainer parent)
             => Parent = parent;
 
-        public abstract void Translate(CodeWriter writer);
+        public void Translate(CodeWriter writer)
+        {
+            Validate();
+            TranslateImplementation(writer);
+        }
+
+        protected abstract void TranslateImplementation(CodeWriter writer);
+
+        public virtual void Validate()
+        {
+            // If we're at the root, ensure we're using an access level that's valid
+            // If invalid, we force the element to be internal
+            if (Parent is TranslatedFile && !Accessibility.IsAllowedInNamespaceScope())
+            {
+                File.Diagnostic
+                (
+                    Severity.Warning,
+                    Declaration,
+                    $"{this} was set to be translated as {Accessibility.ToCSharpKeyword()}, but it will be translated into a file/namespace scope. Accessibility changed to internal."
+                );
+
+                Accessibility = AccessModifier.Internal;
+            }
+
+            // The only thing we translate right now is structs and static classes, neither of which support protected.
+            // (C# technically allows subtypes of static classes to be protected, but there's no real reason to do so.)
+            if (Accessibility == AccessModifier.Protected || Accessibility == AccessModifier.ProtectedAndInternal || Accessibility == AccessModifier.ProtectedOrInternal)
+            {
+                File.Diagnostic
+                (
+                    Severity.Warning,
+                    Declaration,
+                    $"{this} was set to be translated as {Accessibility.ToCSharpKeyword()}, but protected isn't supported in any translation context."
+                );
+
+                Accessibility = AccessModifier.Internal;
+            }
+        }
 
         public override string ToString()
             => TranslatedName;
