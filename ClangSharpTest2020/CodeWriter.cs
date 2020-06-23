@@ -12,7 +12,8 @@ namespace ClangSharpTest2020
         private const int IndentSize = 4;
         private int IndentLevel = 0;
         private bool OnNewLine = true;
-        private bool IsAtStartOfBlock = true;
+        private string LinePrefix = null;
+        private bool NoSeparationNeeded = true;
         private readonly StringBuilder CodeBuilder = new StringBuilder();
         private readonly SortedSet<string> UsingNamespaces = new SortedSet<string>(StringComparer.InvariantCulture);
 
@@ -35,10 +36,13 @@ namespace ClangSharpTest2020
         public IndentScope Indent()
             => new IndentScope(this);
 
+        public void NoSeparationNeededBeforeNextLine()
+            => NoSeparationNeeded = true;
+
         public IndentScope Block()
         {
             var ret = new IndentScope(this, "{", "}");
-            IsAtStartOfBlock = true;
+            NoSeparationNeededBeforeNextLine();
             return ret;
         }
 
@@ -114,7 +118,7 @@ namespace ClangSharpTest2020
                 ret = new LeftAdjustedScope(this, $"#if false // {message}", "#endif");
             }
 
-            IsAtStartOfBlock = true;
+            NoSeparationNeededBeforeNextLine();
             return ret;
         }
 
@@ -138,7 +142,7 @@ namespace ClangSharpTest2020
 
             void IDisposable.Dispose()
             {
-                if (Writer == null)
+                if (Writer is null)
                 { return; }
 
                 if (Writer.IndentLevel != ExpectedIndentLevel)
@@ -148,9 +152,41 @@ namespace ClangSharpTest2020
             }
         }
 
+        public PrefixScope Prefix(string prefix)
+            => new PrefixScope(this, prefix);
+
+        public readonly struct PrefixScope : IDisposable
+        {
+            private readonly CodeWriter Writer;
+            private readonly string MyPrefix;
+            private readonly string OldPrefix;
+
+            internal PrefixScope(CodeWriter writer, string prefix)
+            {
+                if (prefix.Contains('\r') || prefix.Contains('\n'))
+                { throw new ArgumentException("The prefix must not contain new lines!", nameof(prefix)); }
+
+                Writer = writer;
+                MyPrefix = prefix;
+                OldPrefix = Writer.LinePrefix;
+                Writer.LinePrefix = prefix;
+            }
+
+            void IDisposable.Dispose()
+            {
+                if (Writer is null)
+                { return; }
+
+                if (Writer.LinePrefix != MyPrefix)
+                { throw new InvalidOperationException("Prefix is not what it should be to close this scope!"); }
+
+                Writer.LinePrefix = OldPrefix;
+            }
+        }
+
         public override void Write(char value)
         {
-            IsAtStartOfBlock = false;
+            NoSeparationNeeded = false;
 
             // Write out indent if we are starting a new line, but only if the line isn't empty
             // (This assumes a carriage return never appears outside of a newline, which is a safe assumption for any valid files.)
@@ -160,6 +196,9 @@ namespace ClangSharpTest2020
 
                 for (int i = 0; i < IndentLevel * IndentSize; i++)
                 { Write(' '); }
+
+                if (LinePrefix is object)
+                { Write(LinePrefix); }
             }
 
             // Write out the actual content with the underlying writer
@@ -340,7 +379,7 @@ namespace ClangSharpTest2020
 
         public void EnsureSeparation()
         {
-            if (IsAtStartOfBlock)
+            if (NoSeparationNeeded)
             { return; }
 
             WriteLine();

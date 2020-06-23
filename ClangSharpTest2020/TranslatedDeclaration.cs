@@ -1,4 +1,5 @@
-﻿using ClangSharp;
+﻿//#define DUMP_DECLARATION_INFO
+using ClangSharp;
 
 namespace ClangSharpTest2020
 {
@@ -72,6 +73,22 @@ namespace ClangSharpTest2020
         public void Translate(CodeWriter writer)
         {
             Validate();
+
+#if DUMP_DECLARATION_INFO
+            // Dump Clang information
+            if (Declaration is object)
+            {
+                writer.EnsureSeparation();
+                writer.WriteLineLeftAdjusted($"#region {Declaration.CursorKindDetailed()} Dump");
+
+                using (writer.Prefix("// "))
+                { ClangSharpInfoDumper.Dump(writer, Declaration); }
+
+                writer.WriteLineLeftAdjusted("#endregion");
+                writer.NoSeparationNeededBeforeNextLine();
+            }
+#endif
+
             TranslateImplementation(writer);
         }
 
