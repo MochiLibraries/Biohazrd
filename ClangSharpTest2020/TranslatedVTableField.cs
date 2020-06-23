@@ -6,7 +6,7 @@ namespace ClangSharpTest2020
 {
     public sealed class TranslatedVTableField : TranslatedField
     {
-        public override string TranslatedName { get; } = "VirtualMethodTablePointer";
+        public override string DefaultName { get; } = "VirtualMethodTablePointer";
         public string TranslatedTypeName => "VirtualMethodTable";
 
         internal unsafe TranslatedVTableField(TranslatedRecord record, PathogenRecordField* field)
@@ -20,8 +20,8 @@ namespace ClangSharpTest2020
             // We do not support more than one VTable field
             if (Record.Members.Any(m => m is TranslatedVTableField && m != this))
             {
-                TranslatedName = Record.GetNameForUnnamed(field->Kind.ToString());
-                File.Diagnostic(Severity.Warning, Context, $"Record layout contains more than one non-virtual base field, renamed redundant base to {TranslatedName}.");
+                DefaultName = Record.GetNameForUnnamed(field->Kind.ToString());
+                File.Diagnostic(Severity.Warning, Context, $"Record layout contains more than one non-virtual base field, renamed redundant base to {DefaultName}.");
             }
         }
 

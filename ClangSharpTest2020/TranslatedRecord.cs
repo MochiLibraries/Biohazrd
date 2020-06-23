@@ -14,7 +14,7 @@ namespace ClangSharpTest2020
         private readonly List<TranslatedDeclaration> _Members = new List<TranslatedDeclaration>();
         public ReadOnlyCollection<TranslatedDeclaration> Members { get; }
 
-        public override string TranslatedName { get; }
+        public override string DefaultName { get; }
         private readonly bool WasAnonymous = false;
         public long Size { get; }
 
@@ -80,19 +80,20 @@ namespace ClangSharpTest2020
             Accessibility = Declaration.Access.ToTranslationAccessModifier();
             Members = _Members.AsReadOnly();
 
-            TranslatedName = Record.Name;
+            DefaultName = Record.Name;
 
-            if (String.IsNullOrEmpty(TranslatedName))
+            if (String.IsNullOrEmpty(DefaultName))
             {
                 WasAnonymous = true;
 
                 // Note: Do not assert Record.IsAnonymousStructOrUnion here. It is false when an anonymous union has a named field.
+                // Note: Do not emit a diagnostic here, anonymous records don't indicate an issue in C++.
                 if (Record.IsUnion)
-                { TranslatedName = Parent.GetNameForUnnamed("Union"); }
+                { DefaultName = Parent.GetNameForUnnamed("Union"); }
                 else if (Record is CXXRecordDecl cxxRecord && cxxRecord.IsClass)
-                { TranslatedName = Parent.GetNameForUnnamed("Class"); }
+                { DefaultName = Parent.GetNameForUnnamed("Class"); }
                 else
-                { TranslatedName = Parent.GetNameForUnnamed("Struct"); }
+                { DefaultName = Parent.GetNameForUnnamed("Struct"); }
             }
 
             // Process the layout
@@ -251,9 +252,6 @@ namespace ClangSharpTest2020
         protected override void TranslateImplementation(CodeWriter writer)
         {
             writer.Using("System.Runtime.InteropServices");
-
-            //TODO
-            using var _ = writer.DisableScope(String.IsNullOrEmpty(TranslatedName), File, Record, "Unimplemented translation: Anonymous record");
 
             writer.EnsureSeparation();
             //TODO: Documentation comment

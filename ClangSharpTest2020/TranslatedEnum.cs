@@ -9,7 +9,7 @@ namespace ClangSharpTest2020
         internal EnumDecl EnumDeclaration { get; }
         private readonly List<EnumConstant> Values = new List<EnumConstant>();
 
-        public override string TranslatedName { get; }
+        public override string DefaultName { get; }
 
         private readonly bool WasAnonymous = false;
         public override bool CanBeRoot => !WillTranslateAsLooseConstants;
@@ -77,11 +77,11 @@ namespace ClangSharpTest2020
             Accessibility = Declaration.Access.ToTranslationAccessModifier();
             File.Consume(EnumDeclaration);
 
-            TranslatedName = EnumDeclaration.Name;
+            DefaultName = EnumDeclaration.Name;
 
-            if (String.IsNullOrEmpty(TranslatedName))
+            if (String.IsNullOrEmpty(DefaultName))
             {
-                TranslatedName = Parent.GetNameForUnnamed("Enum");
+                DefaultName = Parent.GetNameForUnnamed("Enum");
                 WasAnonymous = true;
             }
 

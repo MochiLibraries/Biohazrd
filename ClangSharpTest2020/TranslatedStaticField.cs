@@ -7,7 +7,7 @@ namespace ClangSharpTest2020
     public sealed class TranslatedStaticField : TranslatedDeclaration
     {
         private readonly VarDecl VariableDeclaration;
-        public override string TranslatedName => VariableDeclaration.Name;
+        public override string DefaultName => VariableDeclaration.Name;
         public override bool CanBeRoot => false;
 
         internal TranslatedStaticField(IDeclarationContainer parent, VarDecl variableDeclaration)

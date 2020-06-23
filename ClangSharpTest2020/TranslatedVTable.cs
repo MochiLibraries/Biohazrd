@@ -10,7 +10,7 @@ namespace ClangSharpTest2020
         internal TranslatedVTableField VTableField { get; }
         private TranslatedRecord Record => VTableField.Record;
 
-        public override string TranslatedName => VTableField.TranslatedTypeName;
+        public override string DefaultName => VTableField.TranslatedTypeName;
         public override bool CanBeRoot => false;
 
         private struct VTableEntry

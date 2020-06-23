@@ -11,7 +11,7 @@ namespace ClangSharpTest2020
         public override bool CanBeRoot => false;
 
         public long Offset { get; }
-        public override string TranslatedName { get; }
+        public override string DefaultName { get; }
         
         protected ClangType FieldType { get; }
         protected CXCursor Context { get; }
@@ -25,7 +25,7 @@ namespace ClangSharpTest2020
             Declaration = declaration;
             Offset = offset;
             Context = context;
-            TranslatedName = translatedName;
+            DefaultName = translatedName;
             FieldType = fieldType;
             Accessibility = AccessModifier.Internal;
         }
@@ -37,15 +37,15 @@ namespace ClangSharpTest2020
             Declaration = field->Kind == PathogenRecordFieldKind.Normal ? (Decl)File.FindCursor(field->FieldDeclaration) : null;
             Offset = field->Offset;
             Context = field->Kind == PathogenRecordFieldKind.Normal ? field->FieldDeclaration : Record.Record.Handle;
-            TranslatedName = field->Name.ToString();
+            DefaultName = field->Name.ToString();
             FieldType = File.FindType(field->Type);
             Accessibility = AccessModifier.Internal;
 
             // Give unnamed fields a default name
-            if (String.IsNullOrEmpty(TranslatedName))
+            if (String.IsNullOrEmpty(DefaultName))
             {
-                TranslatedName = Record.GetNameForUnnamed(field->Kind.ToString());
-                File.Diagnostic(Severity.Warning, Context, $"Nameless field at offset {Offset} in {Record.TranslatedName} automatically renamed to {TranslatedName}");
+                DefaultName = Record.GetNameForUnnamed(field->Kind.ToString());
+                File.Diagnostic(Severity.Warning, Context, $"Nameless field at offset {Offset} in {Record} automatically renamed to {DefaultName}");
             }
         }
 

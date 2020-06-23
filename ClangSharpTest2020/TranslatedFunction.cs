@@ -17,8 +17,8 @@ namespace ClangSharpTest2020
         public bool IsInstanceMethod => Function is CXXMethodDecl method && !method.IsStatic;
         public bool IsVirtual => Function is CXXMethodDecl method && method.IsVirtual;
 
-        public override string TranslatedName => Function.Name;
-        private string DllImportName => TranslatedName;
+        public override string DefaultName => Function.Name;
+        private string DllImportName => DefaultName;
 
         private string ThisTypeSanatized => Record is null ? "void" : SanitizeIdentifier(Record.TranslatedName);
 

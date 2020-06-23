@@ -1,5 +1,6 @@
 ﻿//#define DUMP_DECLARATION_INFO
 using ClangSharp;
+using System;
 
 namespace ClangSharpTest2020
 {
@@ -60,7 +61,14 @@ namespace ClangSharpTest2020
             }
         }
 
-        public abstract string TranslatedName { get; }
+        public abstract string DefaultName { get; }
+
+        private string _TranslatedName = null;
+        public string TranslatedName
+        {
+            get => _TranslatedName ?? DefaultName;
+            set => _TranslatedName = value;
+        }
 
         public virtual AccessModifier Accessibility { get; set; } = AccessModifier.Internal;
 
@@ -123,9 +131,27 @@ namespace ClangSharpTest2020
 
                 Accessibility = AccessModifier.Internal;
             }
+
+            // If the declaration has no name, we specify a default one
+            if (String.IsNullOrEmpty(TranslatedName))
+            {
+                string category = GetType().Name;
+                const string stripPrefix = "Translated";
+
+                if (category.StartsWith(stripPrefix))
+                { category = category.Substring(stripPrefix.Length); }
+
+                string automaticName = Parent.GetNameForUnnamed(category);
+                TranslatedName = automaticName;
+
+                if (Declaration is null)
+                { File.Diagnostic(Severity.Warning, $"Nameless {GetType().Name} automatically renamed to {automaticName}."); }
+                else
+                { File.Diagnostic(Severity.Warning, Declaration, $"Nameless {Declaration.CursorKindDetailed()} at {Declaration.Location} automatically renamed to {automaticName}."); }
+            }
         }
 
         public override string ToString()
-            => TranslatedName;
+            => _TranslatedName is null ? DefaultName : $"{TranslatedName} ({DefaultName})";
     }
 }
