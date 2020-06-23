@@ -195,8 +195,8 @@ namespace ClangSharpTest2020
                         container = recordContainer.Parent;
                     }
                 }
-                // Otherwise default to translating the name literally
-                else
+                // Otherwise default to translating the name literally (as long as the declaration isn't a template specialization)
+                else if (!(tagType.Decl is ClassTemplateSpecializationDecl))
                 {
                     //TODO: We want this case to be rare and/or non-existent.
                     // We need to be smarter about how we translate entire libraries for that to happen though since
