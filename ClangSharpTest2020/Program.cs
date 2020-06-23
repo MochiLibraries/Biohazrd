@@ -169,7 +169,15 @@ namespace ClangSharpTest2020
                 { return; }
             }
 
+            Console.WriteLine("==============================================================================");
+            Console.WriteLine("Performing pre-translation validation...");
+            Console.WriteLine("==============================================================================");
+            library.Validate();
+
             // Emit the translation
+            Console.WriteLine("==============================================================================");
+            Console.WriteLine("Performing translation...");
+            Console.WriteLine("==============================================================================");
             library.Translate(LibraryTranslationMode.OneFilePerInputFile);
 
             // Build csproj

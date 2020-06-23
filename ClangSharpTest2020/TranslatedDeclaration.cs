@@ -80,8 +80,6 @@ namespace ClangSharpTest2020
 
         public void Translate(CodeWriter writer)
         {
-            Validate();
-
 #if DUMP_DECLARATION_INFO
             // Dump Clang information
             if (Declaration is object)
@@ -148,6 +146,13 @@ namespace ClangSharpTest2020
                 { File.Diagnostic(Severity.Warning, $"Nameless {GetType().Name} automatically renamed to {automaticName}."); }
                 else
                 { File.Diagnostic(Severity.Warning, Declaration, $"Nameless {Declaration.CursorKindDetailed()} at {Declaration.Location} automatically renamed to {automaticName}."); }
+            }
+
+            // Validate all children
+            if (this is IDeclarationContainer container)
+            {
+                foreach (TranslatedDeclaration declaration in container)
+                { declaration.Validate(); }
             }
         }
 

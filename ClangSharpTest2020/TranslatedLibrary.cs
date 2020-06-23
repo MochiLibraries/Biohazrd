@@ -41,6 +41,12 @@ namespace ClangSharpTest2020
             return newFile;
         }
 
+        public void Validate()
+        {
+            foreach (TranslatedFile file in Files)
+            { file.Validate(); }
+        }
+
         public void Translate(LibraryTranslationMode mode)
         {
             switch (mode)

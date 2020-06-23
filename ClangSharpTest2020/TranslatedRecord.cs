@@ -69,6 +69,9 @@ namespace ClangSharpTest2020
             { InsertNewMembersHere--; }
         }
 
+        public IEnumerator<TranslatedDeclaration> GetEnumerator()
+            => _Members.GetEnumerator();
+
         internal unsafe TranslatedRecord(IDeclarationContainer container, RecordDecl record)
             : base(container)
         {

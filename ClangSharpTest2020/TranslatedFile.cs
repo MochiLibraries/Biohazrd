@@ -173,6 +173,15 @@ namespace ClangSharpTest2020
             Debug.Assert(removed && ReferenceEquals(translatedDeclaration, otherDeclaration));
         }
 
+        public IEnumerator<TranslatedDeclaration> GetEnumerator()
+            => IndependentDeclarations.Union(LooseDeclarations).GetEnumerator();
+
+        public void Validate()
+        {
+            foreach (TranslatedDeclaration declaration in this)
+            { declaration.Validate(); }
+        }
+
         private void TranslateLooseDeclarations(CodeWriter writer)
         {
             // If there are no loose declarations, there's nothing to do.
