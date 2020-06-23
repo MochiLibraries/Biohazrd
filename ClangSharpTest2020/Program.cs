@@ -187,6 +187,8 @@ namespace ClangSharpTest2020
 
                 foreach (Diagnostic diagnostic in build.Compile())
                 {
+                    if (diagnostic.Severity == DiagnosticSeverity.Hidden)
+                    { continue; }
                     switch (diagnostic.Severity)
                     {
                         case DiagnosticSeverity.Warning:

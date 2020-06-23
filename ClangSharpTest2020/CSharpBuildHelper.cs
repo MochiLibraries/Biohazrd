@@ -11,7 +11,20 @@ namespace ClangSharpTest2020
     {
         private readonly List<SyntaxTree> SyntaxTrees = new List<SyntaxTree>();
         private readonly CSharpParseOptions ParseOptions = new CSharpParseOptions(LanguageVersion.Preview, DocumentationMode.None, SourceCodeKind.Regular);
-        private readonly CSharpCompilationOptions CompilationOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true, platform: Platform.X64);
+        private readonly CSharpCompilationOptions CompilationOptions = new CSharpCompilationOptions
+        (
+            OutputKind.DynamicallyLinkedLibrary,
+            allowUnsafe: true,
+            platform: Platform.X64,
+            specificDiagnosticOptions: new Dictionary<string, ReportDiagnostic>()
+            {
+                // These diagnostics are a bit annoying to avoid when generating code, so we avoid them for now.
+                // Besides not anticipating the need to avoid them soon enough, they are a little annoying because you only need a `new` on the first members that conflicts.
+                // Putting the `new` keyword on every conflicting member causes CS0109
+                { "CS0114", ReportDiagnostic.Hidden }, // '...' hides inherited member '...'. To make the current member override that implementation, add the override keyword. Otherwise add the new keyword.
+                { "CS0108", ReportDiagnostic.Hidden }, // '...' hides inherited member '...'. Use the new keyword if hiding was intended.
+            }
+        );
 
         public void AddFile(string filePath)
         {
