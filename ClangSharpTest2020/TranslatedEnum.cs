@@ -51,10 +51,6 @@ namespace ClangSharpTest2020
             {
                 foreach (Cursor cursor in declaration.CursorChildren)
                 {
-                    // Consume cursors we expect to find under an EnumConstantDecl
-                    if (declaration is IntegerLiteral || declaration is CastExpr)
-                    { file.Consume(declaration); }
-
                     // If we found the integer literal, return it
                     if (cursor is IntegerLiteral integerLiteral)
                     { return integerLiteral; }
@@ -75,7 +71,6 @@ namespace ClangSharpTest2020
             EnumDeclaration = enumDeclaration;
             Declaration = EnumDeclaration;
             Accessibility = Declaration.Access.ToTranslationAccessModifier();
-            File.Consume(EnumDeclaration);
 
             DefaultName = EnumDeclaration.Name;
 

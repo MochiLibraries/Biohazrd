@@ -1,6 +1,4 @@
-﻿// This is disabled right now because it complains about anonyomous types and nested types used immediately for a field's type.
-//#define WARN_WHEN_CURSORS_ARE_PROCESSED_MULTIPLE_TIMES
-using ClangSharp;
+﻿using ClangSharp;
 using ClangSharp.Interop;
 using System;
 using System.Collections.Generic;
@@ -29,9 +27,6 @@ namespace ClangSharpTest2020
 
         private readonly List<TranslationDiagnostic> _Diagnostics = new List<TranslationDiagnostic>();
         public ReadOnlyCollection<TranslationDiagnostic> Diagnostics { get; }
-
-        private readonly HashSet<Cursor> AllCursors = new HashSet<Cursor>();
-        private readonly HashSet<Cursor> UnprocessedCursors;
 
         /// <summary>The name of the type which will contain the declarations from <see cref="LooseDeclarations"/>.</summary>
         private string LooseDeclarationsTypeName { get; }
@@ -86,10 +81,6 @@ namespace ClangSharpTest2020
             // Create the translation unit
             TranslationUnit = TranslationUnit.GetOrCreate(unitHandle);
 
-            // Enumerate all cursors and mark them as unprocessed (used for sanity checks)
-            EnumerateAllCursorsRecursive(TranslationUnit.TranslationUnitDecl);
-            UnprocessedCursors = new HashSet<Cursor>(AllCursors);
-
             // Process the translation unit
             ProcessCursor(this, TranslationUnit.TranslationUnitDecl);
 
@@ -109,12 +100,6 @@ namespace ClangSharpTest2020
             // Note if this file didn't translate into anything
             if (IsEmptyTranslation)
             { Diagnostic(Severity.Note, TranslationUnit.TranslationUnitDecl, "File did not result in anything to be translated."); }
-
-            // Note unprocessed cursors
-#if false //TODO: Re-enable this
-            foreach (Cursor cursor in UnprocessedCursors)
-            { Diagnostic(Severity.Warning, cursor, $"{cursor.CursorKindDetailed()} was not processed."); }
-#endif
         }
 
         void IDeclarationContainer.AddDeclaration(TranslatedDeclaration declaration)
@@ -253,75 +238,6 @@ namespace ClangSharpTest2020
         internal void Diagnostic(Severity severity, CXCursor associatedCursor, string message)
             => Diagnostic(severity, new SourceLocation(associatedCursor.Extent.Start), message);
 
-        private void EnumerateAllCursorsRecursive(Cursor cursor)
-        {
-            // Only add cursors from the main file to AllCursors
-            //PERF: Skip this if the parent node wasn't from the main file
-            if (cursor.IsFromMainFile())
-            { AllCursors.Add(cursor); }
-
-            // Add all children, recursively
-            foreach (Cursor child in cursor.CursorChildren)
-            { EnumerateAllCursorsRecursive(child); }
-        }
-
-        internal void Consume(Cursor cursor)
-        {
-            if (cursor.TranslationUnit != TranslationUnit)
-            { throw new InvalidOperationException("The file should not attempt to consume cursors from other translation units."); }
-
-            if (!UnprocessedCursors.Remove(cursor))
-            {
-                if (AllCursors.Contains(cursor))
-                {
-#if WARN_WHEN_CURSORS_ARE_PROCESSED_MULTIPLE_TIMES
-                    // Only warn if the cursor is a declaration, a statement, or an untyped cursor.
-                    // This idea here is to only warn for cursors which affect behavior or API.
-                    // This avoids issues like when a type reference is shared between multiple cursors, such as `int i, j;`-type variable declarations.
-                    if (cursor is Decl || cursor is Stmt || cursor.GetType() == typeof(Cursor))
-                    { Diagnostic(Severity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor was processed more than once."); }
-#endif
-                }
-                else if (cursor.TranslationUnit != TranslationUnit)
-                { Diagnostic(Severity.Error, cursor, $"{cursor.CursorKindDetailed()} cursor was processed from an external translation unit."); }
-                else
-                {
-                    // We shouldn't process cursors that come from outside of our file.
-                    // Note: This depends on Cursor.IsFromMainFile using pathogen_Location_isFromMainFile because otherwise macro expansions will trigger this.
-                    // Note: We can't only rely on the cursor having been in the AllCursors list because there are some oddball cursors that are part of the translation unit but aren't part of the AST.
-                    //       One example of such a cursor is the one on the word `union` in an anonymous, fieldless union in a struct.
-                    if (!cursor.IsFromMainFile())
-                    { Diagnostic(Severity.Warning, cursor, $"{cursor.CursorKindDetailed()} cursor from outside our fle was processed."); }
-
-                    // If we consume a cursor which we didn't consider to be a part of this file, we add it to our list of
-                    // all cursors to ensure our double cursor consumption above works for them.
-                    AllCursors.Add(cursor);
-                }
-            }
-        }
-
-        internal void Consume(CXCursor cursorHandle)
-            => Consume(FindCursor(cursorHandle));
-
-        internal void ConsumeRecursive(Cursor cursor)
-        {
-            Consume(cursor);
-
-            foreach (Cursor child in cursor.CursorChildren)
-            { ConsumeRecursive(child); }
-        }
-
-        internal void ConsumeRecursive(CXCursor cursorHandle)
-            => ConsumeRecursive(FindCursor(cursorHandle));
-
-        /// <remarks>Same as consume, but indicates that the cursor has no affect on the translation output.</remarks>
-        internal void Ignore(Cursor cursor)
-            => Consume(cursor);
-
-        /// <remarks>Same as consume, but indicates that the cursor has no affect on the translation output.</remarks>
-        internal void IgnoreRecursive(Cursor cursor)
-            => ConsumeRecursive(cursor);
-
         internal void ProcessCursorChildren(IDeclarationContainer container, Cursor cursor)
         {
             foreach (Cursor child in cursor.CursorChildren)
@@ -342,7 +258,6 @@ namespace ClangSharpTest2020
             if (IsExplicitlyUnsupported(cursor))
             {
                 Diagnostic(Severity.Ignored, cursor, $"{cursor.CursorKindDetailed()} aren't supported yet.");
-                IgnoreRecursive(cursor);
                 return;
             }
 
@@ -356,7 +271,6 @@ namespace ClangSharpTest2020
             if (cursor is TranslationUnitDecl)
             {
                 Debug.Assert(container is TranslatedFile, "Translation units should only occur within the root declaration container.");
-                Ignore(cursor);
                 ProcessCursorChildren(container, cursor);
                 return;
             }
@@ -364,7 +278,6 @@ namespace ClangSharpTest2020
             // Ignore linkage specification (IE: `exern "C"`)
             if (cursor.Handle.DeclKind == CX_DeclKind.CX_DeclKind_LinkageSpec)
             {
-                Ignore(cursor);
                 ProcessCursorChildren(container, cursor);
                 return;
             }
@@ -377,7 +290,6 @@ namespace ClangSharpTest2020
                     case CX_AttrKind.CX_AttrKind_DLLExport:
                     case CX_AttrKind.CX_AttrKind_DLLImport:
                     case CX_AttrKind.CX_AttrKind_Aligned:
-                        Ignore(attribute);
                         break;
                     default:
                         Diagnostic(Severity.Warning, attribute, $"Attribute of unrecognized kind: {attribute.Kind}");
@@ -389,39 +301,24 @@ namespace ClangSharpTest2020
 
             // Namespace using directives do not impact the output
             if (cursor is UsingDirectiveDecl)
-            {
-                IgnoreRecursive(cursor);
-                return;
-            }
+            { return; }
 
             // Namespace aliases do not impact the output
             if (cursor is NamespaceAliasDecl)
-            {
-                IgnoreRecursive(cursor);
-                return;
-            }
+            { return; }
 
             // Friend declarations don't really mean anything to C#
             // They're usually implementation details anyway.
             if (cursor is FriendDecl)
-            {
-                IgnoreRecursive(cursor);
-                return;
-            }
+            { return; }
 
             // Base specifiers are discovered by the record layout
             if (cursor is CXXBaseSpecifier)
-            {
-                Ignore(cursor);
-                return;
-            }
+            { return; }
 
             // Access specifiers are discovered by inspecting the member directly
             if (cursor is AccessSpecDecl)
-            {
-                Ignore(cursor);
-                return;
-            }
+            { return; }
 
             //---------------------------------------------------------------------------------------------------------
             // Cursors which only affect the context
@@ -431,7 +328,6 @@ namespace ClangSharpTest2020
             if (cursor is NamespaceDecl namespaceDeclaration)
             {
                 Debug.Assert(container is TranslatedFile, "Namespaces should only occur within the root declaration container.");
-                Consume(cursor);
                 ProcessCursorChildren(container, cursor);
                 return;
             }
@@ -445,10 +341,7 @@ namespace ClangSharpTest2020
             {
                 // Ignore forward-declarations
                 if (!record.Handle.IsDefinition)
-                {
-                    Ignore(cursor);
-                    return;
-                }
+                { return; }
 
                 new TranslatedRecord(container, record);
                 return;

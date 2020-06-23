@@ -269,9 +269,6 @@ namespace ClangSharpTest2020
                 foreach (TranslatedDeclaration member in _Members)
                 { member.Translate(writer); }
             }
-
-            // Mark the record as consumed
-            File.Consume(Record);
         }
 
         private UnnamedNamer UnnamedNamer = null;
