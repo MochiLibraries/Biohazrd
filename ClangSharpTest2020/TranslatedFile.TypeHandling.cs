@@ -186,6 +186,14 @@ namespace ClangSharpTest2020
                         Debug.Assert(false, "It's expected that we have either a record or an enum.");
                         cSharpTypeSize = 0;
                     }
+
+                    // Fully qualify the name
+                    IDeclarationContainer container = declaration.Parent;
+                    while (container is TranslatedRecord recordContainer)
+                    {
+                        typeName = $"{CodeWriter.SanitizeIdentifier(recordContainer.TranslatedName)}.{typeName}";
+                        container = recordContainer.Parent;
+                    }
                 }
                 // Otherwise default to translating the name literally
                 else
