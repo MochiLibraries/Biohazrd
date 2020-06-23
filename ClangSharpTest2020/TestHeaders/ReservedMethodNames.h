@@ -11,9 +11,11 @@ public:
 class ReservedMethodNames2
 {
 public:
+	int Equals;
 	int GetHashCode;
 	int GetType;
 	int MemberwiseClone;
+	int ReferenceEquals;
 	int ToString;
 };
 
