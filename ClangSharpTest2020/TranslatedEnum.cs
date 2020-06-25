@@ -17,6 +17,7 @@ namespace ClangSharpTest2020
         //TODO: Don't do this when the anonyomous enum is used to type a field. Instead we should get our name from that field. (IE: Name ourselves <FieldName>Enum)
         public bool WillTranslateAsLooseConstants => WasAnonymous && !EnumDeclaration.IsClass;
 
+        public bool IsFlags { get; set; } = false;
         public UnderlyingEnumType UnderlyingType { get; set; }
 
         private struct EnumConstant
@@ -102,6 +103,13 @@ namespace ClangSharpTest2020
             }
 
             writer.EnsureSeparation();
+
+            if (IsFlags)
+            {
+                writer.Using("System");
+                writer.Write("[Flags]");
+            }
+
             writer.Write($"{Accessibility.ToCSharpKeyword()} enum ");
             writer.WriteIdentifier(TranslatedName);
 
