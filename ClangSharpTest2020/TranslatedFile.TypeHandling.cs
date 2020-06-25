@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using static ClangSharp.Interop.CXTypeKind;
@@ -109,6 +110,9 @@ namespace ClangSharpTest2020
 
         internal void WriteReducedType(CodeWriter writer, ClangType type, int levelsOfIndirection, ClangType unreducedType, CXCursor associatedCursor, TypeTranslationContext context)
         {
+            if (context == TypeTranslationContext.ForEnumUnderlyingType)
+            { throw new ArgumentException("An enum's underlying type should not be written using this method, use UnderlyingEnumType instead.", nameof(context)); }
+
             // Handle function pointers
             if (type.Kind == CXTypeKind.CXType_FunctionProto)
             {
@@ -118,8 +122,6 @@ namespace ClangSharpTest2020
             }
 
             // Determine the type name for built-in types
-            //TODO: Limit to what C# allows when context is ForEnumUnderlyingType
-            //TODO: Support function pointers (CXType_FunctionProto)
             (string typeName, long cSharpTypeSize) = type.Kind switch
             {
                 CXType_Void => ("void", 0),

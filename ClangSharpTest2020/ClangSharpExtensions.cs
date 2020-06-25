@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using static ClangSharp.Interop.CXTypeKind;
 using ClangType = ClangSharp.Type;
 using Type = System.Type;
 
@@ -184,5 +185,72 @@ namespace ClangSharpTest2020
                 CX_CXXAccessSpecifier.CX_CXXPrivate => AccessModifier.Private,
                 _ => AccessModifier.Public // The access specifier is invalid for declarations which aren't members of a record, so they are translated as public.
             };
+
+        public static UnderlyingEnumType GetUnderlyingEnumType(this EnumDecl enumDeclaration, TranslatedFile file)
+        {
+            // Reduce the integer type in case it's a typedef
+            ClangType reducedIntegerType;
+            int levelsOfIndirection;
+            file.ReduceType(enumDeclaration.IntegerType, enumDeclaration, TypeTranslationContext.ForEnumUnderlyingType, out reducedIntegerType, out levelsOfIndirection);
+
+            if (levelsOfIndirection > 0)
+            { file.Diagnostic(Severity.Error, enumDeclaration, "It is not expected to be possible for an enum's underlying type to be a pointer."); }
+
+            // Determine the underlying type from the kind
+            UnderlyingEnumType? ret = reducedIntegerType.Kind switch
+            {
+                // Character types in C++ are considered to be integral and can be used
+                // Both Char_S and Char_U are translated as unsigned to remain consistent with WriteReducedType.
+                CXType_Char_S => UnderlyingEnumType.Byte,
+                CXType_Char_U => UnderlyingEnumType.Byte,
+                CXType_WChar => UnderlyingEnumType.UShort,
+                CXType_Char16 => UnderlyingEnumType.UShort,
+
+                // Unsigned integer types
+                CXType_UChar => UnderlyingEnumType.Byte, // unsigned char / uint8_t
+                CXType_UShort => UnderlyingEnumType.UShort,
+                CXType_UInt => UnderlyingEnumType.UInt,
+                CXType_ULong => UnderlyingEnumType.UInt,
+                CXType_ULongLong => UnderlyingEnumType.ULong,
+
+                // Signed integer types
+                CXType_SChar => UnderlyingEnumType.SByte, // signed char / int8_t
+                CXType_Short => UnderlyingEnumType.Short,
+                CXType_Int => UnderlyingEnumType.Int,
+                CXType_Long => UnderlyingEnumType.Int,
+                CXType_LongLong => UnderlyingEnumType.Long,
+
+                // Failed
+                _ => null
+            };
+
+            if (ret.HasValue)
+            { return ret.Value; }
+
+            // Determine the underlying type from the size
+            ret = reducedIntegerType.Handle.SizeOf switch
+            {
+                sizeof(byte) => UnderlyingEnumType.Byte,
+                sizeof(short) => UnderlyingEnumType.Short,
+                sizeof(int) => UnderlyingEnumType.Int,
+                sizeof(long) => UnderlyingEnumType.Long,
+                _ => null
+            };
+
+            string messagePrefix = $"Could not determine best underlying enum type to use for '{reducedIntegerType}'";
+
+            if (!ReferenceEquals(enumDeclaration.IntegerType, reducedIntegerType))
+            { messagePrefix += $" (reduced from '{enumDeclaration.IntegerType}')"; }
+
+            if (ret.HasValue)
+            {
+                file.Diagnostic(Severity.Note, enumDeclaration, $"{messagePrefix}, using same-size fallback {ret.Value.ToCSharpKeyword()}.");
+                return ret.Value;
+            }
+
+            // If we got this far, we can't determine a suitable underlying type
+            file.Diagnostic(Severity.Error, enumDeclaration, $"{messagePrefix}.");
+            return UnderlyingEnumType.Int;
+        }
     }
 }

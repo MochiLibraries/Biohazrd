@@ -17,6 +17,8 @@ namespace ClangSharpTest2020
         //TODO: Don't do this when the anonyomous enum is used to type a field. Instead we should get our name from that field. (IE: Name ourselves <FieldName>Enum)
         public bool WillTranslateAsLooseConstants => WasAnonymous && !EnumDeclaration.IsClass;
 
+        public UnderlyingEnumType UnderlyingType { get; set; }
+
         private struct EnumConstant
         {
             public readonly EnumConstantDecl Declaration;
@@ -71,6 +73,7 @@ namespace ClangSharpTest2020
             EnumDeclaration = enumDeclaration;
             Declaration = EnumDeclaration;
             Accessibility = Declaration.Access.ToTranslationAccessModifier();
+            UnderlyingType = EnumDeclaration.GetUnderlyingEnumType(File);
 
             DefaultName = EnumDeclaration.Name;
 
@@ -103,11 +106,8 @@ namespace ClangSharpTest2020
             writer.WriteIdentifier(TranslatedName);
 
             // If the enum has a integer type besides int, emit the base specifier
-            if (EnumDeclaration.IntegerType.Kind != ClangSharp.Interop.CXTypeKind.CXType_Int)
-            {
-                writer.Write(" : ");
-                File.WriteType(writer, EnumDeclaration.IntegerType, EnumDeclaration, TypeTranslationContext.ForEnumUnderlyingType);
-            }
+            if (UnderlyingType != UnderlyingEnumType.Int)
+            { writer.Write($" : {UnderlyingType.ToCSharpKeyword()}"); }
 
             writer.WriteLine();
 
@@ -171,9 +171,7 @@ namespace ClangSharpTest2020
 
             foreach (EnumConstant value in Values)
             {
-                writer.Write($"{Accessibility.ToCSharpKeyword()} const ");
-                File.WriteType(writer, EnumDeclaration.IntegerType, value.Declaration, TypeTranslationContext.ForEnumUnderlyingType);
-                writer.Write(" ");
+                writer.Write($"{Accessibility.ToCSharpKeyword()} const {UnderlyingType.ToCSharpKeyword()} ");
                 writer.WriteIdentifier(value.Name);
                 writer.Write(" = ");
 
