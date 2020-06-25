@@ -37,6 +37,13 @@ namespace ClangSharpTest2020
             }
         }
 
+        public void ReplaceWith(TranslatedDeclaration other)
+        {
+            other.Parent = Parent;
+            //TODO: Reorder members of Parent so that other is in the same spot was us.
+            Parent = null;
+        }
+
         private Decl _declaration;
         internal Decl Declaration
         {

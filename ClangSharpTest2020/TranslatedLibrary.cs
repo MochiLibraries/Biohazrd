@@ -47,6 +47,38 @@ namespace ClangSharpTest2020
             { file.Validate(); }
         }
 
+        public void ApplyTransformation(TranslationTransformation.FactoryDelegate transformationFactory)
+        {
+            List<TranslationTransformation> transformations = new List<TranslationTransformation>();
+            EnumerateTransformations(transformationFactory, transformations);
+
+            foreach (TranslationTransformation transformation in transformations)
+            {
+                Console.WriteLine($"Applying transformation: {transformation}");
+                transformation.Apply();
+            }
+        }
+
+        private void EnumerateTransformations(TranslationTransformation.FactoryDelegate transformationFactory, List<TranslationTransformation> transformations)
+        {
+            foreach (TranslatedFile file in Files)
+            { EnumerateTransformations(transformationFactory, transformations, file); }
+        }
+
+        private void EnumerateTransformations(TranslationTransformation.FactoryDelegate transformationFactory, List<TranslationTransformation> transformations, IDeclarationContainer container)
+        {
+            foreach (TranslatedDeclaration declaration in container)
+            {
+                TranslationTransformation transformation = transformationFactory(declaration);
+
+                if (transformation != null)
+                { transformations.Add(transformation); }
+
+                if (declaration is IDeclarationContainer nestedContainer)
+                { EnumerateTransformations(transformationFactory, transformations, nestedContainer); }
+            }
+        }
+
         public void Translate(LibraryTranslationMode mode)
         {
             switch (mode)

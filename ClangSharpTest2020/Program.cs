@@ -177,6 +177,11 @@ namespace ClangSharpTest2020
             Console.WriteLine("==============================================================================");
             library.Validate();
 
+            Console.WriteLine("==============================================================================");
+            Console.WriteLine("Performing library-specific transformations...");
+            Console.WriteLine("==============================================================================");
+            library.ApplyTransformation(PhysXEnumTransformation.Factory);
+
             // Emit the translation
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing translation...");
