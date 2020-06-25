@@ -4,7 +4,7 @@
 //#define DUMP_RECORD_LAYOUTS
 #define DUMP_EXTRA_FUNCTION_INFO
 #define DUMP_FIELD_TYPE_INFO
-#define USE_FILE_ALLOWLIST
+//#define USE_FILE_ALLOWLIST
 #define BUILD_GENERATED_CODE
 using ClangSharp;
 using ClangSharp.Interop;
@@ -65,6 +65,7 @@ namespace ClangSharpTest2020
                 "-Wno-pragma-once-outside-header", // Since we are parsing headers, this warning will be irrelevant.
                 "-Wno-return-type-c-linkage", // PxGetFoundation triggers this. There's code to suppress it, but it's only triggered when building for Clang on Linux.
                 //"--target=x86_64-pc-linux",
+                //"--target=i386-pc-win32",
             };
 
             foreach (string includeDir in includeDirs)
@@ -76,10 +77,14 @@ namespace ClangSharpTest2020
 
             List<string> files = new List<string>();
 
-#if false
-            files.Add(@"C:\Development\Playground\CppWrappingInlineMaybe\CppWrappingInlineMaybe\Source.h");
+#if true
             files.AddRange(Directory.EnumerateFiles("TestHeaders", "*.h", SearchOption.AllDirectories));
+            const string outputDirectory = "Output";
+#elif true
+            files.Add(@"C:\Scratch\imgui\imgui.h");
+            const string outputDirectory = "OutputImgui";
 #else
+            const string outputDirectory = "OutputPhysX";
             HashSet<string> allowedFiles = new HashSet<string>()
             {
                 "PxFoundation.h"
@@ -88,10 +93,6 @@ namespace ClangSharpTest2020
             HashSet<string> skippedFiles = new HashSet<string>()
             {
                 "PxUnixIntrinsics.h", // Not relevant on Windows
-
-                // The following files include anonyomus unions, which causes TranslatedFile.FindCursor to barf.
-                "PxMidphaseDesc.h",
-                "PxSolverDefs.h",
             };
 
             foreach (string includeDir in includeDirs)
@@ -147,7 +148,6 @@ namespace ClangSharpTest2020
                 { files[i] = Path.GetFullPath(files[i]); }
             }
 
-            const string outputDirectory = "Output";
             if (Directory.Exists(outputDirectory))
             {
                 foreach (string file in Directory.EnumerateFiles(outputDirectory))
@@ -164,6 +164,9 @@ namespace ClangSharpTest2020
                 Console.WriteLine("==============================================================================");
 
                 library.AddFile(file);
+
+                // Copy the file to the output directory for easier inspection.
+                File.Copy(file, Path.GetFileName(file));
 
                 if (library.HasErrors)
                 { return; }
@@ -197,6 +200,7 @@ namespace ClangSharpTest2020
                 {
                     if (diagnostic.Severity == DiagnosticSeverity.Hidden)
                     { continue; }
+
                     switch (diagnostic.Severity)
                     {
                         case DiagnosticSeverity.Warning:
@@ -342,6 +346,9 @@ namespace ClangSharpTest2020
 
                 if (cursor is IntegerLiteral integerLiteral)
                 { extra += $" Value=`{integerLiteral.Value}`"; }
+
+                if (cursor is Attr attribute)
+                { extra += $" AttributeKind={attribute.Kind}"; }
             }
 
             WriteLine($"{cursor.CursorKindDetailed(" ")} - {cursor.Spelling}{extra}");
@@ -463,7 +470,7 @@ namespace ClangSharpTest2020
                 {
                     Indent();
                     WriteLine("----------------------------------------------------------------------------");
-                    WriteLine($"Return type: {function.ReturnType.Kind} '{function.ReturnType}'");
+                    WriteTypeInfo("Return type: ", function.ReturnType, function);
 
                     int i = 0;
                     foreach (ParmVarDecl parameter in function.Parameters)
@@ -662,6 +669,11 @@ namespace ClangSharpTest2020
         {
             string typeInfo = $"{type.GetType().Name} ({type.Kind}) '{type}' SizeOf={type.Handle.SizeOf}";
 
+            if (type is TagType tagType)
+            {
+                typeInfo += $" DeclKind={tagType.Decl.CursorKindDetailed()} Decl=`{tagType.Decl}`";
+            }
+
             // Write to main output
             WriteLine($"{prefix}{typeInfo}");
 
@@ -742,7 +754,7 @@ namespace ClangSharpTest2020
                 _ => null
             };
 
-            if (nextType == null)
+            if (nextType is null)
             { return; }
 
             // Guard against infinite recursion
