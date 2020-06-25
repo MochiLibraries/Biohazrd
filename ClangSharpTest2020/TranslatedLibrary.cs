@@ -14,7 +14,7 @@ namespace ClangSharpTest2020
         private readonly string[] ClangCommandLineArgumentsArray;
 
         internal ReadOnlySpan<string> ClangCommandLineArguments => ClangCommandLineArgumentsArray;
-        
+
         /// <summary>True if any file in this library contains diagnostics with <see cref="TranslationDiagnostic.IsError"/> of true.</summary>
         public bool HasErrors { get; private set; }
 

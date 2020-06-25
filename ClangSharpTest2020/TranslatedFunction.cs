@@ -107,7 +107,7 @@ namespace ClangSharpTest2020
             //TODO: Put the DLL name in a constant or something.
             // (In the case of PhysX, some functions come from different libraries, so we need a way to categorize these somehow...)
             writer.Write($"[DllImport(\"TODO.dll\", CallingConvention = CallingConvention.{CallingConvention}");
-            
+
             string mangledName = Function.Handle.Mangling.ToString();
             if (mangledName != DllImportName)
             { writer.Write($", EntryPoint = \"{mangledName}\""); }

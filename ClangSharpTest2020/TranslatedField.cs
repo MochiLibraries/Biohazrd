@@ -12,7 +12,7 @@ namespace ClangSharpTest2020
 
         public long Offset { get; }
         public override string DefaultName { get; }
-        
+
         protected ClangType FieldType { get; }
         protected CXCursor Context { get; }
 

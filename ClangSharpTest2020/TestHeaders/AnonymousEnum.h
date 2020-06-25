@@ -1,26 +1,26 @@
 class AnonymousEnum
 {
 public:
-	enum
-	{
-		Red,
-		Green,
-		Blue
-	};
+    enum
+    {
+        Red,
+        Green,
+        Blue
+    };
 
-	int FieldAfterEnum;
+    int FieldAfterEnum;
 };
 
 
 class AnonymousEnumWithField
 {
 public:
-	enum
-	{
-		Red,
-		Green,
-		Blue
-	} AnonymousEnumField;
+    enum
+    {
+        Red,
+        Green,
+        Blue
+    } AnonymousEnumField;
 
-	int FieldAfterEnum;
+    int FieldAfterEnum;
 };

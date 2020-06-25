@@ -39,7 +39,7 @@ namespace ClangSharpTest2020
             // For a null source location, just return an empty string
             if (IsNull)
             { return String.Empty; }
-            
+
             string sourceFile = SourceFile ?? "<null>";
 
             if (Line == 0)
@@ -47,7 +47,7 @@ namespace ClangSharpTest2020
 
             if (Column != 0 && includeColumn)
             { return $"{sourceFile}:{Line}:{Column}"; }
-            
+
             return $"{sourceFile}:{Line}";
         }
 

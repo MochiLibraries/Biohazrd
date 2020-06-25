@@ -32,14 +32,14 @@
 
 struct PxActorType
 {
-	enum Enum
-	{
-		eRIGID_STATIC,
-		eRIGID_DYNAMIC,
-		eARTICULATION_LINK,
-		eACTOR_COUNT,
-		eACTOR_FORCE_DWORD = 0x7fffffff
-	};
+    enum Enum
+    {
+        eRIGID_STATIC,
+        eRIGID_DYNAMIC,
+        eARTICULATION_LINK,
+        eACTOR_COUNT,
+        eACTOR_FORCE_DWORD = 0x7fffffff
+    };
 };
 
 PxActorType::Enum GetType();

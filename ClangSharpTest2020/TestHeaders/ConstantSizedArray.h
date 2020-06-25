@@ -1,4 +1,4 @@
 struct ConstantSizedArray
 {
-	int OneHundredElements[100];
+    int OneHundredElements[100];
 };

@@ -418,7 +418,7 @@ namespace ClangSharpTest2020
 
             if (failCount > 0)
             { Console.Error.WriteLine($"WARNING: Tried to write {filePath} more than once!"); }
-            
+
             using var writer = new StreamWriter(filePath, false, Encoding.UTF8);
             WriteOut(writer);
         }

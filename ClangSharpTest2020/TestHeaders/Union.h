@@ -1,6 +1,6 @@
 union Union
 {
-	int Integer;
-	float Float;
-	double Double;
+    int Integer;
+    float Float;
+    double Double;
 };
