@@ -81,6 +81,9 @@ namespace ClangSharpTest2020
         /// <summary>True if this declaration can be translated as a root declaration in C#.</summary>
         public abstract bool CanBeRoot { get; }
 
+        /// <summary>True if this declaration has no actual translation.</summary>
+        public virtual bool IsDummy => false;
+
         private protected TranslatedDeclaration(IDeclarationContainer parent)
             => Parent = parent;
 

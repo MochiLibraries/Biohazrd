@@ -196,6 +196,10 @@ namespace ClangSharpTest2020
             // Translate independent declarations
             foreach (TranslatedDeclaration declaration in IndependentDeclarations)
             {
+                // Don't create files for dummy declarations
+                if (declaration.IsDummy)
+                { continue; }
+
                 using CodeWriter writer = new CodeWriter();
                 declaration.Translate(writer);
                 writer.WriteOut($"{declaration.TranslatedName}.cs");
@@ -333,7 +337,7 @@ namespace ClangSharpTest2020
             }
 
             //---------------------------------------------------------------------------------------------------------
-            // Records and loose functions
+            // Records, enums, and loose functions
             //---------------------------------------------------------------------------------------------------------
 
             // Handle records (classes, structs, and unions)
@@ -378,6 +382,15 @@ namespace ClangSharpTest2020
             }
 
             //---------------------------------------------------------------------------------------------------------
+            // Misc
+            //---------------------------------------------------------------------------------------------------------
+            if (cursor is TypedefDecl typedef)
+            {
+                new TranslatedTypedef(container, typedef);
+                return;
+            }
+
+            //---------------------------------------------------------------------------------------------------------
             // Failure
             //---------------------------------------------------------------------------------------------------------
 
@@ -394,12 +407,6 @@ namespace ClangSharpTest2020
 
             // Ignore templates
             if (cursor is TemplateDecl)
-            { return true; }
-
-            // Ignore typedefs
-            // Typedefs will probably almost always have to be a special case.
-            // Sometimes they aren't very meaningful to the translation, and sometimes they have a large impact on how the API is used.
-            if (cursor is TypedefDecl)
             { return true; }
 
             // If we got this far, the cursor might be supported
