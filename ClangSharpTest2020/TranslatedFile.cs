@@ -158,6 +158,14 @@ namespace ClangSharpTest2020
             Debug.Assert(removed && ReferenceEquals(translatedDeclaration, otherDeclaration));
         }
 
+        internal TranslatedDeclaration TryFindTranslation(Decl declaration)
+        {
+            if (DeclarationLookup.TryGetValue(declaration, out TranslatedDeclaration ret))
+            { return ret; }
+
+            return null;
+        }
+
         public IEnumerator<TranslatedDeclaration> GetEnumerator()
             => IndependentDeclarations.Union(LooseDeclarations).GetEnumerator();
 

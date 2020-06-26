@@ -36,8 +36,12 @@ namespace ClangSharpTest2020
                     case ElaboratedType elaboratedType:
                         reducedType = elaboratedType.NamedType;
                         break;
-                    // For now, we discard typedefs and translate the type they alias
+                    // If the typedef has been mapped to a translated declaration, we stop reducing immediately.
+                    // Otherwise we discard the typedef and translate as the type they alias
                     case TypedefType typedefType:
+                        if (TryFindTranslation(typedefType.Decl)?.IsDummy == false)
+                        { return; }
+
                         reducedType = typedefType.CanonicalType;
                         break;
                     case PointerType pointerType:
@@ -158,15 +162,21 @@ namespace ClangSharpTest2020
                 _ => (null, 0)
             };
 
-            // Handle records and enums
+            // Handle records, enums, and replaced typedefs
             //TODO: Deal with namespaces and such
-            if (type.Kind == CXType_Record || type.Kind == CXType_Enum)
+            if (type.Kind == CXType_Record || type.Kind == CXType_Enum || type.Kind == CXTypeKind.CXType_Typedef)
             {
                 Debug.Assert(typeName is null, "The type name should not be available at this point.");
-                TagType tagType = (TagType)type;
+
+                Decl typeDecl = type switch
+                {
+                    TagType tagType => tagType.Decl,
+                    TypedefType typedefType => typedefType.Decl,
+                    _ => throw new InvalidOperationException("The type provided by ClangSharp is malformed.") // The type should always be one of these options.
+                };
 
                 // Try to get the translated declaration for the type
-                if (DeclarationLookup.TryGetValue(tagType.Decl, out TranslatedDeclaration declaration))
+                if (DeclarationLookup.TryGetValue(typeDecl, out TranslatedDeclaration declaration))
                 {
                     typeName = CodeWriter.SanitizeIdentifier(declaration.TranslatedName);
 
@@ -198,7 +208,8 @@ namespace ClangSharpTest2020
                     }
                 }
                 // Otherwise default to translating the name literally (as long as the declaration isn't a template specialization)
-                else if (!(tagType.Decl is ClassTemplateSpecializationDecl))
+                // (Don't fall back on this when translating a typedef. IE: Only try this when the type is a TagType.)
+                else if (!(typeDecl is ClassTemplateSpecializationDecl) && type is TagType tagType)
                 {
                     //TODO: We want this case to be rare and/or non-existent.
                     // We need to be smarter about how we translate entire libraries for that to happen though since

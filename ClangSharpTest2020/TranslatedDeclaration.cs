@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using System;
+using System.Collections.Generic;
 
 namespace ClangSharpTest2020
 {
@@ -22,17 +23,33 @@ namespace ClangSharpTest2020
                 {
                     _parent.RemoveDeclaration(this);
 
-                    // Remove our association from the old file
-                    if (needToSyncDeclarationAssociation)
-                    { File?.RemoveDeclarationAssociation(Declaration, this); }
+                    // Remove our associations from the old file
+                    if (needToSyncDeclarationAssociation && File is object)
+                    {
+                        File.RemoveDeclarationAssociation(Declaration, this);
+
+                        if (SecondaryDeclarations is object)
+                        {
+                            foreach (Decl secondaryDeclaration in SecondaryDeclarations)
+                            { File.RemoveDeclarationAssociation(secondaryDeclaration, this); }
+                        }
+                    }
                 }
 
                 _parent = value;
                 _parent?.AddDeclaration(this);
 
-                // Add our association to the old file
-                if (needToSyncDeclarationAssociation)
-                { File?.AddDeclarationAssociation(Declaration, this); }
+                // Add our associations to the new file
+                if (needToSyncDeclarationAssociation && File is object)
+                {
+                    File.AddDeclarationAssociation(Declaration, this);
+
+                    if (SecondaryDeclarations is object)
+                    {
+                        foreach (Decl secondaryDeclaration in SecondaryDeclarations)
+                        { File.AddDeclarationAssociation(secondaryDeclaration, this); }
+                    }
+                }
             }
         }
 
@@ -65,6 +82,21 @@ namespace ClangSharpTest2020
                 if (_declaration is object)
                 { File.AddDeclarationAssociation(_declaration, this); }
             }
+        }
+
+        private List<Decl> SecondaryDeclarations = null;
+        public void AddSecondaryDeclaration(Decl declaration)
+        {
+            if (declaration is null)
+            { throw new ArgumentNullException(nameof(declaration)); }
+
+            if (SecondaryDeclarations is null)
+            { SecondaryDeclarations = new List<Decl>(); }
+
+            SecondaryDeclarations.Add(declaration);
+
+            if (File is object)
+            { File.AddDeclarationAssociation(declaration, this); }
         }
 
         public abstract string DefaultName { get; }

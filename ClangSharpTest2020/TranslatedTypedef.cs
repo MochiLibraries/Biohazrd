@@ -22,7 +22,14 @@ namespace ClangSharpTest2020
         protected override void TranslateImplementation(CodeWriter writer)
         {
             if (GlobalConfiguration.DumpClangDetails)
-            { writer.WriteLine($"// typedef '{Typedef.UnderlyingType}' '{this}'"); }
+            {
+                writer.Write("// ");
+
+                if (!(Parent is TranslatedFile))
+                { writer.Write($"{Accessibility.ToCSharpKeyword()} "); }
+
+                writer.WriteLine($"typedef '{Typedef.UnderlyingType}' '{this}'");
+            }
         }
     }
 }

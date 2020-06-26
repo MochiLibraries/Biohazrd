@@ -107,7 +107,7 @@ namespace ClangSharpTest2020
             if (IsFlags)
             {
                 writer.Using("System");
-                writer.Write("[Flags]");
+                writer.WriteLine("[Flags]");
             }
 
             writer.Write($"{Accessibility.ToCSharpKeyword()} enum ");

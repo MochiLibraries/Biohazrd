@@ -187,14 +187,18 @@ namespace ClangSharpTest2020
             };
 
         public static UnderlyingEnumType GetUnderlyingEnumType(this EnumDecl enumDeclaration, TranslatedFile file)
+            => enumDeclaration.IntegerType.ToUnderlyingEnumType(enumDeclaration, file);
+
+        public static UnderlyingEnumType ToUnderlyingEnumType(this ClangType type, Cursor context, TranslatedFile file)
         {
             // Reduce the integer type in case it's a typedef
             ClangType reducedIntegerType;
             int levelsOfIndirection;
-            file.ReduceType(enumDeclaration.IntegerType, enumDeclaration, TypeTranslationContext.ForEnumUnderlyingType, out reducedIntegerType, out levelsOfIndirection);
+            file.ReduceType(type, context, TypeTranslationContext.ForEnumUnderlyingType, out reducedIntegerType, out levelsOfIndirection);
 
+            // In the context of enum class, this isn't even possible
             if (levelsOfIndirection > 0)
-            { file.Diagnostic(Severity.Error, enumDeclaration, "It is not expected to be possible for an enum's underlying type to be a pointer."); }
+            { file.Diagnostic(Severity.Error, context, "An enum's underlying type cannot be a pointer."); }
 
             // Determine the underlying type from the kind
             UnderlyingEnumType? ret = reducedIntegerType.Kind switch
@@ -239,17 +243,17 @@ namespace ClangSharpTest2020
 
             string messagePrefix = $"Could not determine best underlying enum type to use for '{reducedIntegerType}'";
 
-            if (!ReferenceEquals(enumDeclaration.IntegerType, reducedIntegerType))
-            { messagePrefix += $" (reduced from '{enumDeclaration.IntegerType}')"; }
+            if (!ReferenceEquals(type, reducedIntegerType))
+            { messagePrefix += $" (reduced from '{type}')"; }
 
             if (ret.HasValue)
             {
-                file.Diagnostic(Severity.Note, enumDeclaration, $"{messagePrefix}, using same-size fallback {ret.Value.ToCSharpKeyword()}.");
+                file.Diagnostic(Severity.Note, context, $"{messagePrefix}, using same-size fallback {ret.Value.ToCSharpKeyword()}.");
                 return ret.Value;
             }
 
             // If we got this far, we can't determine a suitable underlying type
-            file.Diagnostic(Severity.Error, enumDeclaration, $"{messagePrefix}.");
+            file.Diagnostic(Severity.Error, context, $"{messagePrefix}.");
             return UnderlyingEnumType.Int;
         }
     }
