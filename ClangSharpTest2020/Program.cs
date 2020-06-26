@@ -135,7 +135,7 @@ namespace ClangSharpTest2020
                 WriteLine(file);
                 Console.WriteLine(file);
                 WriteLine("==============================================================================");
-                if (!Translate(index, file, clangCommandLineArgs))
+                if (!Dump(index, file, clangCommandLineArgs))
                 { return; }
             }
 
@@ -226,7 +226,7 @@ namespace ClangSharpTest2020
 #endif
         }
 
-        private static bool Translate(in CXIndex index, string sourceFilePath, string[] clangCommandLineArgs)
+        private static bool Dump(in CXIndex index, string sourceFilePath, string[] clangCommandLineArgs)
         {
             // These are the flags used by ClangSharp.PInvokeGenerator, so we're just gonna use them for now.
             CXTranslationUnit_Flags translationFlags =
