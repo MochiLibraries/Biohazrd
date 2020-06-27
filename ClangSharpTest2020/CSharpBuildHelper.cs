@@ -37,7 +37,7 @@ namespace ClangSharpTest2020
         public ImmutableArray<Diagnostic> Compile()
         {
             // We're using the .NET 5 preview since we're also using the pre-release compiler meant to be paired with it since we're using the unreleased C# 9 function pointers feature.
-            const string referenceAssemblyRoot = @"C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\5.0.0-preview.5.20278.1\ref\net5.0\";
+            const string referenceAssemblyRoot = @"C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\5.0.0-preview.6.20305.6\ref\net5.0\";
             static MetadataReference GetSystemReference(string assemblyFileName)
                 => MetadataReference.CreateFromFile(Path.Combine(referenceAssemblyRoot, assemblyFileName + ".dll"));
 
