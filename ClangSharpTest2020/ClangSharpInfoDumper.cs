@@ -233,9 +233,39 @@ namespace ClangSharpTest2020
             }
         }
 
+        private class FunctionDeclDumper : ReflectionDumper
+        {
+            public FunctionDeclDumper()
+                : base(typeof(FunctionDecl))
+            { }
+
+            public override IEnumerable<InfoRow> Dump(object target)
+            {
+                foreach (InfoRow row in base.Dump(target))
+                { yield return row; }
+
+                FunctionDecl targetFunction = (FunctionDecl)target;
+                PathogenOperatorOverloadInfo info = targetFunction.GetOperatorOverloadInfo();
+                bool isOperatorOverload = info.Kind != PathogenOperatorOverloadKind.None;
+                yield return new InfoRow("IsOperatorOverload", isOperatorOverload.ToString(), isOperatorOverload);
+
+                if (isOperatorOverload)
+                {
+                    yield return InfoRow.MinorHeader("Operator overload info");
+                    yield return new InfoRow(nameof(info.Kind), info.Kind);
+                    yield return new InfoRow(nameof(info.Name), info.Name);
+                    yield return new InfoRow(nameof(info.Spelling), info.Spelling);
+                    yield return new InfoRow(nameof(info.IsUnary), info.IsUnary);
+                    yield return new InfoRow(nameof(info.IsBinary), info.IsBinary);
+                    yield return new InfoRow(nameof(info.IsMemberOnly), info.IsMemberOnly);
+                }
+            }
+        }
+
         private static readonly Dictionary<Type, Dumper> Dumpers = new Dictionary<Type, Dumper>()
         {
-            { typeof(Cursor), new CursorDumper() }
+            { typeof(Cursor), new CursorDumper() },
+            { typeof(FunctionDecl), new FunctionDeclDumper() },
         };
 
         private static void EnumerateRows(List<InfoRow> rows, Type type, Type endType, object target)

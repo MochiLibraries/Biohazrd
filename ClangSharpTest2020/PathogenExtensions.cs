@@ -13,6 +13,7 @@ namespace ClangSharpTest2020
             public int PathogenRecordField;
             public int PathogenVTable;
             public int PathogenVTableEntry;
+            public int PathogenOperatorOverloadInfo;
         }
 
         [DllImport("libclang.dll", ExactSpelling = true)]
@@ -40,6 +41,9 @@ namespace ClangSharpTest2020
 
             if (sizes.PathogenVTableEntry != sizeof(PathogenVTableEntry))
             { throw new InvalidOperationException($"Cannot initialize Pathogen libclang extensions, sizeof({nameof(PathogenVTableEntry)} is wrong."); }
+
+            if (sizes.PathogenOperatorOverloadInfo != sizeof(PathogenOperatorOverloadInfo))
+            { throw new InvalidOperationException($"Cannot initialize Pathogen libclang extensions, sizeof({nameof(PathogenOperatorOverloadInfo)} is wrong."); }
         }
 
         [DllImport("libclang.dll", ExactSpelling = true)]
@@ -50,6 +54,12 @@ namespace ClangSharpTest2020
 
         [DllImport("libclang.dll", ExactSpelling = true)]
         public static extern int pathogen_Location_isFromMainFile(CXSourceLocation location);
+
+        [DllImport("libclang.dll", ExactSpelling = true)]
+        public static extern unsafe PathogenOperatorOverloadInfo* pathogen_getOperatorOverloadInfo(CXCursor cursor);
+
+        [DllImport("libclang.dll", ExactSpelling = true)]
+        public static extern ulong pathogen_getEnumConstantDeclValueZeroExtended(CXCursor cursor);
     }
 
     internal enum PathogenRecordFieldKind : int
@@ -153,5 +163,73 @@ namespace ClangSharpTest2020
         public byte IsCppRecord;
         public long NonVirtualSize;
         public long NonVirtualAlignment;
+    }
+
+    internal enum PathogenOperatorOverloadKind
+    {
+        None,
+        New,
+        Delete,
+        Array_New,
+        Array_Delete,
+        Plus,
+        Minus,
+        Star,
+        Slash,
+        Percent,
+        Caret,
+        Amp,
+        Pipe,
+        Tilde,
+        Exclaim,
+        Equal,
+        Less,
+        Greater,
+        PlusEqual,
+        MinusEqual,
+        StarEqual,
+        SlashEqual,
+        PercentEqual,
+        CaretEqual,
+        AmpEqual,
+        PipeEqual,
+        LessLess,
+        GreaterGreater,
+        LessLessEqual,
+        GreaterGreaterEqual,
+        EqualEqual,
+        ExclaimEqual,
+        LessEqual,
+        GreaterEqual,
+        Spaceship,
+        AmpAmp,
+        PipePipe,
+        PlusPlus,
+        MinusMinus,
+        Comma,
+        ArrowStar,
+        Arrow,
+        Call,
+        Subscript,
+        Conditional,
+        Coawait,
+        Invalid
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PathogenOperatorOverloadInfo
+    {
+        public readonly PathogenOperatorOverloadKind Kind;
+        private readonly IntPtr _Name;
+        private readonly IntPtr _Spelling;
+        private readonly byte _IsUnary;
+        private readonly byte _IsBinary;
+        private readonly byte _IsMemberOnly;
+
+        public string Name => Marshal.PtrToStringAnsi(_Name);
+        public string Spelling => Marshal.PtrToStringAnsi(_Spelling);
+        public bool IsUnary => _IsUnary != 0;
+        public bool IsBinary => _IsBinary != 0;
+        public bool IsMemberOnly => _IsMemberOnly != 0;
     }
 }

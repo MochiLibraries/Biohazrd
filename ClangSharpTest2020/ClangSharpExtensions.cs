@@ -3,6 +3,7 @@ using ClangSharp.Interop;
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using static ClangSharp.Interop.CXTypeKind;
 using ClangType = ClangSharp.Type;
@@ -262,6 +263,27 @@ namespace ClangSharpTest2020
             CXFile ret;
             clang.getFileLocation(sourceLocation, (void**)&ret, null, null, null);
             return ret;
+        }
+
+        public static unsafe ref PathogenOperatorOverloadInfo GetOperatorOverloadInfo(this FunctionDecl function)
+            => ref function.Handle.GetOperatorOverloadInfo();
+
+        public static unsafe ref PathogenOperatorOverloadInfo GetOperatorOverloadInfo(this CXCursor cursor)
+        {
+            if (cursor.DeclKind < CX_DeclKind.CX_DeclKind_FirstFunction || cursor.DeclKind > CX_DeclKind.CX_DeclKind_LastFunction)
+            { throw new ArgumentException("The specified cursor must be a function declaration of some kind.", nameof(cursor)); }
+
+            PathogenOperatorOverloadInfo* ret = PathogenExtensions.pathogen_getOperatorOverloadInfo(cursor);
+
+            // If null was returned there's something wrong with this function
+            if (ret == null)
+            { throw new ArgumentException("The specified declaration is not actually a function.", nameof(cursor)); }
+
+            // If the returned structure has an invalid operator overload kind, the function is an operator overload but Clang returned an unexpected value
+            if (ret->Kind == PathogenOperatorOverloadKind.Invalid)
+            { throw new NotSupportedException("The specified function is an operator overload, but Clang returned an unexpected operator overload kind."); }
+
+            return ref Unsafe.AsRef<PathogenOperatorOverloadInfo>(ret);
         }
     }
 }

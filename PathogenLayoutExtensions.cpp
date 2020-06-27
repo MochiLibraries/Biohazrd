@@ -421,32 +421,9 @@ PATHOGEN_EXPORT void pathogen_DeleteRecordLayout(PathogenRecordLayout* layout)
     delete layout;
 }
 
-struct PathogenTypeSizes
-{
-    int PathogenTypeSizes;
-    int PathogenRecordLayout;
-    int PathogenRecordField;
-    int PathogenVTable;
-    int PathogenVTableEntry;
-};
-
-//! Returns true if the sizes were populated, false if sizes->PathogenTypeSizes was invalid.
-//! sizes->PathogenTypeSizes must be set to sizeof(PathogenTypeSizes)
-PATHOGEN_EXPORT interop_bool pathogen_GetTypeSizes(PathogenTypeSizes* sizes)
-{
-    // Can't populate if the destination struct is the wrong size.
-    if (sizes->PathogenTypeSizes != sizeof(PathogenTypeSizes))
-    {
-        return false;
-    }
-
-    sizes->PathogenRecordLayout = sizeof(PathogenRecordLayout);
-    sizes->PathogenRecordField = sizeof(PathogenRecordField);
-    sizes->PathogenVTable = sizeof(PathogenVTable);
-    sizes->PathogenVTableEntry = sizeof(PathogenVTableEntry);
-    return true;
-}
-
+//-------------------------------------------------------------------------------------------------
+// Location helpers
+//-------------------------------------------------------------------------------------------------
 // This isn't related to layout, but it's gotta go somewhere!
 // If you add more things relating to locations consider adding another file.
 
@@ -463,4 +440,193 @@ PATHOGEN_EXPORT int pathogen_Location_isFromMainFile(CXSourceLocation cxLocation
 
     const SourceManager& sourceManager = *static_cast<const SourceManager*>(cxLocation.ptr_data[0]);
     return sourceManager.isInMainFile(location);
+}
+
+//-------------------------------------------------------------------------------------------------
+// Operator overload helpers
+//-------------------------------------------------------------------------------------------------
+// Also not related to layout
+
+enum class PathogenOperatorOverloadKind : int32_t
+{
+    None,
+    New,
+    Delete,
+    Array_New,
+    Array_Delete,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Percent,
+    Caret,
+    Amp,
+    Pipe,
+    Tilde,
+    Exclaim,
+    Equal,
+    Less,
+    Greater,
+    PlusEqual,
+    MinusEqual,
+    StarEqual,
+    SlashEqual,
+    PercentEqual,
+    CaretEqual,
+    AmpEqual,
+    PipeEqual,
+    LessLess,
+    GreaterGreater,
+    LessLessEqual,
+    GreaterGreaterEqual,
+    EqualEqual,
+    ExclaimEqual,
+    LessEqual,
+    GreaterEqual,
+    Spaceship,
+    AmpAmp,
+    PipePipe,
+    PlusPlus,
+    MinusMinus,
+    Comma,
+    ArrowStar,
+    Arrow,
+    Call,
+    Subscript,
+    Conditional,
+    Coawait,
+    Invalid
+};
+
+// We verify the enums match manually because we need a stable definition here to reflect on the C# side of things.
+#define verify_operator_overload_kind(PATHOGEN_KIND, CLANG_KIND) static_assert((int)(PathogenOperatorOverloadKind:: ## PATHOGEN_KIND) == (int)(CLANG_KIND), #PATHOGEN_KIND " must match " #CLANG_KIND);
+verify_operator_overload_kind(None, OO_None)
+verify_operator_overload_kind(New, OO_New)
+verify_operator_overload_kind(Delete, OO_Delete)
+verify_operator_overload_kind(Array_New, OO_Array_New)
+verify_operator_overload_kind(Array_Delete, OO_Array_Delete)
+verify_operator_overload_kind(Plus, OO_Plus)
+verify_operator_overload_kind(Minus, OO_Minus)
+verify_operator_overload_kind(Star, OO_Star)
+verify_operator_overload_kind(Slash, OO_Slash)
+verify_operator_overload_kind(Percent, OO_Percent)
+verify_operator_overload_kind(Caret, OO_Caret)
+verify_operator_overload_kind(Amp, OO_Amp)
+verify_operator_overload_kind(Pipe, OO_Pipe)
+verify_operator_overload_kind(Tilde, OO_Tilde)
+verify_operator_overload_kind(Exclaim, OO_Exclaim)
+verify_operator_overload_kind(Equal, OO_Equal)
+verify_operator_overload_kind(Less, OO_Less)
+verify_operator_overload_kind(Greater, OO_Greater)
+verify_operator_overload_kind(PlusEqual, OO_PlusEqual)
+verify_operator_overload_kind(MinusEqual, OO_MinusEqual)
+verify_operator_overload_kind(StarEqual, OO_StarEqual)
+verify_operator_overload_kind(SlashEqual, OO_SlashEqual)
+verify_operator_overload_kind(PercentEqual, OO_PercentEqual)
+verify_operator_overload_kind(CaretEqual, OO_CaretEqual)
+verify_operator_overload_kind(AmpEqual, OO_AmpEqual)
+verify_operator_overload_kind(PipeEqual, OO_PipeEqual)
+verify_operator_overload_kind(LessLess, OO_LessLess)
+verify_operator_overload_kind(GreaterGreater, OO_GreaterGreater)
+verify_operator_overload_kind(LessLessEqual, OO_LessLessEqual)
+verify_operator_overload_kind(GreaterGreaterEqual, OO_GreaterGreaterEqual)
+verify_operator_overload_kind(EqualEqual, OO_EqualEqual)
+verify_operator_overload_kind(ExclaimEqual, OO_ExclaimEqual)
+verify_operator_overload_kind(LessEqual, OO_LessEqual)
+verify_operator_overload_kind(GreaterEqual, OO_GreaterEqual)
+verify_operator_overload_kind(Spaceship, OO_Spaceship)
+verify_operator_overload_kind(AmpAmp, OO_AmpAmp)
+verify_operator_overload_kind(PipePipe, OO_PipePipe)
+verify_operator_overload_kind(PlusPlus, OO_PlusPlus)
+verify_operator_overload_kind(MinusMinus, OO_MinusMinus)
+verify_operator_overload_kind(Comma, OO_Comma)
+verify_operator_overload_kind(ArrowStar, OO_ArrowStar)
+verify_operator_overload_kind(Arrow, OO_Arrow)
+verify_operator_overload_kind(Call, OO_Call)
+verify_operator_overload_kind(Subscript, OO_Subscript)
+verify_operator_overload_kind(Conditional, OO_Conditional)
+verify_operator_overload_kind(Coawait, OO_Coawait)
+verify_operator_overload_kind(Invalid, NUM_OVERLOADED_OPERATORS)
+
+struct PathogenOperatorOverloadInfo
+{
+    PathogenOperatorOverloadKind Kind;
+    const char* Name;
+    const char* Spelling;
+    interop_bool IsUnary;
+    interop_bool IsBinary;
+    interop_bool IsMemberOnly;
+};
+
+static PathogenOperatorOverloadInfo OperatorInformation[] =
+{
+    { PathogenOperatorOverloadKind::None, nullptr, nullptr, false, false, false }, // OO_None
+#define OVERLOADED_OPERATOR(Name, Spelling, Token, Unary, Binary, MemberOnly) { PathogenOperatorOverloadKind:: ## Name, #Name, Spelling, Unary, Binary, MemberOnly },
+#include "clang/Basic/OperatorKinds.def"
+    // This entry takes the slot for NUM_OVERLOADED_OPERATORS and is returned when an unexpected operator overload is encountered
+    { PathogenOperatorOverloadKind::Invalid, nullptr, nullptr, false, false, false },
+};
+
+PATHOGEN_EXPORT PathogenOperatorOverloadInfo* pathogen_getOperatorOverloadInfo(CXCursor cursor)
+{
+    // The cursor must be a declaration
+    if (!clang_isDeclaration(cursor.kind))
+    {
+        return nullptr;
+    }
+
+    // Get the function declaration
+    const Decl* declaration = cxcursor::getCursorDecl(cursor);
+    const FunctionDecl* function = dyn_cast_or_null<FunctionDecl>(declaration);
+
+    // The cursor must be a function declaration
+    if (function == nullptr)
+    {
+        return nullptr;
+    }
+
+    // Get the overloaded operator
+    OverloadedOperatorKind operatorKind = function->getOverloadedOperator();
+
+    // Ensure the operator kind is within bounds
+    if (operatorKind < 0 || operatorKind > NUM_OVERLOADED_OPERATORS)
+    {
+        // NUM_OVERLOADED_OPERATORS is used for the invalid kind slot.
+        operatorKind = NUM_OVERLOADED_OPERATORS;
+    }
+
+    // Return the operator information
+    return &OperatorInformation[operatorKind];
+}
+
+//-------------------------------------------------------------------------------------------------
+// Interop Verification
+//-------------------------------------------------------------------------------------------------
+
+struct PathogenTypeSizes
+{
+    int PathogenTypeSizes;
+    int PathogenRecordLayout;
+    int PathogenRecordField;
+    int PathogenVTable;
+    int PathogenVTableEntry;
+    int PathogenOperatorOverloadInfo;
+};
+
+//! Returns true if the sizes were populated, false if sizes->PathogenTypeSizes was invalid.
+//! sizes->PathogenTypeSizes must be set to sizeof(PathogenTypeSizes)
+PATHOGEN_EXPORT interop_bool pathogen_GetTypeSizes(PathogenTypeSizes* sizes)
+{
+    // Can't populate if the destination struct is the wrong size.
+    if (sizes->PathogenTypeSizes != sizeof(PathogenTypeSizes))
+    {
+        return false;
+    }
+
+    sizes->PathogenRecordLayout = sizeof(PathogenRecordLayout);
+    sizes->PathogenRecordField = sizeof(PathogenRecordField);
+    sizes->PathogenVTable = sizeof(PathogenVTable);
+    sizes->PathogenVTableEntry = sizeof(PathogenVTableEntry);
+    sizes->PathogenOperatorOverloadInfo = sizeof(PathogenOperatorOverloadInfo);
+    return true;
 }
