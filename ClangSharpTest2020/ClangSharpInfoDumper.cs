@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using ClangType = ClangSharp.Type;
 using Type = System.Type;
 
 namespace ClangSharpTest2020
@@ -14,12 +15,18 @@ namespace ClangSharpTest2020
     {
         private readonly struct InfoRow
         {
+            public readonly bool IsMajorHeader;
+            public readonly bool IsMinorHeader;
             public readonly string Label;
             public readonly string Value;
+            public readonly object RawValue;
 
-            public InfoRow(string label, string value)
+            public InfoRow(string label, string value, object rawValue)
             {
+                IsMajorHeader = false;
+                IsMinorHeader = false;
                 Label = label;
+                RawValue = rawValue;
 
                 if (value is null)
                 { value = "<null>"; }
@@ -32,24 +39,36 @@ namespace ClangSharpTest2020
                 Value = value;
             }
 
-            public InfoRow(string header)
+            public InfoRow(string label, object rawValue)
+                : this(label, rawValue?.ToString(), rawValue)
+            { }
+
+            private InfoRow(string header, bool isMajorHeader = false, bool isMinorHeader = false)
             {
+                IsMajorHeader = isMajorHeader;
+                IsMinorHeader = isMinorHeader;
                 Label = header;
                 Value = null;
+                RawValue = null;
             }
+
+            public static InfoRow MajorHeader(string header)
+                => new InfoRow(header, true, false);
+
+            public static InfoRow MinorHeader(string header)
+                => new InfoRow(header, false, true);
         }
 
         private abstract class Dumper
         {
-            public abstract IEnumerable<InfoRow> Dump(Cursor target);
+            public abstract IEnumerable<InfoRow> Dump(object target);
         }
 
         private abstract class Dumper<T> : Dumper
-            where T : Cursor
         {
             protected abstract IEnumerable<InfoRow> DumpT(T target);
 
-            public override IEnumerable<InfoRow> Dump(Cursor target)
+            public override IEnumerable<InfoRow> Dump(object target)
                 => DumpT((T)target);
         }
 
@@ -82,7 +101,7 @@ namespace ClangSharpTest2020
                 locationLabel = "Spelling Location";
 #endif
 
-                yield return new InfoRow(locationLabel, location);
+                yield return new InfoRow(locationLabel, location, null);
 
 #if VERBOSE_LOCATION_INFO
                 // Note: Instantiation location is not printed here because it is deprecated, it was replaced by the expansion location.
@@ -167,20 +186,27 @@ namespace ClangSharpTest2020
                 return true;
             }
 
-            public override IEnumerable<InfoRow> Dump(Cursor target)
+            public override IEnumerable<InfoRow> Dump(object target)
             {
-                yield return new InfoRow(Type.Name);
+                yield return InfoRow.MinorHeader(Type.Name);
 
                 foreach (FieldInfo field in Fields)
                 {
+                    object rawValue;
                     string value;
 
                     try
-                    { value = field.GetValue(target)?.ToString(); }
+                    {
+                        rawValue = field.GetValue(target);
+                        value = rawValue?.ToString();
+                    }
                     catch (Exception ex)
-                    { value = $"{ex.GetType()}: {ex.Message}"; }
+                    {
+                        rawValue = ex;
+                        value = $"{ex.GetType()}: {ex.Message}";
+                    }
 
-                    yield return new InfoRow(field.Name, value);
+                    yield return new InfoRow(field.Name, value, rawValue);
                 }
 
                 foreach (PropertyInfo property in Properties)
@@ -188,14 +214,21 @@ namespace ClangSharpTest2020
                     if (!property.CanRead)
                     { continue; }
 
+                    object rawValue;
                     string value;
 
                     try
-                    { value = property.GetValue(target)?.ToString(); }
+                    {
+                        rawValue = property.GetValue(target);
+                        value = rawValue?.ToString();
+                    }
                     catch (Exception ex)
-                    { value = $"{ex.GetType()}: {ex.Message}"; }
+                    {
+                        rawValue = ex;
+                        value = $"{ex.GetType()}: {ex.Message}";
+                    }
 
-                    yield return new InfoRow(property.Name, value);
+                    yield return new InfoRow(property.Name, value, rawValue);
                 }
             }
         }
@@ -205,11 +238,11 @@ namespace ClangSharpTest2020
             { typeof(Cursor), new CursorDumper() }
         };
 
-        private static void EnumerateRows(List<InfoRow> rows, Type type, Cursor target)
+        private static void EnumerateRows(List<InfoRow> rows, Type type, Type endType, object target)
         {
             // Enumerate the rows from the parent type first (unless this is the cursor type)
-            if (type != typeof(Cursor))
-            { EnumerateRows(rows, type.BaseType, target); }
+            if (type != endType)
+            { EnumerateRows(rows, type.BaseType, endType, target); }
 
             // Check if we have a dumper for this type
             Dumper dumper;
@@ -226,7 +259,28 @@ namespace ClangSharpTest2020
         public static void Dump(TextWriter writer, Cursor cursor)
         {
             List<InfoRow> rows = new List<InfoRow>();
-            EnumerateRows(rows, cursor.GetType(), cursor);
+
+            // Add the cursor header row
+            rows.Add(InfoRow.MajorHeader($"{cursor.CursorKindDetailed()} {cursor}"));
+
+            // Add cursor rows
+            EnumerateRows(rows, cursor.GetType(), typeof(Cursor), cursor);
+
+            // Find all type fields so we can dump them too
+            if (GlobalConfiguration.IncludeClangTypeDetailsInDump)
+            {
+                int endOfCursorInfo = rows.Count;
+                for (int i = 0; i < endOfCursorInfo; i++)
+                {
+                    InfoRow row = rows[i];
+
+                    if (row.RawValue is ClangType clangType)
+                    {
+                        rows.Add(InfoRow.MajorHeader($"{row.Label} -- {clangType.Kind}/{clangType.GetType().Name} -- {clangType}"));
+                        EnumerateRows(rows, clangType.GetType(), typeof(ClangType), clangType);
+                    }
+                }
+            }
 
             // Determine the longest key and value for formatting purposes
             int longestLabel = 0;
@@ -243,20 +297,21 @@ namespace ClangSharpTest2020
             // Write out the information dump
             const string columnSeparator = " | ";
             int headerBorderLength = longestLabel + longestValue + columnSeparator.Length;
-            string header = $"{cursor.CursorKindDetailed()} {cursor}";
-
-            if (header.Length > headerBorderLength)
-            { headerBorderLength = header.Length; }
-
             string headerBorder = new String('=', headerBorderLength);
-            writer.WriteLine(headerBorder);
-            writer.WriteLine(header);
-            writer.WriteLine(headerBorder);
 
             foreach (InfoRow row in rows)
             {
-                // Handle heading rows
-                if (row.Value is null)
+                // Handle major heading rows
+                if (row.IsMajorHeader)
+                {
+                    writer.WriteLine(headerBorder);
+                    writer.WriteLine(row.Label);
+                    writer.WriteLine(headerBorder);
+                    continue;
+                }
+
+                // Handle minor heading rows
+                if (row.IsMinorHeader)
                 {
                     const string headingRowPrefix = "---- ";
                     writer.Write(headingRowPrefix);
@@ -269,6 +324,7 @@ namespace ClangSharpTest2020
                     continue;
                 }
 
+                // Write normal rows
                 writer.Write(row.Label);
 
                 for (int i = row.Label.Length; i < longestLabel; i++)
