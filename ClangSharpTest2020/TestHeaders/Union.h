@@ -1,3 +1,5 @@
+#pragma once
+
 union Union
 {
     int Integer;

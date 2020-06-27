@@ -1,3 +1,4 @@
+#pragma once
 #include "VirtualClass.h"
 
 class VirtualChild : public VirtualClass

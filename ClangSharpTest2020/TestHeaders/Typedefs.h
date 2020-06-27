@@ -1,3 +1,5 @@
+#pragma once
+
 typedef unsigned int TypedefAtRoot;
 
 class Typedefs

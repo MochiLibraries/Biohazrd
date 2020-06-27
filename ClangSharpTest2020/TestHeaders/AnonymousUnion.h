@@ -1,3 +1,5 @@
+#pragma once
+
 struct AnonymousUnionWithoutFieldName
 {
 public:

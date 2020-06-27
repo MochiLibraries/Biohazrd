@@ -1,3 +1,5 @@
+#pragma once
+
 void TestFunction();
 int Add(int x, int y);
 
