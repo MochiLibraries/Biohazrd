@@ -19,8 +19,9 @@
     <!--
     We're using a pre-release compiler to get access to function pointers
     This is not any particular version, it's just the latest from the Roslyn CI.
+    https://dotnet.myget.org/gallery/roslyn
     -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0-1.20315.2" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0-1.20325.3" />
   </ItemGroup>
 
   <ItemGroup>
