@@ -1,6 +1,7 @@
 ﻿//#define DUMP_MODE
 //#define DUMP_LOCATION_INFORMATION
 #define DUMP_LOCATION_INFORMATION_VERBOSE
+//#define DUMP_LOCATION_FILE_INFORMATION_VERBOSE
 //#define DUMP_RECORD_LAYOUTS
 #define DUMP_EXTRA_FUNCTION_INFO
 #define DUMP_FIELD_TYPE_INFO
@@ -646,8 +647,52 @@ namespace ClangSharpTest2020
             getStart(out CXFile startFile, out uint startLine, out uint startColumn, out uint startOffset);
             getEnd(out CXFile endFile, out uint endLine, out uint endColumn, out uint endOffset);
 
-            string startFileName = Path.GetFileName(startFile.Name.ToString());
-            string endFileName = Path.GetFileName(endFile.Name.ToString());
+            static string FormatFileName(CXFile file)
+            {
+                string fileName = file.Name.ToString();
+
+                if (fileName is null)
+                { fileName = "<Null>"; }
+                else if (fileName.Length == 0)
+                { fileName = "<Empty>"; }
+#if !DUMP_LOCATION_FILE_INFORMATION_VERBOSE
+                else
+                { fileName = Path.GetFileName(fileName); }
+#else
+                // Add the real path name
+                string realPathName = file.TryGetRealPathName().ToString();
+
+                if (realPathName is null)
+                { realPathName = "<Null>"; }
+                else if (realPathName.Length == 0)
+                { realPathName = "<None>"; }
+
+                fileName += $" RealPathName={realPathName}";
+
+                // Add the file's handle
+                fileName += $" Handle={file.Handle}";
+
+                // Add the file's unique id
+                // In practice, TryGetUniqueId can't actually fail.
+                // Looking at the LLVM source, it only returns a failure when the file handle or the CXFileUniqueID pointer is null.
+                // As such, this will basically always succeed.
+                string uniqueId;
+                if (file.TryGetUniqueId(out CXFileUniqueID id))
+                {
+                    unsafe
+                    { uniqueId = $"{id.data[0]}{id.data[1]}{id.data[2]}"; }
+                }
+                else
+                { uniqueId = "<Error>"; }
+
+                fileName += $" UniqueId={uniqueId}";
+#endif
+
+                return fileName;
+            }
+
+            string startFileName = FormatFileName(startFile);
+            string endFileName = FormatFileName(endFile);
 
             WriteLocationDetails(prefix, startFileName, startLine, startColumn, startOffset, endFileName, endLine, endColumn, endOffset);
         }
