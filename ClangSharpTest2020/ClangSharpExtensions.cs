@@ -256,5 +256,12 @@ namespace ClangSharpTest2020
             file.Diagnostic(Severity.Error, context, $"{messagePrefix}.");
             return UnderlyingEnumType.Int;
         }
+
+        public static unsafe CXFile GetFileLocation(this CXSourceLocation sourceLocation)
+        {
+            CXFile ret;
+            clang.getFileLocation(sourceLocation, (void**)&ret, null, null, null);
+            return ret;
+        }
     }
 }

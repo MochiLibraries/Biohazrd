@@ -10,17 +10,6 @@ namespace ClangSharpTest2020
 {
     partial class TranslatedFile
     {
-        public ClangType FindType(CXType typeHandle)
-        {
-            if (typeHandle.kind == CXTypeKind.CXType_Invalid)
-            {
-                Diagnostic(Severity.Warning, $"Someone tried to get the Type for an invalid type handle.");
-                return null;
-            }
-
-            return TranslationUnit.GetOrCreate(typeHandle);
-        }
-
         internal void ReduceType(ClangType type, CXCursor associatedCursor, TypeTranslationContext context, out ClangType reducedType, out int levelsOfIndirection)
         {
             reducedType = type;
@@ -39,7 +28,7 @@ namespace ClangSharpTest2020
                     // If the typedef has been mapped to a translated declaration, we stop reducing immediately.
                     // Otherwise we discard the typedef and translate as the type they alias
                     case TypedefType typedefType:
-                        if (TryFindTranslation(typedefType.Decl)?.IsDummy == false)
+                        if (Library.TryFindTranslation(typedefType.Decl)?.IsDummy == false)
                         { return; }
 
                         reducedType = typedefType.CanonicalType;
@@ -176,7 +165,7 @@ namespace ClangSharpTest2020
                 };
 
                 // Try to get the translated declaration for the type
-                if (DeclarationLookup.TryGetValue(typeDecl, out TranslatedDeclaration declaration))
+                if (Library.TryFindTranslation(typeDecl) is TranslatedDeclaration declaration)
                 {
                     typeName = CodeWriter.SanitizeIdentifier(declaration.TranslatedName);
 

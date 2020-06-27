@@ -17,7 +17,7 @@ namespace ClangSharpTest2020
             if (field->Kind != PathogenRecordFieldKind.Normal)
             { throw new ArgumentException("The specified field must be a normal field.", nameof(field)); }
 
-            Field = (FieldDecl)File.FindCursor(field->FieldDeclaration);
+            Field = (FieldDecl)Library.FindCursor(field->FieldDeclaration);
             IsBitField = field->IsBitField != 0;
 
             Accessibility = Field.Access switch

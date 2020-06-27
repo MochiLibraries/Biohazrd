@@ -34,11 +34,11 @@ namespace ClangSharpTest2020
             : base(record)
         {
             Record = record;
-            Declaration = field->Kind == PathogenRecordFieldKind.Normal ? (Decl)File.FindCursor(field->FieldDeclaration) : null;
+            Declaration = field->Kind == PathogenRecordFieldKind.Normal ? (Decl)Library.FindCursor(field->FieldDeclaration) : null;
             Offset = field->Offset;
             Context = field->Kind == PathogenRecordFieldKind.Normal ? field->FieldDeclaration : Record.Record.Handle;
             DefaultName = field->Name.ToString();
-            FieldType = File.FindType(field->Type);
+            FieldType = Library.FindType(field->Type);
             Accessibility = AccessModifier.Internal;
 
             // Give unnamed fields a default name

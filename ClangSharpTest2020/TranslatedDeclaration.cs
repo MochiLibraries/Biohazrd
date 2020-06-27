@@ -6,6 +6,7 @@ namespace ClangSharpTest2020
 {
     public abstract class TranslatedDeclaration
     {
+        public TranslatedLibrary Library { get; }
         internal TranslatedFile File => Parent?.File;
 
         private IDeclarationContainer _parent;
@@ -17,37 +18,41 @@ namespace ClangSharpTest2020
                 if (ReferenceEquals(_parent, value))
                 { return; }
 
-                bool needToSyncDeclarationAssociation = _declaration is object && !ReferenceEquals(File, value?.File);
+                if (value is object && !ReferenceEquals(value.Library, this.Library))
+                { throw new InvalidOperationException("Translations cannot be moved between translated libraries."); }
 
                 if (_parent is object)
                 {
                     _parent.RemoveDeclaration(this);
 
-                    // Remove our associations from the old file
-                    if (needToSyncDeclarationAssociation && File is object)
+                    // If we're being removed, remove our declcaration associations from the library
+                    if (value is null)
                     {
-                        File.RemoveDeclarationAssociation(Declaration, this);
+                        if (Declaration is object)
+                        { Library.RemoveDeclarationAssociation(Declaration, this); }
 
                         if (SecondaryDeclarations is object)
                         {
                             foreach (Decl secondaryDeclaration in SecondaryDeclarations)
-                            { File.RemoveDeclarationAssociation(secondaryDeclaration, this); }
+                            { Library.RemoveDeclarationAssociation(secondaryDeclaration, this); }
                         }
                     }
                 }
 
+                IDeclarationContainer oldParent = _parent;
                 _parent = value;
                 _parent?.AddDeclaration(this);
 
-                // Add our associations to the new file
-                if (needToSyncDeclarationAssociation && File is object)
+                // If we were removed and now we're being re-added, add our declaration associations to the library
+                if (oldParent is null && _parent is object)
                 {
-                    File.AddDeclarationAssociation(Declaration, this);
+                    if (Declaration is object)
+                    { Library.AddDeclarationAssociation(Declaration, this); }
 
                     if (SecondaryDeclarations is object)
                     {
                         foreach (Decl secondaryDeclaration in SecondaryDeclarations)
-                        { File.AddDeclarationAssociation(secondaryDeclaration, this); }
+                        { Library.AddDeclarationAssociation(secondaryDeclaration, this); }
                     }
                 }
             }
@@ -74,13 +79,13 @@ namespace ClangSharpTest2020
 
                 // Remove old association
                 if (_declaration is object)
-                { File.RemoveDeclarationAssociation(_declaration, this); }
+                { Library.RemoveDeclarationAssociation(_declaration, this); }
 
                 // Add new association
                 _declaration = value;
 
                 if (_declaration is object)
-                { File.AddDeclarationAssociation(_declaration, this); }
+                { Library.AddDeclarationAssociation(_declaration, this); }
             }
         }
 
@@ -96,7 +101,7 @@ namespace ClangSharpTest2020
             SecondaryDeclarations.Add(declaration);
 
             if (File is object)
-            { File.AddDeclarationAssociation(declaration, this); }
+            { Library.AddDeclarationAssociation(declaration, this); }
         }
 
         public abstract string DefaultName { get; }
@@ -117,7 +122,10 @@ namespace ClangSharpTest2020
         public virtual bool IsDummy => false;
 
         private protected TranslatedDeclaration(IDeclarationContainer parent)
-            => Parent = parent;
+        {
+            Library = parent.Library; // This must be assigned before Parent
+            Parent = parent;
+        }
 
         public void Translate(CodeWriter writer)
         {

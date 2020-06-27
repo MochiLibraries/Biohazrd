@@ -5,6 +5,7 @@ namespace ClangSharpTest2020
 {
     internal interface IDeclarationContainer : IEnumerable<TranslatedDeclaration>
     {
+        TranslatedLibrary Library { get; }
         TranslatedFile File { get; }
         void AddDeclaration(TranslatedDeclaration declaration);
         void RemoveDeclaration(TranslatedDeclaration declaration);

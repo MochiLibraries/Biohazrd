@@ -3,10 +3,8 @@ using System;
 
 namespace ClangSharpTest2020
 {
-    //TODO: We should store location when available
     public struct TranslationDiagnostic
     {
-        public readonly TranslatedFile TranslatedFile;
         public readonly SourceLocation Location;
         public readonly Severity Severity;
         public readonly bool IsFromClang;
@@ -15,23 +13,21 @@ namespace ClangSharpTest2020
         /// <summary>True if <see cref="Severity"/> is <see cref="Severity.Error"/> or <see cref="Severity.Fatal"/>.</summary>
         public bool IsError => Severity == Severity.Error || Severity == Severity.Fatal;
 
-        internal TranslationDiagnostic(TranslatedFile translatedFile, SourceLocation location, Severity severity, string message)
+        internal TranslationDiagnostic(SourceLocation location, Severity severity, string message)
         {
-            TranslatedFile = translatedFile;
             Location = location;
             Severity = severity;
             IsFromClang = false;
             Message = message;
         }
 
-        private TranslationDiagnostic(TranslatedFile translatedFile, Severity severity, string message)
-            : this(translatedFile, default, severity, message)
+        private TranslationDiagnostic(Severity severity, string message)
+            : this(SourceLocation.Null, severity, message)
         { }
 
         private static readonly CXDiagnosticDisplayOptions ClangFormatOptions = CXDiagnostic.DefaultDisplayOptions & ~CXDiagnosticDisplayOptions.CXDiagnostic_DisplaySourceLocation;
-        internal TranslationDiagnostic(TranslatedFile translatedFile, CXDiagnostic clangDiagnostic)
+        internal TranslationDiagnostic(CXDiagnostic clangDiagnostic)
         {
-            TranslatedFile = translatedFile;
             Location = new SourceLocation(clangDiagnostic.Location);
             Severity = clangDiagnostic.Severity switch
             {

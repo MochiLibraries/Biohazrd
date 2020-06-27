@@ -156,28 +156,25 @@ namespace ClangSharpTest2020
             }
 
             using WorkingDirectoryScope _ = new WorkingDirectoryScope(outputDirectory);
-            using TranslatedLibrary library = new TranslatedLibrary(clangCommandLineArgs);
 
+            // Copy the file to the output directory for easier inspection.
             foreach (string file in files)
-            {
-                Console.WriteLine("==============================================================================");
-                Console.WriteLine(file);
-                Console.WriteLine("==============================================================================");
+            { File.Copy(file, Path.GetFileName(file)); }
 
-                library.AddFile(file);
+            // Create the library
+            TranslatedLibraryBuilder libraryBuilder = new TranslatedLibraryBuilder();
+            libraryBuilder.AddCommandLineArguments(clangCommandLineArgs);
+            libraryBuilder.AddFiles(files);
 
-                // Copy the file to the output directory for easier inspection.
-                File.Copy(file, Path.GetFileName(file));
+            using TranslatedLibrary library = libraryBuilder.Create();
 
-                if (library.HasErrors)
-                { return; }
-            }
-
+            // Perform validation
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing pre-translation validation...");
             Console.WriteLine("==============================================================================");
             library.Validate();
 
+            // Apply transformations
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing library-specific transformations...");
             Console.WriteLine("==============================================================================");

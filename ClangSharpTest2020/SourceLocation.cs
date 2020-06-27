@@ -53,5 +53,7 @@ namespace ClangSharpTest2020
 
         public override string ToString()
             => ToString(false);
+
+        public static SourceLocation Null => default;
     }
 }

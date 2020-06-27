@@ -31,7 +31,9 @@ namespace ClangSharpTest2020
 
         public static TranslationTransformation Factory(TranslatedDeclaration declaration)
         {
-            TranslatedFile file = declaration.File; //TODO: It should be easier to look up declarations and emit diagnostics.
+            //TODO: It should be easier to look up declarations and emit diagnostics.
+            TranslatedLibrary library = declaration.Library;
+            TranslatedFile file = declaration.File;
 
             // Look for typedefs
             if (!(declaration is TranslatedTypedef typedef))
@@ -42,7 +44,7 @@ namespace ClangSharpTest2020
             { return null; }
 
             // Get the declaration
-            if (!(declaration.File.FindCursor(templateSpecialization.Handle.Declaration) is ClassTemplateSpecializationDecl templateSpecializationDeclaration))
+            if (!(library.FindCursor(templateSpecialization.Handle.Declaration) is ClassTemplateSpecializationDecl templateSpecializationDeclaration))
             {
                 Debug.Assert(false, "The declaration for a TemplateSpecializationType is expected to be a ClassTemplateSpecializationDecl.");
                 return null;
@@ -72,7 +74,7 @@ namespace ClangSharpTest2020
             }
 
             // Get the translation of the enum
-            TranslatedDeclaration translatedDeclaration = file.TryFindTranslation(enumType.Decl);
+            TranslatedDeclaration translatedDeclaration = library.TryFindTranslation(enumType.Decl);
             if (translatedDeclaration is null)
             {
                 file.Diagnostic(Severity.Warning, typedef.Typedef, $"Could not find translation of enum '{enumType}'");

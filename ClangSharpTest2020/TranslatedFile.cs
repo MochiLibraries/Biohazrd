@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace ClangSharpTest2020
 {
-    public sealed partial class TranslatedFile : IDeclarationContainer, IDisposable
+    public sealed partial class TranslatedFile : IDeclarationContainer
     {
         public TranslatedLibrary Library { get; }
         TranslatedFile IDeclarationContainer.File => this;
@@ -20,10 +20,8 @@ namespace ClangSharpTest2020
         private readonly List<TranslatedDeclaration> LooseDeclarations = new List<TranslatedDeclaration>();
         public bool IsEmptyTranslation => IndependentDeclarations.Count == 0 && LooseDeclarations.Count == 0;
 
-        private readonly Dictionary<Decl, TranslatedDeclaration> DeclarationLookup = new Dictionary<Decl, TranslatedDeclaration>();
-
         public string FilePath { get; }
-        private readonly TranslationUnit TranslationUnit;
+        private IntPtr FileHandle { get; }
 
         private readonly List<TranslationDiagnostic> _Diagnostics = new List<TranslationDiagnostic>();
         public ReadOnlyCollection<TranslationDiagnostic> Diagnostics { get; }
@@ -34,72 +32,14 @@ namespace ClangSharpTest2020
         /// <summary>True if <see cref="Diagnostics"/> contains any diagnostic with <see cref="TranslationDiagnostic.IsError"/> or true.</summary>
         public bool HasErrors { get; private set; }
 
-        internal TranslatedFile(TranslatedLibrary library, CXIndex index, string filePath)
+        internal TranslatedFile(TranslatedLibrary library, IntPtr fileHandle, string filePath)
         {
             Library = library;
+            FileHandle = fileHandle;
             FilePath = filePath;
             Diagnostics = _Diagnostics.AsReadOnly();
 
-            // These are the flags used by ClangSharp.PInvokeGenerator, so we're just gonna use them for now.
-            CXTranslationUnit_Flags translationFlags =
-                CXTranslationUnit_Flags.CXTranslationUnit_IncludeAttributedTypes
-            ;
-
-            CXTranslationUnit unitHandle;
-            CXErrorCode status = CXTranslationUnit.TryParse(index, FilePath, Library.ClangCommandLineArguments, ReadOnlySpan<CXUnsavedFile>.Empty, translationFlags, out unitHandle);
-
-            if (status != CXErrorCode.CXError_Success)
-            {
-                Diagnostic(Severity.Fatal, $"Failed to parse source file due to Clang error {status}.");
-                return;
-            }
-
-            try
-            {
-                if (unitHandle.NumDiagnostics != 0)
-                {
-                    for (uint i = 0; i < unitHandle.NumDiagnostics; i++)
-                    {
-                        using CXDiagnostic diagnostic = unitHandle.GetDiagnostic(i);
-                        Diagnostic(diagnostic);
-                    }
-
-                    if (HasErrors)
-                    {
-                        Diagnostic(Severity.Fatal, "Aborting translation due to previous errors.");
-                        unitHandle.Dispose();
-                        return;
-                    }
-                }
-            }
-            catch
-            {
-                unitHandle.Dispose();
-                throw;
-            }
-
-            // Create the translation unit
-            TranslationUnit = TranslationUnit.GetOrCreate(unitHandle);
-
-            // Process the translation unit
-            ProcessCursor(this, TranslationUnit.TranslationUnitDecl);
-
-            // Associate loose declarations (IE: global functions and variables) to a record matching our file name if we have one.
             LooseDeclarationsTypeName = Path.GetFileNameWithoutExtension(FilePath);
-            if (LooseDeclarations.Count > 0)
-            {
-                //TODO: This would be problematic for enums which are named LooseDeclarationsTypeName since we'd double-write the file.
-                TranslatedRecord looseDeclarationsTarget = IndependentDeclarations.OfType<TranslatedRecord>().FirstOrDefault(r => r.TranslatedName == LooseDeclarationsTypeName);
-                if (looseDeclarationsTarget is object)
-                {
-                    while (LooseDeclarations.Count > 0)
-                    { LooseDeclarations[0].Parent = looseDeclarationsTarget; }
-                }
-            }
-
-            // Note if this file didn't translate into anything
-            if (IsEmptyTranslation)
-            { Diagnostic(Severity.Note, TranslationUnit.TranslationUnitDecl, "File did not result in anything to be translated."); }
         }
 
         void IDeclarationContainer.AddDeclaration(TranslatedDeclaration declaration)
@@ -125,52 +65,27 @@ namespace ClangSharpTest2020
             Debug.Assert(removed);
         }
 
-        internal void AddDeclarationAssociation(Decl declaration, TranslatedDeclaration translatedDeclaration)
-        {
-            if (DeclarationLookup.TryGetValue(declaration, out TranslatedDeclaration otherDeclaration))
-            {
-                Diagnostic
-                (
-                    Severity.Error,
-                    declaration,
-                    $"More than one translation corresponds to {declaration.CursorKindDetailed()} '{declaration.Spelling}' (Newest: {translatedDeclaration.GetType().Name}, Other: {otherDeclaration.GetType().Name})"
-                );
-                return;
-            }
-
-            DeclarationLookup.Add(declaration, translatedDeclaration);
-        }
-
-        internal void RemoveDeclarationAssociation(Decl declaration, TranslatedDeclaration translatedDeclaration)
-        {
-            if (DeclarationLookup.TryGetValue(declaration, out TranslatedDeclaration otherDeclaration) && !ReferenceEquals(otherDeclaration, translatedDeclaration))
-            {
-                Diagnostic
-                (
-                    Severity.Error,
-                    declaration,
-                    $"Tried to remove association between {declaration.CursorKindDetailed()} '{declaration.Spelling}' and a {translatedDeclaration.GetType().Name}, but it's associated with a (different) {otherDeclaration.GetType().Name}"
-                );
-                return;
-            }
-
-            bool removed = DeclarationLookup.Remove(declaration, out otherDeclaration);
-            Debug.Assert(removed && ReferenceEquals(translatedDeclaration, otherDeclaration));
-        }
-
-        internal TranslatedDeclaration TryFindTranslation(Decl declaration)
-        {
-            if (DeclarationLookup.TryGetValue(declaration, out TranslatedDeclaration ret))
-            { return ret; }
-
-            return null;
-        }
-
         public IEnumerator<TranslatedDeclaration> GetEnumerator()
             => IndependentDeclarations.Union(LooseDeclarations).GetEnumerator();
 
         public void Validate()
         {
+            if (IsEmptyTranslation)
+            { Diagnostic(Severity.Note, new SourceLocation(FilePath), "File did not result in anything to be translated."); }
+
+            //TODO: This should use the transformation infrastructure.
+            // Associate loose declarations (IE: global functions and variables) to a record matching our file name if we have one.
+            if (LooseDeclarations.Count > 0)
+            {
+                //TODO: This would be problematic for enums which are named LooseDeclarationsTypeName since we'd double-write the file.
+                TranslatedRecord looseDeclarationsTarget = IndependentDeclarations.OfType<TranslatedRecord>().FirstOrDefault(r => r.TranslatedName == LooseDeclarationsTypeName);
+                if (looseDeclarationsTarget is object)
+                {
+                    while (LooseDeclarations.Count > 0)
+                    { LooseDeclarations[0].Parent = looseDeclarationsTarget; }
+                }
+            }
+
             foreach (TranslatedDeclaration declaration in this)
             { declaration.Validate(); }
         }
@@ -236,13 +151,10 @@ namespace ClangSharpTest2020
         }
 
         internal void Diagnostic(Severity severity, SourceLocation location, string message)
-            => Diagnostic(new TranslationDiagnostic(this, location, severity, message));
+            => Diagnostic(new TranslationDiagnostic(location, severity, message));
 
         internal void Diagnostic(Severity severity, string message)
             => Diagnostic(severity, new SourceLocation(FilePath), message);
-
-        private void Diagnostic(CXDiagnostic clangDiagnostic)
-            => Diagnostic(new TranslationDiagnostic(this, clangDiagnostic));
 
         internal void Diagnostic(Severity severity, Cursor associatedCursor, string message)
             => Diagnostic(severity, new SourceLocation(associatedCursor.Extent.Start), message);
@@ -258,9 +170,12 @@ namespace ClangSharpTest2020
 
         internal void ProcessCursor(IDeclarationContainer container, Cursor cursor)
         {
-            // Skip cursors outside of the specific file being processed
-            if (!cursor.IsFromMainFile())
-            { return; }
+            // Warn if the cursor doesn't actually belong to this file
+            CXFile cursorFile = cursor.Extent.Start.GetFileLocation();
+            Debug.Assert(cursor.Extent.End.GetFileLocation().Handle == cursorFile.Handle, "The start and end file handles of a cursor should match.");
+
+            if (cursorFile.Handle != FileHandle)
+            { Diagnostic(Severity.Warning, $"Cursor from '{cursorFile.Name}' found while processing cursors from '{FilePath}'."); }
 
             //---------------------------------------------------------------------------------------------------------
             // Skip cursors which explicitly do not have translation implemented.
@@ -282,6 +197,7 @@ namespace ClangSharpTest2020
             // For translation units, just process all the children
             if (cursor is TranslationUnitDecl)
             {
+                Debug.Assert(false, "This method should not be used to process translation unit declarations.");
                 Debug.Assert(container is TranslatedFile, "Translation units should only occur within the root declaration container.");
                 ProcessCursorChildren(container, cursor);
                 return;
@@ -421,25 +337,8 @@ namespace ClangSharpTest2020
             return false;
         }
 
-        public Cursor FindCursor(CXCursor cursorHandle)
-        {
-            if (cursorHandle.IsNull)
-            {
-                Diagnostic(Severity.Warning, $"Someone tried to get the Cursor for a null handle.");
-                return null;
-            }
-
-            return TranslationUnit.GetOrCreate(cursorHandle);
-        }
-
-        internal string GetNameForUnnamed(string category)
-            // Names of declarations at the file level should be library-unique, so it names unnamed things.
-            => Library.GetNameForUnnamed(category);
-
         string IDeclarationContainer.GetNameForUnnamed(string category)
-            => GetNameForUnnamed(category);
-
-        public void Dispose()
-            => TranslationUnit?.Dispose();
+            // Names of declarations at the file level should be library-unique, so the library is responsible for naming unnamed things.
+            => Library.GetNameForUnnamed(category);
     }
 }
