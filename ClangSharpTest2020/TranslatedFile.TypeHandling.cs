@@ -167,19 +167,39 @@ namespace ClangSharpTest2020
                 // Try to get the translated declaration for the type
                 if (Library.TryFindTranslation(typeDecl) is TranslatedDeclaration declaration)
                 {
+                    bool shouldFullyQualify = true;
                     typeName = CodeWriter.SanitizeIdentifier(declaration.TranslatedName);
 
                     if (declaration is TranslatedRecord record)
                     { cSharpTypeSize = record.Size; }
                     else if (declaration is TranslatedEnum translatedEnum)
                     {
-                        cSharpTypeSize = 0; //TODO: TranslatedEnum should track/expose this, but it doesn't.
+                        cSharpTypeSize = translatedEnum.UnderlyingType.SizeOf();
+
+                        // The size check doesn't work as expected if the underlying type is changed (IE: by a transformation.)
+                        // Need to determine for sure if the size being different with an enum matters outside of a field definition.
+                        // Also need to figure out how to translate field definitions where size is different. (We could offset the field or use a special struct that passively widens the enum.)
+                        // (I think it's probably fine if sizeof(enum) <= sizeof(IntPtr))
+                        if (cSharpTypeSize != type.Handle.SizeOf)
+                        {
+                            cSharpTypeSize = 0;
+
+                            if (context == TypeTranslationContext.ForField)
+                            {
+                                Diagnostic
+                                (
+                                    Severity.Warning,
+                                    associatedCursor,
+                                    $"Backing field for enum probably not translated correctly. Enum's size is {cSharpTypeSize}, but the field's size is {type.Handle.SizeOf}."
+                                );
+                            }
+                        }
 
                         // If the enum is translated as loose constants, we translate the underlying integer type instead
                         if (translatedEnum.WillTranslateAsLooseConstants)
                         {
-                            WriteType(writer, translatedEnum.EnumDeclaration.IntegerType, associatedCursor, context);
-                            return;
+                            typeName = translatedEnum.UnderlyingType.ToCSharpKeyword();
+                            shouldFullyQualify = false;
                         }
                     }
                     else
@@ -189,11 +209,14 @@ namespace ClangSharpTest2020
                     }
 
                     // Fully qualify the name
-                    IDeclarationContainer container = declaration.Parent;
-                    while (container is TranslatedRecord recordContainer)
+                    if (shouldFullyQualify)
                     {
-                        typeName = $"{CodeWriter.SanitizeIdentifier(recordContainer.TranslatedName)}.{typeName}";
-                        container = recordContainer.Parent;
+                        IDeclarationContainer container = declaration.Parent;
+                        while (container is TranslatedRecord recordContainer)
+                        {
+                            typeName = $"{CodeWriter.SanitizeIdentifier(recordContainer.TranslatedName)}.{typeName}";
+                            container = recordContainer.Parent;
+                        }
                     }
                 }
                 // Otherwise we let the fallback code handle the type reference.
@@ -208,7 +231,7 @@ namespace ClangSharpTest2020
             // (This check failing likely indicates a programming issue, so we assert too.)
             if (cSharpTypeSize != 0 && type.Handle.SizeOf != cSharpTypeSize)
             {
-                Diagnostic(Severity.Error, $"sizeof({type}) is {type.Handle.SizeOf}, but the translated sizeof({typeName}) is {cSharpTypeSize}.");
+                Diagnostic(Severity.Error, associatedCursor, $"sizeof({type}) is {type.Handle.SizeOf}, but the translated sizeof({typeName}) is {cSharpTypeSize}.");
                 Debug.Assert(false, "This size check shouldn't fail.");
                 typeName = null;
             }

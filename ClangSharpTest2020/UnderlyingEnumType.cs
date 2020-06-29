@@ -62,5 +62,19 @@ namespace ClangSharpTest2020
                 UnderlyingEnumType.Long => Int64.MaxValue,
                 _ => throw new ArgumentException("Invalid underlying enum type specified.", nameof(type))
             };
+
+        public static int SizeOf(this UnderlyingEnumType type)
+            => type switch
+            {
+                UnderlyingEnumType.Byte => sizeof(byte),
+                UnderlyingEnumType.UShort => sizeof(ushort),
+                UnderlyingEnumType.UInt => sizeof(uint),
+                UnderlyingEnumType.ULong => sizeof(ulong),
+                UnderlyingEnumType.SByte => sizeof(sbyte),
+                UnderlyingEnumType.Short => sizeof(short),
+                UnderlyingEnumType.Int => sizeof(int),
+                UnderlyingEnumType.Long => sizeof(long),
+                _ => throw new ArgumentException("Invalid underlying enum type specified.", nameof(type))
+            };
     }
 }
