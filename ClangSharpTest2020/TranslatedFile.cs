@@ -248,6 +248,14 @@ namespace ClangSharpTest2020
             if (cursor is AccessSpecDecl)
             { return; }
 
+            // Empty declarations (semi-colons with no corresponding declaration or statement) have no impact on the output
+            if (cursor is EmptyDecl)
+            {
+                Debug.Assert(cursor.CursorChildren.Count == 0, "Empty declarations should not have children.");
+                ProcessCursorChildren(container, cursor);
+                return;
+            }
+
             //---------------------------------------------------------------------------------------------------------
             // Cursors which only affect the context
             //---------------------------------------------------------------------------------------------------------
