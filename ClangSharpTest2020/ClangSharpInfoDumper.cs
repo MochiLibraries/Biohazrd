@@ -214,6 +214,55 @@ namespace ClangSharpTest2020
             rows.AddRange(dumper.Dump(target));
         }
 
+        private static void AddTypeInfo(List<InfoRow> rows, string label, ClangType clangType)
+        {
+            rows.Add(InfoRow.MajorHeader($"{label} -- {clangType.Kind}/{clangType.GetType().Name} -- {clangType}"));
+            EnumerateRows(rows, clangType.GetType(), typeof(ClangType), clangType);
+
+            // For tag types, enumerate the declaration
+            if (clangType is TagType tagType && tagType.Decl is object)
+            {
+                rows.Add(InfoRow.MajorHeader($"{label}.Decl -- {tagType.Decl.CursorKindDetailed()} -- {tagType.Decl}"));
+                EnumerateRows(rows, tagType.Decl.GetType(), typeof(Cursor), tagType.Decl);
+            }
+
+            // Add type info related types (like the type pointed to by a pointer.)
+            if (GlobalConfiguration.DumpClangTypeDetailsRecursively)
+            {
+                // Function types are a special case
+                if (clangType is FunctionType functionType)
+                {
+                    AddTypeInfo(rows, $"{label}.{nameof(functionType.ReturnType)}", functionType.ReturnType);
+
+                    if (functionType is FunctionProtoType functionProtoType)
+                    {
+                        int i = 0;
+                        foreach (ClangType parameterType in functionProtoType.ParamTypes)
+                        {
+                            AddTypeInfo(rows, $"{label}.{nameof(functionProtoType.ParamTypes)}[{i}]", parameterType);
+                            i++;
+                        }
+                    }
+                }
+
+                (ClangType nestedType, string subLabel) = clangType switch
+                {
+                    PointerType pointerType => (pointerType.PointeeType, nameof(pointerType.PointeeType)),
+                    ReferenceType referenceType => (referenceType.PointeeType, nameof(referenceType.PointeeType)),
+                    ArrayType arrayType => (arrayType.ElementType, nameof(arrayType.ElementType)),
+                    AttributedType attributedType => (attributedType.ModifiedType, nameof(attributedType.ModifiedType)),
+                    ElaboratedType elaboratedType => (elaboratedType.NamedType, nameof(elaboratedType.NamedType)),
+                    TypedefType typedefType => (typedefType.CanonicalType, nameof(typedefType.CanonicalType)),
+                    _ => default
+                };
+
+                if (nestedType is object)
+                {
+                    AddTypeInfo(rows, $"{label}.{subLabel}", nestedType);
+                }
+            }
+        }
+
         public static void Dump(TextWriter writer, Cursor cursor)
         {
             List<InfoRow> rows = new List<InfoRow>();
@@ -233,10 +282,7 @@ namespace ClangSharpTest2020
                     InfoRow row = rows[i];
 
                     if (row.RawValue is ClangType clangType)
-                    {
-                        rows.Add(InfoRow.MajorHeader($"{row.Label} -- {clangType.Kind}/{clangType.GetType().Name} -- {clangType}"));
-                        EnumerateRows(rows, clangType.GetType(), typeof(ClangType), clangType);
-                    }
+                    { AddTypeInfo(rows, row.Label, clangType); }
                 }
             }
 
