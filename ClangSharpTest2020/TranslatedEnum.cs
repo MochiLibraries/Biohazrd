@@ -1,6 +1,7 @@
 ﻿using ClangSharp;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace ClangSharpTest2020
 {
@@ -24,7 +25,7 @@ namespace ClangSharpTest2020
         {
             public readonly EnumConstantDecl Declaration;
             public readonly string Name;
-            public readonly long Value;
+            public readonly ulong Value;
             public readonly bool HasExplicitValue;
             public readonly bool IsHexValue;
 
@@ -32,7 +33,7 @@ namespace ClangSharpTest2020
             {
                 Declaration = declaration;
                 Name = Declaration.Name.ToString();
-                Value = Declaration.InitVal;
+                Value = Declaration.GetConstantValueZeroExtended();
 
                 // Determine how this constant is defined
                 IntegerLiteral integerLiteral = TryGetValueLiteral(file, declaration);
@@ -121,7 +122,7 @@ namespace ClangSharpTest2020
 
             using (writer.Block())
             {
-                long expectedValue = 0;
+                ulong expectedValue = 0;
                 bool first = true;
                 foreach (EnumConstant value in Values)
                 {
@@ -156,11 +157,7 @@ namespace ClangSharpTest2020
                     if (writeOutValue)
                     {
                         writer.Write(" = ");
-
-                        if (value.IsHexValue)
-                        { writer.Write($"0x{value.Value:X}"); }
-                        else
-                        { writer.Write(value.Value); }
+                        TranslateConstantValue(writer, value);
                     }
 
                     // Determine the expected value of the next constant (assuming it's implicit)
@@ -182,14 +179,55 @@ namespace ClangSharpTest2020
                 writer.Write($"{Accessibility.ToCSharpKeyword()} const {UnderlyingType.ToCSharpKeyword()} ");
                 writer.WriteIdentifier(value.Name);
                 writer.Write(" = ");
-
-                if (value.IsHexValue)
-                { writer.Write($"0x{value.Value:X}"); }
-                else
-                { writer.Write(value.Value); }
-
+                TranslateConstantValue(writer, value);
                 writer.WriteLine(";");
             }
+        }
+
+        private void TranslateConstantValue(CodeWriter writer, EnumConstant value)
+        {
+            // If the constant value is translated as hex, we can just write it out directly
+            if (value.IsHexValue)
+            {
+                // If the value exceeds the maximum value of the underlying type (happens with hex values of signed numbers) we need to add an unchecked explicit cast.
+                bool needsCast = value.Value > UnderlyingType.GetMaxValue();
+                if (needsCast)
+                { writer.Write($"unchecked(({UnderlyingType.ToCSharpKeyword()})"); }
+
+                writer.Write($"0x{value.Value:X}");
+
+                if (needsCast)
+                { writer.Write(')'); }
+                return;
+            }
+
+            // For unsigned values, we can just write out the value directly
+            if (!UnderlyingType.IsSigned())
+            {
+                writer.Write(value.Value);
+                return;
+            }
+
+            // For signed values, we need to cast the value to the actual signed type
+            switch (UnderlyingType)
+            {
+                case UnderlyingEnumType.SByte:
+                    writer.Write((sbyte)value.Value);
+                    return;
+                case UnderlyingEnumType.Short:
+                    writer.Write((short)value.Value);
+                    return;
+                case UnderlyingEnumType.Int:
+                    writer.Write((int)value.Value);
+                    return;
+                case UnderlyingEnumType.Long:
+                    writer.Write((long)value.Value);
+                    return;
+            }
+
+            // Fallback (we should never get here unless a new underlying enum type is added that we aren't handling.)
+            Debug.Assert(false); // Should never get here since it indicates a signed underlying type that we don't support
+            writer.Write($"unchecked(({UnderlyingType.ToCSharpKeyword()}){value.Value})");
         }
     }
 }

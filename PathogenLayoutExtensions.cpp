@@ -19,6 +19,7 @@
 #include "clang/AST/Type.h"
 #include "clang/AST/VTableBuilder.h"
 
+#include <limits>
 #include <memory>
 
 using namespace clang;
@@ -597,6 +598,32 @@ PATHOGEN_EXPORT PathogenOperatorOverloadInfo* pathogen_getOperatorOverloadInfo(C
 
     // Return the operator information
     return &OperatorInformation[operatorKind];
+}
+
+//-------------------------------------------------------------------------------------------------
+// Getting the value of enum constants without sign-extending them
+//-------------------------------------------------------------------------------------------------
+
+PATHOGEN_EXPORT uint64_t pathogen_getEnumConstantDeclValueZeroExtended(CXCursor cursor)
+{
+    // The cursor must be a declaration
+    if (!clang_isDeclaration(cursor.kind))
+    {
+        return ULLONG_MAX;
+    }
+
+    // Get the enum constant declaration
+    const Decl* declaration = cxcursor::getCursorDecl(cursor);
+    const EnumConstantDecl* enumConstant = dyn_cast_or_null<EnumConstantDecl>(declaration);
+
+    // The cursor must be an enum constant declaration
+    if (enumConstant == nullptr)
+    {
+        return ULLONG_MAX;
+    }
+
+    // Return the value
+    return enumConstant->getInitVal().getZExtValue();
 }
 
 //-------------------------------------------------------------------------------------------------

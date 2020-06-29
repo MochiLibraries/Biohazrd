@@ -285,5 +285,11 @@ namespace ClangSharpTest2020
 
             return ref Unsafe.AsRef<PathogenOperatorOverloadInfo>(ret);
         }
+
+        public static ulong GetEnumConstantValueZeroExtended(this CXCursor cursor)
+            => PathogenExtensions.pathogen_getEnumConstantDeclValueZeroExtended(cursor);
+
+        public static ulong GetConstantValueZeroExtended(this EnumConstantDecl enumConstant)
+            => enumConstant.Handle.GetEnumConstantValueZeroExtended();
     }
 }
