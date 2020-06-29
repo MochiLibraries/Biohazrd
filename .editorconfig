@@ -1,0 +1,148 @@
+root = true
+
+[*]
+indent_style = space
+
+# XML and JSON files
+[*.{xml,csproj,vcxproj,vcxproj.filters,proj,projitems,shproj,props,targets,ruleset,config,nuspec,resx,vsixmanifest,vsct}]
+indent_size = 2
+
+[*.json]
+indent_size = 2
+
+# Code Files
+[*.{c,cpp,h,hpp}]
+indent_size = 4
+charset = utf-8-bom
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{cs,csx}]
+indent_size = 4
+charset = utf-8-bom
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+#--------------------------------------------------------------------------------------------------
+# Language Conventions
+#--------------------------------------------------------------------------------------------------
+# https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-code-style-settings-reference
+
+# Self access qualification
+dotnet_style_qualification_for_field = false:none
+dotnet_style_qualification_for_property = false:none
+dotnet_style_qualification_for_method = false:none
+dotnet_style_qualification_for_event = false:none
+
+# Language keyword vs full type name
+# Predefined for members, etc does not create a message because the explicitly sized types are conveient in interop scenarios where the bit size matters.
+dotnet_style_predefined_type_for_locals_parameters_members = true:none
+dotnet_style_predefined_type_for_member_access = false:suggestion
+
+# Modifiers
+# We'd like this to be a warning, but it complains on partials in non-primary files.
+dotnet_style_require_accessibility_modifiers = always:none
+# csharp_preferred_modifier_order = # Default is fine. It isn't expected this would be overriden in the IDE.
+dotnet_style_readonly_field = true:suggestion
+
+# Parentheses
+dotnet_style_parentheses_in_arithmetic_binary_operators = always_for_clarity:none
+dotnet_style_parentheses_in_relational_binary_operators = always_for_clarity:none
+dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:none
+dotnet_style_parentheses_in_other_operators = always_for_clarity:none
+
+# .NET style
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_explicit_tuple_names = true:suggestion
+dotnet_style_prefer_inferred_tuple_names = true:none
+dotnet_style_prefer_inferred_anonymous_type_member_names = true:none
+dotnet_style_prefer_auto_properties = true:none
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:none
+dotnet_style_prefer_conditional_expression_over_assignment = true:none
+dotnet_style_prefer_conditional_expression_over_return = true:none
+csharp_prefer_braces = true:warning
+
+# Null checking
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_null_propagation = true:suggestion
+csharp_style_throw_expression = false:none
+# Not using safe navigation for event invocation has thread safety problems.
+csharp_style_conditional_delegate_call = true:warning
+
+# Use of `var`
+csharp_style_var_for_built_in_types = false:warning
+csharp_style_var_when_type_is_apparent = false:none
+csharp_style_var_elsewhere = false:warning
+
+# Expression-bodied members
+csharp_style_expression_bodied_methods = true:suggestion
+csharp_style_expression_bodied_constructors = true:suggestion
+csharp_style_expression_bodied_operators = true:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_indexers = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+
+# Pattern matching
+csharp_style_pattern_matching_over_is_with_cast_check = true:warning
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+
+# Inline variable declarations
+# This is not enforced because there's too many situations where this hides the variable declaration in a way that harms understanding of the code.
+csharp_style_inlined_variable_declaration = true:none
+
+# Expression-level preferences
+csharp_prefer_simple_default_expression = true:suggestion
+csharp_style_deconstructed_variable_declaration = true:none
+csharp_style_pattern_local_over_anonymous_function = true:warning
+
+#--------------------------------------------------------------------------------------------------
+# Formatting
+#--------------------------------------------------------------------------------------------------
+# (These are mostly Visual Studio defaults, and are simply here to enforce consistency.)
+dotnet_sort_system_directives_first = false
+
+# Newlines
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_between_query_expression_clauses = true
+
+# Indentation
+csharp_indent_block_contents = true
+csharp_indent_braces = false
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_indent_labels = no_change
+
+# Spacing
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_space_between_parentheses = false
+csharp_space_before_colon_in_inheritance_clause = true
+csharp_space_after_colon_in_inheritance_clause = true
+csharp_space_around_binary_operators = before_and_after
+csharp_space_between_method_declaration_empty_parameter_list_parentheses = false
+csharp_space_between_method_call_name_and_opening_parenthesis = false
+csharp_space_between_method_call_empty_parameter_list_parentheses = false
+
+# Wrapping
+csharp_preserve_single_line_statements = false
+csharp_preserve_single_line_blocks = true
+
+#--------------------------------------------------------------------------------------------------
+# Naming
+#--------------------------------------------------------------------------------------------------
+# https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-naming-conventions
+# Note: Order matters here! The least-specific rules must come last since the first matching rule is used by the IDE.
+#TODO: Synthesize Pathogen Studios conventions here.
+dotnet_naming_rule.all_fields.severity = suggestion
+dotnet_naming_rule.all_fields.symbols = all_fields
+dotnet_naming_rule.all_fields.style = all_fields
+dotnet_naming_symbols.all_fields.applicable_kinds = field
+dotnet_naming_style.all_fields.capitalization = pascal_case
