@@ -287,7 +287,15 @@ namespace ClangSharpTest2020
             {
                 // Ignore forward-declarations
                 if (!record.Handle.IsDefinition)
-                { return; }
+                {
+                    // Unless this is the canonical forward-declaration and there's no definition
+                    // (This is sometimes used for types which are visible on the public API but provide no public API themselves.)
+                    // (Clang seems to always declare the 1st declaration of a record the canonical one.)
+                    if (record.IsCanonicalDecl && record.Definition is null)
+                    { new TranslatedUndefinedRecord(container, record); }
+
+                    return;
+                }
 
                 new TranslatedRecord(container, record);
                 return;

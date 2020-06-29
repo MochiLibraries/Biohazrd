@@ -172,6 +172,8 @@ namespace ClangSharpTest2020
 
                     if (declaration is TranslatedRecord record)
                     { cSharpTypeSize = record.Size; }
+                    else if (declaration is TranslatedUndefinedRecord)
+                    { cSharpTypeSize = 0; } // You can't get the size of an undefined record.
                     else if (declaration is TranslatedEnum translatedEnum)
                     {
                         cSharpTypeSize = translatedEnum.UnderlyingType.SizeOf();
