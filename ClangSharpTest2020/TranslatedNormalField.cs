@@ -28,6 +28,19 @@ namespace ClangSharpTest2020
             };
         }
 
+        public override void Validate()
+        {
+            base.Validate();
+
+            // Fields in C++ can have the same name as their enclosing type, but this isn't allowed in C# (it results in CS0542)
+            // When we encounter such fields, we rename them to avoid the error.
+            if (Parent is TranslatedDeclaration parentDeclaration && TranslatedName == parentDeclaration.TranslatedName)
+            {
+                File.Diagnostic(Severity.Note, Field, $"Renaming '{this}' to avoid conflict with parent with the same name.");
+                TranslatedName += "_";
+            }
+        }
+
         protected override void TranslateImplementation(CodeWriter writer)
         {
             //TODO: Bitfields

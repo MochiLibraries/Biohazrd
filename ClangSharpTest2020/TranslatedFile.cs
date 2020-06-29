@@ -77,6 +77,16 @@ namespace ClangSharpTest2020
             // Associate loose declarations (IE: global functions and variables) to a record matching our file name if we have one.
             if (LooseDeclarations.Count > 0)
             {
+                // If any of the loose declarations have the same name as our loose declarations type, modify the name to avoid CS0542: member names cannot be the same as their enclosing type
+                foreach (TranslatedDeclaration declaration in LooseDeclarations)
+                {
+                    if (declaration.TranslatedName == LooseDeclarationsTypeName)
+                    {
+                        Diagnostic(Severity.Note, declaration.Declaration, $"Renaming loose declaration '{declaration}' to avoid conflicting with containing type.");
+                        declaration.TranslatedName += "_";
+                    }
+                }
+
                 //TODO: This would be problematic for enums which are named LooseDeclarationsTypeName since we'd double-write the file.
                 TranslatedRecord looseDeclarationsTarget = IndependentDeclarations.OfType<TranslatedRecord>().FirstOrDefault(r => r.TranslatedName == LooseDeclarationsTypeName);
                 if (looseDeclarationsTarget is object)
