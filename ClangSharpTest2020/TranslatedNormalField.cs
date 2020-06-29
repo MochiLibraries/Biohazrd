@@ -66,6 +66,8 @@ namespace ClangSharpTest2020
 
         private void TranslateConstantArrayField(CodeWriter writer, ConstantArrayType constantArrayType)
         {
+            using var _constantArrays = writer.DisableScope(true, File, Context, "Disabled translation: Constant array translation needs rethinking.");
+
             // Reduce the element type
             ClangType reducedElementType;
             int levelsOfIndirection;
