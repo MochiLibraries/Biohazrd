@@ -93,28 +93,36 @@ namespace ClangSharpTest2020
         private class ReflectionDumper : Dumper
         {
             private readonly Type Type;
-            private readonly FieldInfo[] Fields;
-            private readonly List<PropertyInfo> Properties;
+            private readonly List<PropertyOrFieldInfo> DataMembers;
 
             public ReflectionDumper(Type type)
             {
                 Type = type;
 
                 BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.DoNotWrapExceptions;
-                Fields = type.GetFields(bindingFlags);
+                FieldInfo[] fields = type.GetFields(bindingFlags);
+                PropertyInfo[] properties = type.GetProperties(bindingFlags);
 
-                Properties = new List<PropertyInfo>();
-                foreach (PropertyInfo property in type.GetProperties(bindingFlags))
+                DataMembers = new List<PropertyOrFieldInfo>(capacity: fields.Length + properties.Length);
+
+                foreach (FieldInfo field in fields)
+                { DataMembers.Add(new PropertyOrFieldInfo(field)); }
+                
+                foreach (PropertyInfo property in properties)
                 {
                     if (!PropertyFilter(Type, property))
                     { continue; }
 
-                    Properties.Add(property);
+                    DataMembers.Add(new PropertyOrFieldInfo(property));
                 }
             }
 
             private static bool PropertyFilter(Type type, PropertyInfo property)
             {
+                // Set-only properties aren't useful
+                if (!property.CanRead)
+                { return false; }
+
                 // Collections aren't useful for printing
                 if (typeof(IEnumerable).IsAssignableFrom(property.PropertyType))
                 { return false; }
@@ -127,14 +135,14 @@ namespace ClangSharpTest2020
             {
                 yield return InfoRow.MinorHeader(Type.Name);
 
-                foreach (FieldInfo field in Fields)
+                foreach (PropertyOrFieldInfo dataMember in DataMembers)
                 {
                     object rawValue;
                     string value;
 
                     try
                     {
-                        rawValue = field.GetValue(target);
+                        rawValue = dataMember.GetValue(target);
                         value = rawValue?.ToString();
                     }
                     catch (Exception ex)
@@ -143,29 +151,12 @@ namespace ClangSharpTest2020
                         value = $"{ex.GetType()}: {ex.Message}";
                     }
 
-                    yield return new InfoRow(field.Name, value, rawValue);
-                }
+                    // If the value is a declaration, add location info
+                    // (Except for translation units because their ToString prints the file name already.)
+                    if (rawValue is Cursor cursor && !(cursor is TranslationUnitDecl))
+                    { value += $" @ {ClangSharpLocationHelper.GetFriendlyLocation(cursor)}"; }
 
-                foreach (PropertyInfo property in Properties)
-                {
-                    if (!property.CanRead)
-                    { continue; }
-
-                    object rawValue;
-                    string value;
-
-                    try
-                    {
-                        rawValue = property.GetValue(target);
-                        value = rawValue?.ToString();
-                    }
-                    catch (Exception ex)
-                    {
-                        rawValue = ex;
-                        value = $"{ex.GetType()}: {ex.Message}";
-                    }
-
-                    yield return new InfoRow(property.Name, value, rawValue);
+                    yield return new InfoRow(dataMember.Name, value, rawValue);
                 }
             }
         }
