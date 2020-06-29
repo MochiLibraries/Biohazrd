@@ -285,6 +285,14 @@ namespace ClangSharpTest2020
             // Handle functions and methods
             if (cursor is FunctionDecl function)
             {
+                // Ignore non-canonical function declarations
+                // (This ignores things like the actual definition of a inline method declared earlier with the record's declaration.)
+                if (!function.IsCanonicalDecl)
+                {
+                    Diagnostic(Severity.Ignored, function, "Ignored non-canonical function declaration.");
+                    return;
+                }
+
                 new TranslatedFunction(container, function);
                 return;
             }
