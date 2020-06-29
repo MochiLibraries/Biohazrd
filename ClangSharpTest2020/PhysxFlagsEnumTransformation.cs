@@ -1,5 +1,7 @@
 ﻿using ClangSharp;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
@@ -9,12 +11,14 @@ namespace ClangSharpTest2020
         private readonly TranslatedEnum TargetEnum;
         private readonly TranslatedTypedef FlagsTypedef;
         private readonly UnderlyingEnumType UnderlyingType;
+        private readonly List<TranslatedFunction> OperatorOverloads;
 
-        private PhysxFlagsEnumTransformation(TranslatedEnum targetEnum, TranslatedTypedef flagsTypedef, UnderlyingEnumType underlyingType)
+        private PhysxFlagsEnumTransformation(TranslatedEnum targetEnum, TranslatedTypedef flagsTypedef, UnderlyingEnumType underlyingType, List<TranslatedFunction> operatorOverloads)
         {
             TargetEnum = targetEnum;
             FlagsTypedef = flagsTypedef;
             UnderlyingType = underlyingType;
+            OperatorOverloads = operatorOverloads;
         }
 
         public override void Apply()
@@ -27,6 +31,10 @@ namespace ClangSharpTest2020
             // Delete the typedef
             FlagsTypedef.Parent = null;
             TargetEnum.AddSecondaryDeclaration(FlagsTypedef.Declaration);
+
+            // Delete the PX_FLAGS_OPERATORS operator overloads
+            foreach (TranslatedFunction operatorOverload in OperatorOverloads)
+            { operatorOverload.Parent = null; }
         }
 
         public override string ToString()
@@ -93,8 +101,31 @@ namespace ClangSharpTest2020
             // Get the translation of the storage type
             UnderlyingEnumType underlyingType = storageType.ToUnderlyingEnumType(typedef.Typedef, file);
 
+            // Find the PX_FLAGS_OPERATORS operator overloads
+            List<TranslatedFunction> operatorOverloads = new List<TranslatedFunction>(capacity: 3);
+            //HACK: We need to get the loose functions, but when transformations run they might already be moved to a container
+            // We either need a purpose-built API for enumerating loose declarations or we need to make sure this runs before loose declarations are associated.
+            IDeclarationContainer container = file.__HACK__LooseDeclarationsContainer ?? file;
+
+            foreach (TranslatedFunction operatorOverload in container.OfType<TranslatedFunction>())
+            {
+                // Only consider operator overloads
+                if (!operatorOverload.IsOperatorOverload)
+                { continue; }
+
+                // Only consider static operator overloads (This is a workaround to make sure the function was a loose function)
+                if (operatorOverload.IsInstanceMethod)
+                { continue; }
+
+                // Only consider functions which have a return type of PxFlags<,>
+                if (operatorOverload.Function.ReturnType.CanonicalType != templateSpecialization.CanonicalType)
+                { continue; }
+
+                operatorOverloads.Add(operatorOverload);
+            }
+
             // Create the transformation
-            return new PhysxFlagsEnumTransformation(translatedEnum, typedef, underlyingType);
+            return new PhysxFlagsEnumTransformation(translatedEnum, typedef, underlyingType, operatorOverloads);
         }
     }
 }

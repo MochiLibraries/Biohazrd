@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 //=================================================================================================
 // This file tests the special translation of a PhysX-style flags enum
 //=================================================================================================
@@ -50,6 +50,13 @@ class PxFlags
 {
 };
 
+#define PX_INLINE inline
+#define PX_FLAGS_OPERATORS(enumtype, storagetype)                                                 \
+    PX_INLINE PxFlags<enumtype, storagetype> operator|(enumtype a, enumtype b) { return { }; }    \
+    PX_INLINE PxFlags<enumtype, storagetype> operator&(enumtype a, enumtype b) { return { }; }    \
+    PX_INLINE PxFlags<enumtype, storagetype> operator~(enumtype a) { return { }; }
+
 typedef PxFlags<PxActorFlag::Enum, PxU8> PxActorFlags;
+PX_FLAGS_OPERATORS(PxActorFlag::Enum, PxU8)
 
 PxActorFlags GetFlags();

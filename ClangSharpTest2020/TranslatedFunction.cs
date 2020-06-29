@@ -17,6 +17,7 @@ namespace ClangSharpTest2020
         public bool IsInstanceMethod => Function is CXXMethodDecl method && !method.IsStatic;
         public bool IsVirtual => Function is CXXMethodDecl method && method.IsVirtual;
         public bool IsConst => Function is CXXMethodDecl method && method.IsConst;
+        public bool IsOperatorOverload { get; }
 
         public override string DefaultName { get; }
 
@@ -46,11 +47,17 @@ namespace ClangSharpTest2020
             ref PathogenOperatorOverloadInfo operatorOverloadInfo = ref Function.GetOperatorOverloadInfo();
 
             if (operatorOverloadInfo.Kind != PathogenOperatorOverloadKind.None)
-            { DefaultName = $"operator_{operatorOverloadInfo.Name}"; }
+            {
+                DefaultName = $"operator_{operatorOverloadInfo.Name}";
+                IsOperatorOverload = true;
+            }
 
             //TODO: Name these based on the type being converted to/from (Need a way to escape types for identifiers)
             if (Function is CXXConversionDecl)
-            { DefaultName = Parent.GetNameForUnnamed("ConversionOperator"); }
+            {
+                DefaultName = Parent.GetNameForUnnamed("ConversionOperator");
+                IsOperatorOverload = true;
+            }
 
             // Get the function's calling convention
             string errorMessage;
