@@ -179,6 +179,7 @@ namespace ClangSharpTest2020
             Console.WriteLine("Performing library-specific transformations...");
             Console.WriteLine("==============================================================================");
             library.ApplyTransformation(ConstOverloadRenamer.Factory);
+            library.ApplyTransformation(PhysXRemovePaddingFieldsTransformation.Factory);
             library.ApplyTransformation(PhysXEnumTransformation.Factory);
             library.ApplyTransformation(PhysxFlagsEnumTransformation.Factory);
 
