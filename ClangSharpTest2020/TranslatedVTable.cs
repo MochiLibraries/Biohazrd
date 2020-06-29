@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using ClangSharp.Interop;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using static ClangSharpTest2020.CodeWriter;
@@ -40,7 +41,17 @@ namespace ClangSharpTest2020
                 string name;
 
                 if (info.Kind == PathogenVTableEntryKind.FunctionPointer)
-                { name = info.MethodDeclaration.Spelling.ToString(); }
+                {
+                    name = info.MethodDeclaration.Spelling.ToString();
+
+                    if (info.MethodDeclaration.DeclKind == CX_DeclKind.CX_DeclKind_CXXMethod)
+                    {
+                        ref PathogenOperatorOverloadInfo operatorOverloadInfo = ref info.MethodDeclaration.GetOperatorOverloadInfo();
+
+                        if (operatorOverloadInfo.Kind != PathogenOperatorOverloadKind.None)
+                        { name = $"operator_{operatorOverloadInfo.Name}"; }
+                    }
+                }
                 else
                 { name = $"__{info.Kind}"; }
 

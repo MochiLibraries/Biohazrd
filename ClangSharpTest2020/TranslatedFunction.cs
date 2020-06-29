@@ -29,12 +29,24 @@ namespace ClangSharpTest2020
         {
             Function = function;
             Declaration = Function;
+            DefaultName = Function.Name;
+            Accessibility = AccessModifier.Public;
 
-            if (!(Function is CXXMethodDecl) || Function.Access == CX_CXXAccessSpecifier.CX_CXXPublic)
-            { Accessibility = AccessModifier.Public; }
-            else
+            // Handle non-public methods
+            if (Function is CXXMethodDecl && Function.Access != CX_CXXAccessSpecifier.CX_CXXPublic)
             { Accessibility = AccessModifier.Private; }
 
+            // Handle operator overloads
+            ref PathogenOperatorOverloadInfo operatorOverloadInfo = ref Function.GetOperatorOverloadInfo();
+
+            if (operatorOverloadInfo.Kind != PathogenOperatorOverloadKind.None)
+            { DefaultName = $"operator_{operatorOverloadInfo.Name}"; }
+
+            //TODO: Name these based on the type being converted to/from (Need a way to escape types for identifiers)
+            if (Function is CXXConversionDecl)
+            { DefaultName = Parent.GetNameForUnnamed("ConversionOperator"); }
+
+            // Get the function's calling convention
             string errorMessage;
             CXCallingConv clangCallingConvention = Function.GetCallingConvention();
             CallingConvention = clangCallingConvention.GetCSharpCallingConvention(out errorMessage);
@@ -217,7 +229,6 @@ namespace ClangSharpTest2020
             //TODO: Implement these translations
             using var _0 = writer.DisableScope(Function is CXXConstructorDecl, File, Function, "Unimplemented translation: Constructor");
             using var _1 = writer.DisableScope(Function is CXXDestructorDecl, File, Function, "Unimplemented translation: Destructor");
-            using var _2 = writer.DisableScope(Function.Name.StartsWith("operator"), File, Function, "Unimplemented translation: Operator overload");
 
             //TODO: Currently this happens for inline method bodies declared outside of the record. Need to figure out how to ignore/reassociate them.
             // We probably want to try and re-associate them because sometimes the definition has the parameter names but the declaration doesn't.
