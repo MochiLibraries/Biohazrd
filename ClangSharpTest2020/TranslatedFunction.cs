@@ -16,15 +16,19 @@ namespace ClangSharpTest2020
 
         public bool IsInstanceMethod => Function is CXXMethodDecl method && !method.IsStatic;
         public bool IsVirtual => Function is CXXMethodDecl method && method.IsVirtual;
+        public bool IsConst => Function is CXXMethodDecl method && method.IsConst;
 
         public override string DefaultName { get; }
+
         // When this function is an instance method, we add "Interop" to the end of the P/Invoke methods to ensure they don't conflict with other methods.
         // (For instance, when there's a SomeClass::Method() method in addition to a SomeClass::Method(SomeClass*) method.)
-        private string DllImportName => IsInstanceMethod ? $"{DefaultName}Interop" : DefaultName;
+        private string DllImportName => IsInstanceMethod ? $"{TranslatedName}_PInvoke" : TranslatedName;
 
         private string ThisTypeSanatized => Record is null ? "void" : SanitizeIdentifier(Record.TranslatedName);
 
         public override bool CanBeRoot => false;
+
+        public bool HideFromIntellisense { get; set; } = false;
 
         internal TranslatedFunction(IDeclarationContainer container, FunctionDecl function)
             : base(container)
@@ -115,6 +119,10 @@ namespace ClangSharpTest2020
 
             writer.EnsureSeparation();
 
+            // Write out the EditorBrowsableAttribute if appllicable
+            if (!IsInstanceMethod)
+            { TranslateEditorBrowsableAttribute(writer); }
+
             // Write out the DllImport attribute
             writer.Using("System.Runtime.InteropServices");
 
@@ -139,6 +147,9 @@ namespace ClangSharpTest2020
         private void TranslateTrampoline(CodeWriter writer)
         {
             writer.EnsureSeparation();
+
+            // Write out the EditorBrowsableAttribute if appllicable
+            TranslateEditorBrowsableAttribute(writer);
 
             // Build vTable access
             // (We do this now so we can obsolete the method if we can't get it.)
@@ -261,6 +272,15 @@ namespace ClangSharpTest2020
             WriteReturnType(writer);
 
             writer.Write('>');
+        }
+
+        private void TranslateEditorBrowsableAttribute(CodeWriter writer)
+        {
+            if (HideFromIntellisense)
+            {
+                writer.Using("System.ComponentModel");
+                writer.WriteLine("[EditorBrowsable(EditorBrowsableState.Never)]");
+            }
         }
     }
 }
