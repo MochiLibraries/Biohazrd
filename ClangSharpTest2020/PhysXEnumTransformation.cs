@@ -20,7 +20,7 @@ namespace ClangSharpTest2020
         }
 
         public override string ToString()
-            => $"PhysX-style enum {ContainingRecord}::{TargetEnum}";
+            => $"PhysX-style scoped enum {ContainingRecord}::{TargetEnum}";
 
         public static TranslationTransformation Factory(TranslatedDeclaration declaration)
         {

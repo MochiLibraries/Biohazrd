@@ -29,6 +29,9 @@ namespace ClangSharpTest2020
             TargetEnum.AddSecondaryDeclaration(FlagsTypedef.Declaration);
         }
 
+        public override string ToString()
+            => $"PhysX-style flags enum {FlagsTypedef.TranslatedName}";
+
         public static TranslationTransformation Factory(TranslatedDeclaration declaration)
         {
             //TODO: It should be easier to look up declarations and emit diagnostics.
