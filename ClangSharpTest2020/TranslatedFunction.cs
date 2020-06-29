@@ -59,6 +59,12 @@ namespace ClangSharpTest2020
                 IsOperatorOverload = true;
             }
 
+            // Rename constructors/destructors
+            if (Function is CXXConstructorDecl)
+            { DefaultName = "Constructor"; }
+            else if (Function is CXXDestructorDecl)
+            { DefaultName = "Destructor"; }
+
             // Get the function's calling convention
             string errorMessage;
             CXCallingConv clangCallingConvention = Function.GetCallingConvention();
@@ -246,14 +252,6 @@ namespace ClangSharpTest2020
 
         protected override void TranslateImplementation(CodeWriter writer)
         {
-            //TODO: Implement these translations
-            using var _0 = writer.DisableScope(Function is CXXConstructorDecl, File, Function, "Unimplemented translation: Constructor");
-            using var _1 = writer.DisableScope(Function is CXXDestructorDecl, File, Function, "Unimplemented translation: Destructor");
-
-            //TODO: Currently this happens for inline method bodies declared outside of the record. Need to figure out how to ignore/reassociate them.
-            // We probably want to try and re-associate them because sometimes the definition has the parameter names but the declaration doesn't.
-            using var _3 = writer.DisableScope(IsInstanceMethod && Record is null, File, Function, "Translation hole: Instance method without an associated record.");
-
             // Translate the DllImport
             if (!IsVirtual)
             { TranslateDllImport(writer); }
