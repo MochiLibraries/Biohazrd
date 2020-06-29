@@ -196,16 +196,11 @@ namespace ClangSharpTest2020
                         container = recordContainer.Parent;
                     }
                 }
-                // Otherwise default to translating the name literally (as long as the declaration isn't a template specialization)
-                // (Don't fall back on this when translating a typedef. IE: Only try this when the type is a TagType.)
-                else if (!(typeDecl is ClassTemplateSpecializationDecl) && type is TagType tagType)
-                {
-                    //TODO: We want this case to be rare and/or non-existent.
-                    // We need to be smarter about how we translate entire libraries for that to happen though since
-                    // right now these types are typically records outside of the file we're directly processing.
-                    typeName = CodeWriter.SanitizeIdentifier(tagType.Decl.Name);
-                    cSharpTypeSize = 0;
-                }
+                // Otherwise we let the fallback code handle the type reference.
+                // This usually indicates a type isn't a part of the TranslatedLibrary when it should be, so we want to warn too.
+                // (Unless we're translating a typedef. IE: Only warn when the type is a TagType.)
+                else if (type is TagType tagType)
+                { Diagnostic(Severity.Warning, associatedCursor, $"Don't know how to translate type reference to '{tagType.Decl.Name}'"); }
             }
 
             // If the size of the C# type is known, we try to sanity-check it
