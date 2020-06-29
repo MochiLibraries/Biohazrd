@@ -284,30 +284,6 @@ namespace ClangSharpTest2020
 
         private static void Dump(Cursor cursor)
         {
-            // Skip cursors which come from included files
-            if (!cursor.IsFromMainFile())
-            {
-                return;
-            }
-
-            // Some types of cursors are never relevant
-            bool skip = false;
-            {
-                //if (cursor is AccessSpecDecl)
-                //{ skip = true; }
-
-                if (cursor is RecordDecl record && !record.Handle.IsDefinition)
-                { skip = true; }
-            }
-
-            if (skip)
-            {
-                if (cursor.CursorChildren.Count > 0)
-                { WriteLine("THE FOLLOWING CURSOR WAS GONNA BE SKIPPED BUT IT HAS CHILDREN!"); }
-                else
-                { return; }
-            }
-
             string extra = "";
             {
                 if (cursor is EnumConstantDecl enumConstant)
@@ -344,6 +320,16 @@ namespace ClangSharpTest2020
                     ClangType type = record.TypeForDecl;
 
                     extra += $" {type.Handle.SizeOf} bytes";
+
+                    if (record.IsCanonicalDecl)
+                    { extra += " <CANONICAL>"; }
+
+                    if (record.Definition == record)
+                    { extra += " <DEFINITION>"; }
+                    else if (record.Definition is null)
+                    { extra += " <UNDEFINED>"; }
+                    else if (record.Definition is object)
+                    { extra += $" Definition={ClangSharpLocationHelper.GetFriendlyLocation(record.Definition)}"; }
 
                     if (type.Handle.IsPODType)
                     { extra += " <POD>"; }
@@ -720,7 +706,7 @@ namespace ClangSharpTest2020
 
             if (type is TagType tagType)
             {
-                typeInfo += $" DeclKind={tagType.Decl.CursorKindDetailed()} Decl=`{tagType.Decl}`";
+                typeInfo += $" DeclKind={tagType.Decl.CursorKindDetailed()} Decl=`{tagType.Decl}` Location=`{ClangSharpLocationHelper.GetFriendlyLocation(tagType.Decl)}`";
             }
 
             // Write to main output
