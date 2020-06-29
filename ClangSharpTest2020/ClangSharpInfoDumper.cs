@@ -1,6 +1,4 @@
-﻿//#define VERBOSE_LOCATION_INFO
-using ClangSharp;
-using ClangSharp.Interop;
+﻿using ClangSharp;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -76,80 +74,19 @@ namespace ClangSharpTest2020
         {
             protected override IEnumerable<InfoRow> DumpT(Cursor target)
             {
-                CXFile startFile;
-                uint startLine;
-                uint startColumn;
-                uint startOffset;
-                CXFile endFile;
-                uint endLine;
-                uint endColumn;
-                uint endOffset;
-
-                // Spelling location
-                target.Extent.Start.GetSpellingLocation(out startFile, out startLine, out startColumn, out startOffset);
-                target.Extent.End.GetSpellingLocation(out endFile, out endLine, out endColumn, out endOffset);
-                string location = FormatLocation(startFile, startLine, startColumn, startOffset, endFile, endLine, endColumn, endOffset);
-
-                if (target.Extent.Start.IsFromMainFilePathogen() || target.Extent.End.IsFromMainFilePathogen())
-                { location += " <MainFilePgn>"; }
-
-                if (target.Extent.Start.IsInSystemHeader || target.Extent.End.IsInSystemHeader)
-                { location += " <SystemHeader>"; }
-
                 string locationLabel = "Location";
-#if VERBOSE_LOCATION_INFO
-                locationLabel = "Spelling Location";
-#endif
 
-                yield return new InfoRow(locationLabel, location, null);
+                if (GlobalConfiguration.IncludeAllLocationDataInDump)
+                { locationLabel = "Spelling Location"; }
 
-#if VERBOSE_LOCATION_INFO
-                // Note: Instantiation location is not printed here because it is deprecated, it was replaced by the expansion location.
-                // Expansion location
-                target.Extent.Start.GetExpansionLocation(out startFile, out startLine, out startColumn, out startOffset);
-                target.Extent.End.GetExpansionLocation(out endFile, out endLine, out endColumn, out endOffset);
-                location = FormatLocation(startFile, startLine, startColumn, startOffset, endFile, endLine, endColumn, endOffset);
-                yield return new InfoRow("Expansion Location", location);
+                yield return new InfoRow(locationLabel, ClangSharpLocationHelper.GetFriendlyLocation(target, includeFileKindInfo: true), null);
 
-                // File location
-                target.Extent.Start.GetFileLocation(out startFile, out startLine, out startColumn, out startOffset);
-                target.Extent.End.GetFileLocation(out endFile, out endLine, out endColumn, out endOffset);
-                location = FormatLocation(startFile, startLine, startColumn, startOffset, endFile, endLine, endColumn, endOffset);
-                yield return new InfoRow("File Location", location);
-
-                // Presumed location
-                CXString startFileName;
-                CXString endFileName;
-                target.Extent.Start.GetPresumedLocation(out startFileName, out startLine, out startColumn);
-                target.Extent.End.GetPresumedLocation(out endFileName, out endLine, out endColumn);
-                location = FormatLocation(startFile.ToString(), startLine, startColumn, 0, endFile.ToString(), endLine, endColumn, 0);
-                yield return new InfoRow("Presumed Location", location);
-#endif
-            }
-
-            private static string FormatLocation(CXFile startFile, uint startLine, uint startColumn, uint startOffset, CXFile endFile, uint endLine, uint endColumn, uint endOffset)
-                => FormatLocation(startFile.Name.ToString(), startLine, startColumn, startOffset, endFile.Name.ToString(), endLine, endColumn, endOffset);
-
-            private static string FormatLocation(string startFileName, uint startLine, uint startColumn, uint startOffset, string endFileName, uint endLine, uint endColumn, uint endOffset)
-            {
-                startFileName = Path.GetFileName(startFileName);
-                endFileName = Path.GetFileName(endFileName);
-
-                string location = "";
-
-                if (startFileName == endFileName)
+                if (GlobalConfiguration.IncludeAllLocationDataInDump)
                 {
-                    location += startFileName;
-                    location += startLine == endLine ? $":{startLine}" : $":{startLine}..{endLine}";
-                    location += startColumn == endColumn ? $":{startColumn}" : $":{startColumn}..{endColumn}";
-
-                    if (startOffset != 0 && endOffset != 0)
-                    { location += startOffset == endOffset ? $"[{startOffset}]" : $"[{startOffset}..{endOffset}]"; }
+                    yield return new InfoRow("Expansion Location", ClangSharpLocationHelper.GetFriendlyLocation(target, ClangSharpLocationHelper.Kind.ExpansionLocation), null);
+                    yield return new InfoRow("File Location", ClangSharpLocationHelper.GetFriendlyLocation(target, ClangSharpLocationHelper.Kind.FileLocation), null);
+                    yield return new InfoRow("Presumed Location", ClangSharpLocationHelper.GetFriendlyLocation(target, ClangSharpLocationHelper.Kind.PresumedLocation), null);
                 }
-                else
-                { location += $" {startFileName}:{startLine}:{startColumn}[{startOffset}]..{endFileName}:{endLine}:{endColumn}[{endOffset}]"; }
-
-                return location;
             }
         }
 
