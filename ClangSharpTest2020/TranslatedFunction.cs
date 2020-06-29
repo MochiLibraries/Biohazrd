@@ -17,8 +17,10 @@ namespace ClangSharpTest2020
         public bool IsInstanceMethod => Function is CXXMethodDecl method && !method.IsStatic;
         public bool IsVirtual => Function is CXXMethodDecl method && method.IsVirtual;
 
-        public override string DefaultName => Function.Name;
-        private string DllImportName => DefaultName;
+        public override string DefaultName { get; }
+        // When this function is an instance method, we add "Interop" to the end of the P/Invoke methods to ensure they don't conflict with other methods.
+        // (For instance, when there's a SomeClass::Method() method in addition to a SomeClass::Method(SomeClass*) method.)
+        private string DllImportName => IsInstanceMethod ? $"{DefaultName}Interop" : DefaultName;
 
         private string ThisTypeSanatized => Record is null ? "void" : SanitizeIdentifier(Record.TranslatedName);
 
