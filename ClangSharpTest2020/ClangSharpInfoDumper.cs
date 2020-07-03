@@ -286,6 +286,18 @@ namespace ClangSharpTest2020
                 }
             }
 
+            // Special cases for functions, add parameter info too
+            if (cursor is FunctionDecl functionDeclaration)
+            {
+                int parameterNumber = 0;
+                foreach (ParmVarDecl parameter in functionDeclaration.Parameters)
+                {
+                    rows.Add(InfoRow.MajorHeader($"Parameters[{parameterNumber}] -- {parameter.CursorKindDetailed()} {parameter}"));
+                    EnumerateRows(rows, parameter.GetType(), typeof(Cursor), parameter);
+                    parameterNumber++;
+                }
+            }
+
             // Determine the longest key and value for formatting purposes
             int longestLabel = 0;
             int longestValue = 0;
