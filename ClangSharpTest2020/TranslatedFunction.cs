@@ -25,11 +25,14 @@ namespace ClangSharpTest2020
         // (For instance, when there's a SomeClass::Method() method in addition to a SomeClass::Method(SomeClass*) method.)
         private string DllImportName => IsInstanceMethod ? $"{TranslatedName}_PInvoke" : TranslatedName;
 
-        private string ThisTypeSanatized => Record is null ? "void" : SanitizeIdentifier(Record.TranslatedName);
+        private string ThisTypeSanitized => Record is null ? "void" : SanitizeIdentifier(Record.TranslatedName);
 
         public override bool CanBeRoot => false;
 
         public bool HideFromIntellisense { get; set; } = false;
+
+        private readonly bool ReturnValueMustBePassedByReference = false;
+        private readonly bool HasReturnValue;
 
         internal TranslatedFunction(IDeclarationContainer container, FunctionDecl function)
             : base(container)
@@ -38,6 +41,8 @@ namespace ClangSharpTest2020
             Declaration = Function;
             DefaultName = Function.Name;
             Accessibility = AccessModifier.Public;
+            ReturnValueMustBePassedByReference = Function.ReturnType.MustBePassedByReference();
+            HasReturnValue = Function.ReturnType.Kind != CXTypeKind.CXType_Void;
 
             // Handle non-public methods
             if (Function is CXXMethodDecl && Function.Access != CX_CXXAccessSpecifier.CX_CXXPublic)
@@ -77,19 +82,43 @@ namespace ClangSharpTest2020
         private void WriteReturnType(CodeWriter writer)
             => File.WriteType(writer, Function.ReturnType, Function, TypeTranslationContext.ForReturn);
 
+        private const string DummyThisNameSanitized = "@this";
+        private const string DummyReturnBufferNameSanitized = "__returnBuffer";
+
         private bool FirstParameterListWrite = true;
-        private const string DummyThisNameSanatized = "@this";
-        private void WriteParameterList(CodeWriter writer, bool includeThis, bool forArgumentList = false)
+        private void WriteParameterList(CodeWriter writer, bool rawSignature, bool forArgumentList = false)
         {
             bool first = true;
 
-            if (includeThis && IsInstanceMethod)
+            if (rawSignature)
             {
-                if (!forArgumentList)
-                { writer.Write($"{ThisTypeSanatized}* "); }
+                // Write out the this pointer
+                if (IsInstanceMethod)
+                {
+                    if (!forArgumentList)
+                    { writer.Write($"{ThisTypeSanitized}* "); }
 
-                writer.Write(DummyThisNameSanatized);
-                first = false;
+                    writer.Write(DummyThisNameSanitized);
+                    first = false;
+                }
+
+                // Write out the return buffer parameter
+                if (ReturnValueMustBePassedByReference)
+                {
+                    if (!first)
+                    { writer.Write(", "); }
+
+                    writer.Write("out ");
+
+                    if (!forArgumentList)
+                    {
+                        WriteReturnType(writer);
+                        writer.Write(" ");
+                    }
+
+                    writer.Write(DummyReturnBufferNameSanitized);
+                    first = false;
+                }
             }
 
             int parameterNumber = 0;
@@ -151,9 +180,12 @@ namespace ClangSharpTest2020
 
             // Write out the function signature
             writer.Write($"{accessibility} static extern ");
-            WriteReturnType(writer);
+            if (ReturnValueMustBePassedByReference)
+            { writer.Write("void"); }
+            else
+            { WriteReturnType(writer); }
             writer.Write($" {SanitizeIdentifier(DllImportName)}(");
-            WriteParameterList(writer, includeThis: true);
+            WriteParameterList(writer, rawSignature: true);
             writer.WriteLine(");");
         }
 
@@ -161,91 +193,96 @@ namespace ClangSharpTest2020
         {
             writer.EnsureSeparation();
 
-            // Write out the EditorBrowsableAttribute if appllicable
-            TranslateEditorBrowsableAttribute(writer);
+            // Build the dispatch's method access
+            // (We do this now so we can obsolete the method and skip fixing this if there's an issue.)
+            string methodAccess = null;
+            string methodAccessFailure = null;
 
-            // Build vTable access
-            // (We do this now so we can obsolete the method if we can't get it.)
-            string vTableAccess = null;
-            string vTableAccessFailure = null;
-
-            if (IsVirtual)
+            if (!IsVirtual)
+            { methodAccess = SanitizeIdentifier(DllImportName); }
+            else
             {
                 if (Record is null)
-                { vTableAccessFailure = "Virtual method has no associated class."; }
+                { methodAccessFailure = "Virtual method has no associated class."; }
                 else if (Record.VTableField is null)
-                { vTableAccessFailure = "Class has no vTable pointer."; }
+                { methodAccessFailure = "Class has no vTable pointer."; }
                 else if (Record.VTable is null)
-                { vTableAccessFailure = "Class has no virtual method table."; }
+                { methodAccessFailure = "Class has no virtual method table."; }
                 else
                 {
                     string vTableEntry = Record.VTable.GetVTableEntryNameForMethod(this);
 
                     if (vTableEntry is null)
-                    { vTableAccessFailure = "Could not find entry in virtual method table."; }
+                    { methodAccessFailure = "Could not find entry in virtual method table."; }
                     else
-                    { vTableAccess = $"{SanitizeIdentifier(Record.VTableField.TranslatedName)}->{SanitizeIdentifier(vTableEntry)}"; }
+                    { methodAccess = $"{SanitizeIdentifier(Record.VTableField.TranslatedName)}->{SanitizeIdentifier(vTableEntry)}"; }
                 }
-
-                Debug.Assert(vTableAccess is object || vTableAccessFailure is object, "We should have either vTable access code or an error indicating why we don't.");
             }
 
-            // Write out the vTable access couldn't be built
-            if (vTableAccessFailure is object)
+            Debug.Assert(methodAccess is object || methodAccessFailure is object, "We should have either vTable access code or an error indicating why we don't.");
+
+            // Obsolete the method if there was an issue building this trampoline
+            if (methodAccessFailure is object)
             {
                 writer.Using("System");
-                writer.WriteLine($"[Obsolete(\"Method not translated: {SanitizeStringLiteral(vTableAccessFailure)}\", error: true)]");
-                File.Diagnostic(Severity.Warning, Function, $"Can't translate virtual method: {vTableAccessFailure}");
+                writer.WriteLine($"[Obsolete(\"Method not translated: {SanitizeStringLiteral(methodAccessFailure)}\", error: true)]");
+                File.Diagnostic(Severity.Warning, Function, $"Can't translate method: {methodAccessFailure}");
             }
+
+            // Write out the EditorBrowsableAttribute if appllicable
+            TranslateEditorBrowsableAttribute(writer);
 
             // Translate the method signature
             writer.Write($"{Accessibility.ToCSharpKeyword()} unsafe ");
             WriteReturnType(writer);
             writer.Write($" {SanitizeIdentifier(TranslatedName)}(");
-            WriteParameterList(writer, includeThis: false);
+            WriteParameterList(writer, rawSignature: false);
             writer.WriteLine(")");
 
-            // Translate the dispatch
-            if (IsVirtual)
+            // If we failed to build the method access, just emit an exception
+            if (methodAccessFailure is object)
             {
-                if (vTableAccessFailure is object)
+                using (writer.Indent())
                 {
-                    using (writer.Indent())
+                    writer.Using("System");
+                    writer.WriteLine($"=> throw new PlatformNotSupportedException(\"Method not available: {SanitizeStringLiteral(methodAccessFailure)}\");");
+                }
+
+                return;
+            }
+
+            // Translate the dispatch
+            using (writer.Block())
+            {
+                writer.WriteLine($"fixed ({ThisTypeSanitized}* {DummyThisNameSanitized} = &this)");
+
+                if (ReturnValueMustBePassedByReference)
+                {
+                    Debug.Assert(HasReturnValue);
+                    using (writer.Block())
                     {
-                        writer.Using("System");
-                        writer.WriteLine($"=> throw new PlatformNotSupportedException(\"Virtual method not available: {SanitizeStringLiteral(vTableAccessFailure)}\");");
+                        WriteReturnType(writer);
+                        writer.WriteLine($" {DummyReturnBufferNameSanitized};");
+
+                        writer.Write($"{methodAccess}(");
+                        WriteParameterList(writer, rawSignature: true, forArgumentList: true);
+                        writer.WriteLine(");");
+
+                        writer.WriteLine($"return {DummyReturnBufferNameSanitized};");
                     }
                 }
                 else
                 {
-                    using (writer.Block())
-                    {
-                        writer.WriteLine($"fixed ({ThisTypeSanatized}* {DummyThisNameSanatized} = &this)");
-                        writer.Write("{ ");
-
-                        if (Function.ReturnType.Kind != CXTypeKind.CXType_Void)
-                        { writer.Write("return "); }
-
-                        writer.Write($"{vTableAccess}(");
-                        WriteParameterList(writer, includeThis: true, forArgumentList: true);
-                        writer.WriteLine("); }");
-                    }
-                }
-            }
-            else
-            {
-                // Once https://github.com/dotnet/csharplang/issues/1792 is implemented, this fixed statement should be removed.
-                using (writer.Block())
-                {
-                    writer.WriteLine($"fixed ({ThisTypeSanatized}* {DummyThisNameSanatized} = &this)");
                     writer.Write("{ ");
 
-                    if (Function.ReturnType.Kind != CXTypeKind.CXType_Void)
+                    if (HasReturnValue)
                     { writer.Write("return "); }
 
-                    writer.Write($"{SanitizeIdentifier(DllImportName)}(");
-                    WriteParameterList(writer, includeThis: true, forArgumentList: true);
-                    writer.WriteLine("); }");
+                    writer.Write($"{methodAccess}(");
+                    WriteParameterList(writer, rawSignature: true, forArgumentList: true);
+                    writer.Write(");");
+
+                    writer.WriteLine(" }");
                 }
             }
         }
@@ -266,7 +303,15 @@ namespace ClangSharpTest2020
             writer.Write($"delegate* {CallingConvention.ToString().ToLowerInvariant()}<");
 
             if (IsInstanceMethod)
-            { writer.Write($"{ThisTypeSanatized}*, "); }
+            { writer.Write($"{ThisTypeSanitized}*, "); }
+
+            if (ReturnValueMustBePassedByReference)
+            {
+                Debug.Assert(HasReturnValue, "If the return value is passed by reference, the method must have a return value too.");
+                writer.Write($"out ");
+                WriteReturnType(writer);
+                writer.Write(", ");
+            }
 
             foreach (ParmVarDecl parameter in Function.Parameters)
             {
@@ -274,7 +319,10 @@ namespace ClangSharpTest2020
                 writer.Write(", ");
             }
 
-            WriteReturnType(writer);
+            if (ReturnValueMustBePassedByReference)
+            { writer.Write("void"); }
+            else
+            { WriteReturnType(writer); }
 
             writer.Write('>');
         }

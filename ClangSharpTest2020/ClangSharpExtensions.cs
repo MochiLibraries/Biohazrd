@@ -297,5 +297,53 @@ namespace ClangSharpTest2020
 
         public static PathogenArgPassingKind GetArgPassingRestrictions(this RecordDecl record)
             => record.Handle.GetRecordArgPassingRestrictions();
+
+        public static bool RecordMustBePassedByReference(this CXCursor cursor)
+        {
+            if (!cursor.IsDeclaration || cursor.DeclKind < CX_DeclKind.CX_DeclKind_FirstRecord || cursor.DeclKind > CX_DeclKind.CX_DeclKind_LastRecord)
+            { throw new ArgumentException("The cursor must be a record declaration.", nameof(cursor)); }
+
+            // Note: These rules assume Microsoft x64 ABI, need to evaluate for x86 and non-Windows x64
+
+            // ArgPassingRestrictions only covers cases like having a copy constructor or something similar
+            // It (surpririsingly) doesn't handle cases involving the size of the record
+            if (cursor.GetRecordArgPassingRestrictions() != PathogenArgPassingKind.CanPassInRegisters)
+            { return true; }
+
+            // If the size isn't a power of two or it's bigger than the word size, it must be passed by reference
+            long recordSize = cursor.Type.SizeOf;
+
+            if (recordSize < 1)
+            { throw new NotSupportedException("This method does not work with cursors missing size information."); }
+
+            switch (recordSize)
+            {
+                case 1:
+                case 2:
+                case 4:
+                case 8:
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
+        public static bool MustBePassedByReference(this RecordDecl record)
+            => record.Handle.RecordMustBePassedByReference();
+
+        public static bool MustBePassedByReference(this ClangType type)
+        {
+            switch (type)
+            {
+                case ElaboratedType elaboratedType:
+                    return elaboratedType.NamedType.MustBePassedByReference();
+                case TypedefType typedefType:
+                    return typedefType.CanonicalType.MustBePassedByReference();
+                case RecordType recordType:
+                    return ((RecordDecl)recordType.Decl).MustBePassedByReference();
+                default:
+                    return false;
+            }
+        }
     }
 }

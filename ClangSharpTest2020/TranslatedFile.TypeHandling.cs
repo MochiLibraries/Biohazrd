@@ -171,7 +171,13 @@ namespace ClangSharpTest2020
                     typeName = CodeWriter.SanitizeIdentifier(declaration.TranslatedName);
 
                     if (declaration is TranslatedRecord record)
-                    { cSharpTypeSize = record.Size; }
+                    {
+                        cSharpTypeSize = record.Size;
+
+                        // Don't handle this for return types, it's handled by the TranslatedFunction translation.
+                        if (levelsOfIndirection == 0 && context == TypeTranslationContext.ForParameter && record.MustBePassedByReference)
+                        { levelsOfIndirection++; }
+                    }
                     else if (declaration is TranslatedUndefinedRecord)
                     { cSharpTypeSize = 0; } // You can't get the size of an undefined record.
                     else if (declaration is TranslatedEnum translatedEnum)

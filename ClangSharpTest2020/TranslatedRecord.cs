@@ -23,6 +23,8 @@ namespace ClangSharpTest2020
         internal TranslatedVTableField VTableField { get; }
         internal TranslatedVTable VTable { get; }
 
+        internal bool MustBePassedByReference { get; }
+
         /// <summary>The insertion point for new members.</summary>
         /// <remarks>
         /// If -1, new members are added to the end of the members list.
@@ -82,7 +84,9 @@ namespace ClangSharpTest2020
             Declaration = Record;
             Accessibility = Declaration.Access.ToTranslationAccessModifier();
             Members = _Members.AsReadOnly();
+            MustBePassedByReference = Record.MustBePassedByReference();
 
+            // Determine the name
             DefaultName = Record.Name;
 
             if (String.IsNullOrEmpty(DefaultName))
