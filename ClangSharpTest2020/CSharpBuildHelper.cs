@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -28,13 +29,13 @@ namespace ClangSharpTest2020
 
         public void AddFile(string filePath)
         {
-            string sourceCode = File.ReadAllText(filePath);
-            SourceText sourceText = SourceText.From(sourceCode);
+            using Stream stream = File.OpenRead(filePath);
+            SourceText sourceText = SourceText.From(stream);
             SyntaxTree syntaxTree = SyntaxFactory.ParseSyntaxTree(sourceText, ParseOptions, filePath);
             SyntaxTrees.Add(syntaxTree);
         }
 
-        public ImmutableArray<Diagnostic> Compile()
+        private CSharpCompilation CompileImplementation(string filePath)
         {
             // We're using the .NET 5 preview since we're also using the pre-release compiler meant to be paired with it since we're using the unreleased C# 9 function pointers feature.
             const string referenceAssemblyRoot = @"C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\5.0.0-preview.6.20305.6\ref\net5.0\";
@@ -50,8 +51,20 @@ namespace ClangSharpTest2020
                 GetSystemReference("System.Runtime.CompilerServices.Unsafe"),
             };
 
-            CSharpCompilation compilation = CSharpCompilation.Create("Test.dll", SyntaxTrees, references, CompilationOptions);
-            return compilation.GetDiagnostics();
+            return CSharpCompilation.Create(Path.GetFileName(filePath), SyntaxTrees, references, CompilationOptions);
+        }
+
+        public ImmutableArray<Diagnostic> Compile()
+            => CompileImplementation("Test.dll").GetDiagnostics();
+
+        public ImmutableArray<Diagnostic> CompileAndEmit(string filePath)
+        {
+            CSharpCompilation compilation = CompileImplementation(filePath);
+
+            string pdbPath = Path.ChangeExtension(filePath, "pdb");
+            EmitResult emitResult = compilation.Emit(filePath, pdbPath);
+
+            return emitResult.Diagnostics;
         }
     }
 }

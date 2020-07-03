@@ -7,11 +7,13 @@
 #define DUMP_FIELD_TYPE_INFO
 //#define USE_FILE_ALLOWLIST
 #define BUILD_GENERATED_CODE
+#define EMIT_GENERATED_ASSEMBLY
 using ClangSharp;
 using ClangSharp.Interop;
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -203,7 +205,15 @@ namespace ClangSharpTest2020
                 int errorCount = 0;
                 int warningCount = 0;
 
-                foreach (Diagnostic diagnostic in build.Compile())
+                ImmutableArray<Diagnostic> diagnostics;
+
+#if EMIT_GENERATED_ASSEMBLY
+                diagnostics = build.CompileAndEmit("Output.dll");
+#else
+                diagnostics = build.Compile();
+#endif
+
+                foreach (Diagnostic diagnostic in diagnostics)
                 {
                     if (diagnostic.Severity == DiagnosticSeverity.Hidden)
                     { continue; }
