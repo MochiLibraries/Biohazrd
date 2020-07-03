@@ -182,6 +182,7 @@ namespace ClangSharpTest2020
             library.ApplyTransformation(PhysXRemovePaddingFieldsTransformation.Factory);
             library.ApplyTransformation(PhysXEnumTransformation.Factory);
             library.ApplyTransformation(PhysxFlagsEnumTransformation.Factory);
+            library.ApplyTransformation(MakeEverythingPublicTransformation.Factory);
 
             // Emit the translation
             Console.WriteLine("==============================================================================");
