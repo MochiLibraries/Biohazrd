@@ -187,6 +187,11 @@ namespace ClangSharpTest2020
             library.ApplyTransformation(PhysxFlagsEnumTransformation.Factory);
             library.ApplyTransformation(MakeEverythingPublicTransformation.Factory);
 
+            using (var generateModuleDefinition = new GenerateModuleDefinitionTransformation(@"C:\Scratch\PhysX\physx\PhysXPathogen.def", files))
+            {
+                library.ApplyTransformation(generateModuleDefinition.Factory);
+            }
+
             // Emit the translation
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing translation...");
