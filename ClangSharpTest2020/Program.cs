@@ -57,7 +57,7 @@ namespace ClangSharpTest2020
             string[] includeDirs =
             {
                 @"C:\Scratch\PhysX\physx\install\vc15win64\PhysX\include\",
-                @"C:\Scratch\PhysX\pxshared\include\"
+                @"C:\Scratch\PhysX\physx\install\vc15win64\PxShared\include\"
             };
 
             List<string> _clangCommandLineArgs = new List<string>()
