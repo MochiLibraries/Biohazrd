@@ -67,6 +67,7 @@ namespace ClangSharpTest2020
                 "--std=c++17",
                 "-Wno-pragma-once-outside-header", // Since we are parsing headers, this warning will be irrelevant.
                 "-Wno-return-type-c-linkage", // PxGetFoundation triggers this. There's code to suppress it, but it's only triggered when building for Clang on Linux.
+                "-Wno-microsoft-include", // This triggers on a few includes for some reason.
                 //"--target=x86_64-pc-linux",
                 //"--target=i386-pc-win32",
             };
