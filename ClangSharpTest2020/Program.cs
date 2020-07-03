@@ -335,6 +335,8 @@ namespace ClangSharpTest2020
 
                     if (type.Handle.IsPODType)
                     { extra += " <POD>"; }
+
+                    extra += $" {record.GetArgPassingRestrictions()}";
                 }
 
                 if (cursor is IntegerLiteral integerLiteral)

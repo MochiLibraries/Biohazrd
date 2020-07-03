@@ -291,5 +291,11 @@ namespace ClangSharpTest2020
 
         public static ulong GetConstantValueZeroExtended(this EnumConstantDecl enumConstant)
             => enumConstant.Handle.GetEnumConstantValueZeroExtended();
+
+        public static PathogenArgPassingKind GetRecordArgPassingRestrictions(this CXCursor cursor)
+            => PathogenExtensions.pathogen_getArgPassingRestrictions(cursor);
+
+        public static PathogenArgPassingKind GetArgPassingRestrictions(this RecordDecl record)
+            => record.Handle.GetRecordArgPassingRestrictions();
     }
 }

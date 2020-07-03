@@ -60,6 +60,9 @@ namespace ClangSharpTest2020
 
         [DllImport("libclang.dll", ExactSpelling = true)]
         public static extern ulong pathogen_getEnumConstantDeclValueZeroExtended(CXCursor cursor);
+
+        [DllImport("libclang.dll", ExactSpelling = true)]
+        public static extern PathogenArgPassingKind pathogen_getArgPassingRestrictions(CXCursor cursor);
     }
 
     internal enum PathogenRecordFieldKind : int
@@ -232,4 +235,12 @@ namespace ClangSharpTest2020
         public bool IsBinary => _IsBinary != 0;
         public bool IsMemberOnly => _IsMemberOnly != 0;
     }
+
+    internal enum PathogenArgPassingKind
+    {
+        CanPassInRegisters,
+        CannotPassInRegisters,
+        CanNeverPassInRegisters,
+        Invalid
+    };
 }

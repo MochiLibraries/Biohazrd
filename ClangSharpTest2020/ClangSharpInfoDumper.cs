@@ -190,10 +190,28 @@ namespace ClangSharpTest2020
             }
         }
 
+        private class RecordDeclDumper : ReflectionDumper
+        {
+            public RecordDeclDumper()
+                : base(typeof(RecordDecl))
+            { }
+
+            public override IEnumerable<InfoRow> Dump(object target)
+            {
+                foreach (InfoRow row in base.Dump(target))
+                { yield return row; }
+
+                RecordDecl targetRecord = (RecordDecl)target;
+                PathogenArgPassingKind argPassingRestrictions = targetRecord.GetArgPassingRestrictions();
+                yield return new InfoRow("ArgPassingRestructions", argPassingRestrictions.ToString(), argPassingRestrictions);
+            }
+        }
+
         private static readonly Dictionary<Type, Dumper> Dumpers = new Dictionary<Type, Dumper>()
         {
             { typeof(Cursor), new CursorDumper() },
             { typeof(FunctionDecl), new FunctionDeclDumper() },
+            { typeof(RecordDecl), new RecordDeclDumper() },
         };
 
         private static void EnumerateRows(List<InfoRow> rows, Type type, Type endType, object target)

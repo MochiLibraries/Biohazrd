@@ -2,6 +2,7 @@
 //
 // Pathogen Studios extensions to libclang: Layout info extensions
 // Provides functions for reading the memory and vtable layout of a type
+// (Among other things)
 //
 // Useful references:
 // * lib/AST/RecordLayoutBuilder.cpp (Used for -fdump-record-layouts)
@@ -425,8 +426,6 @@ PATHOGEN_EXPORT void pathogen_DeleteRecordLayout(PathogenRecordLayout* layout)
 //-------------------------------------------------------------------------------------------------
 // Location helpers
 //-------------------------------------------------------------------------------------------------
-// This isn't related to layout, but it's gotta go somewhere!
-// If you add more things relating to locations consider adding another file.
 
 //! This is essentially the same as clang_Location_isFromMainFile, but it uses SourceManager::isInMainFile instead of SourceManager::isWrittenInMainFile
 //! The libclang function suffers from some quirks, namely:
@@ -624,6 +623,40 @@ PATHOGEN_EXPORT uint64_t pathogen_getEnumConstantDeclValueZeroExtended(CXCursor 
 
     // Return the value
     return enumConstant->getInitVal().getZExtValue();
+}
+
+//-------------------------------------------------------------------------------------------------
+// Record arg passing kind
+//-------------------------------------------------------------------------------------------------
+
+enum class PathogenArgPassingKind
+{
+    CanPassInRegisters,
+    CannotPassInRegisters,
+    CanNeverPassInRegisters,
+    Invalid
+};
+
+#define verify_arg_passing_kind(PATHOGEN_KIND, CLANG_KIND) static_assert((int)(PathogenArgPassingKind:: ## PATHOGEN_KIND) == (int)(RecordDecl:: ## CLANG_KIND), #PATHOGEN_KIND " must match " #CLANG_KIND);
+verify_arg_passing_kind(CanPassInRegisters, APK_CanPassInRegs)
+verify_arg_passing_kind(CannotPassInRegisters, APK_CannotPassInRegs )
+verify_arg_passing_kind(CanNeverPassInRegisters, APK_CanNeverPassInRegs )
+
+PATHOGEN_EXPORT PathogenArgPassingKind pathogen_getArgPassingRestrictions(CXCursor cursor)
+{
+    
+    // The cursor must be a declaration
+    if (!clang_isDeclaration(cursor.kind))
+    {
+        return PathogenArgPassingKind::Invalid;
+    }
+
+    // Get the record declaration
+    const Decl* declaration = cxcursor::getCursorDecl(cursor);
+    const RecordDecl* record = dyn_cast_or_null<RecordDecl>(declaration);
+
+    // Return the value
+    return (PathogenArgPassingKind)record->getArgPassingRestrictions();
 }
 
 //-------------------------------------------------------------------------------------------------
