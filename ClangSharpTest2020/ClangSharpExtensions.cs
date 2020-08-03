@@ -1,48 +1,15 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using ClangSharp.Pathogen;
 using System;
 using System.Diagnostics;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using static ClangSharp.Interop.CXTypeKind;
 using ClangType = ClangSharp.Type;
-using Type = System.Type;
 
 namespace ClangSharpTest2020
 {
     internal static class ClangSharpExtensions
     {
-        public static string CursorKindDetailed(this Cursor cursor, string delimiter = "/")
-        {
-            string kind = cursor.CursorKind.ToString();
-            string declKind = cursor.Handle.DeclKind.ToString();
-
-            const string kindPrefix = "CXCursor_";
-            if (kind.StartsWith(kindPrefix))
-            { kind = kind.Substring(kindPrefix.Length); }
-
-            const string declKindPrefix = "CX_DeclKind_";
-            if (declKind.StartsWith(declKindPrefix))
-            { declKind = declKind.Substring(declKindPrefix.Length); }
-
-            if (cursor.CursorKind == CXCursorKind.CXCursor_UnexposedDecl)
-            { kind = null; }
-
-            if (cursor.Handle.DeclKind == CX_DeclKind.CX_DeclKind_Invalid)
-            { declKind = null; }
-
-            string ret = cursor.GetType().Name;
-
-            if (kind is object)
-            { ret += $"{delimiter}{kind}"; }
-
-            if (declKind is object)
-            { ret += $"{delimiter}{declKind}"; }
-
-            return ret;
-        }
-
         public static bool IsFromMainFile(this Cursor cursor)
             => cursor.Extent.IsFromMainFile();
 
@@ -79,103 +46,6 @@ namespace ClangSharpTest2020
             Debug.Assert(isStartInMain == isEndInMain, "Both the start and end of a cursor should be in or out of main.");
             return isStartInMain || isEndInMain;
 #endif
-        }
-
-        public static bool IsFromMainFilePathogen(this CXSourceLocation location)
-            => PathogenExtensions.pathogen_Location_isFromMainFile(location) != 0;
-
-        private static MethodInfo TranslationUnit_GetOrCreate_CXCursor;
-        private static MethodInfo TranslationUnit_GetOrCreate_CXType;
-        [ThreadStatic] private static object[] TranslationUnit_GetOrCreate_Parameters;
-
-        public static Cursor GetOrCreate(this TranslationUnit translationUnit, CXCursor handle)
-        {
-            if (handle.TranslationUnit != translationUnit.Handle)
-            { throw new ArgumentException("The specified cursor is not from the specified translation unit.", nameof(handle)); }
-
-            if (TranslationUnit_GetOrCreate_CXCursor == null)
-            {
-                Type[] parameterTypes = { typeof(CXCursor) };
-                const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DoNotWrapExceptions;
-                MethodInfo getOrCreateGeneric = typeof(TranslationUnit).GetMethod("GetOrCreate", genericParameterCount: 1, bindingFlags, binder: null, parameterTypes, modifiers: null);
-
-                if (getOrCreateGeneric is null)
-                { throw new NotSupportedException("Could not get the GetOrCreate<TCursor>(CXCursor) method!"); }
-
-                TranslationUnit_GetOrCreate_CXCursor = getOrCreateGeneric.MakeGenericMethod(typeof(Cursor));
-            }
-
-            if (TranslationUnit_GetOrCreate_Parameters == null)
-            { TranslationUnit_GetOrCreate_Parameters = new object[1]; }
-
-            TranslationUnit_GetOrCreate_Parameters[0] = handle; //PERF: Reuse the box
-            return (Cursor)TranslationUnit_GetOrCreate_CXCursor.Invoke(translationUnit, TranslationUnit_GetOrCreate_Parameters);
-        }
-
-        public static ClangType GetOrCreate(this TranslationUnit translationUnit, CXType handle)
-        {
-            // This has issues with built-in types. Unclear how important this check even is, so it's disabled for now.
-            // In theory we could just check this when there is a declaration, but built-in types seem to have invalid declarations rather than just null ones.
-            //if (handle.Declaration.TranslationUnit != translationUnit.Handle)
-            //{ throw new ArgumentException("The specified type is not from the specified translation unit.", nameof(handle)); }
-
-            if (TranslationUnit_GetOrCreate_CXType == null)
-            {
-                Type[] parameterTypes = { typeof(CXType) };
-                const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DoNotWrapExceptions;
-                MethodInfo getOrCreateGeneric = typeof(TranslationUnit).GetMethod("GetOrCreate", genericParameterCount: 1, bindingFlags, binder: null, parameterTypes, modifiers: null);
-
-                if (getOrCreateGeneric is null)
-                { throw new NotSupportedException("Could not get the GetOrCreate<TType>(CXType) method!"); }
-
-                TranslationUnit_GetOrCreate_CXType = getOrCreateGeneric.MakeGenericMethod(typeof(ClangType));
-            }
-
-            if (TranslationUnit_GetOrCreate_Parameters == null)
-            { TranslationUnit_GetOrCreate_Parameters = new object[1]; }
-
-            TranslationUnit_GetOrCreate_Parameters[0] = handle; //PERF: Reuse the box
-            return (ClangType)TranslationUnit_GetOrCreate_CXType.Invoke(translationUnit, TranslationUnit_GetOrCreate_Parameters);
-        }
-
-        public static CXCallingConv GetCallingConvention(this FunctionDecl function)
-        {
-            // When the convention is explicitly specified (with or without the __attribute__ syntax), function.Type will be AttributedType
-            // Calling conventions that don't affect the current platform (IE: stdcall on x64) are ignored by Clang (they become CXCallingConv_C)
-            if (function.Type is AttributedType attributedType)
-            { return attributedType.Handle.FunctionTypeCallingConv; }
-            else if (function.Type is FunctionType functionType)
-            { return functionType.CallConv; }
-            else
-            { throw new NotSupportedException($"The function has an unexpected value for `{nameof(function.Type)}`."); }
-        }
-
-        public static CallingConvention GetCSharpCallingConvention(this CXCallingConv clangCallingConvention, out string errorMessage)
-        {
-            errorMessage = null;
-
-            // https://github.com/llvm/llvm-project/blob/91801a7c34d08931498304d93fd718aeeff2cbc7/clang/include/clang/Basic/Specifiers.h#L269-L289
-            // https://clang.llvm.org/docs/AttributeReference.html#calling-conventions
-            // We generally expect this to always be cdecl on x64. (Clang supports some special calling conventions on x64, but C# doesn't support them.)
-            switch (clangCallingConvention)
-            {
-                case CXCallingConv.CXCallingConv_C:
-                    return CallingConvention.Cdecl;
-                case CXCallingConv.CXCallingConv_X86StdCall:
-                    return CallingConvention.StdCall;
-                case CXCallingConv.CXCallingConv_X86FastCall:
-                    return CallingConvention.FastCall;
-                case CXCallingConv.CXCallingConv_X86ThisCall:
-                    return CallingConvention.ThisCall;
-                case CXCallingConv.CXCallingConv_Win64:
-                    return CallingConvention.Winapi;
-                case CXCallingConv.CXCallingConv_Invalid:
-                    errorMessage = "Could not determine function's calling convention.";
-                    return default;
-                default:
-                    errorMessage = $"Function uses unsupported calling convention '{clangCallingConvention}'.";
-                    return default;
-            }
         }
 
         public static AccessModifier ToTranslationAccessModifier(this CX_CXXAccessSpecifier accessSpecifier)
@@ -257,46 +127,6 @@ namespace ClangSharpTest2020
             file.Diagnostic(Severity.Error, context, $"{messagePrefix}.");
             return UnderlyingEnumType.Int;
         }
-
-        public static unsafe CXFile GetFileLocation(this CXSourceLocation sourceLocation)
-        {
-            CXFile ret;
-            clang.getFileLocation(sourceLocation, (void**)&ret, null, null, null);
-            return ret;
-        }
-
-        public static unsafe ref PathogenOperatorOverloadInfo GetOperatorOverloadInfo(this FunctionDecl function)
-            => ref function.Handle.GetOperatorOverloadInfo();
-
-        public static unsafe ref PathogenOperatorOverloadInfo GetOperatorOverloadInfo(this CXCursor cursor)
-        {
-            if (cursor.DeclKind < CX_DeclKind.CX_DeclKind_FirstFunction || cursor.DeclKind > CX_DeclKind.CX_DeclKind_LastFunction)
-            { throw new ArgumentException("The specified cursor must be a function declaration of some kind.", nameof(cursor)); }
-
-            PathogenOperatorOverloadInfo* ret = PathogenExtensions.pathogen_getOperatorOverloadInfo(cursor);
-
-            // If null was returned there's something wrong with this function
-            if (ret == null)
-            { throw new ArgumentException("The specified declaration is not actually a function.", nameof(cursor)); }
-
-            // If the returned structure has an invalid operator overload kind, the function is an operator overload but Clang returned an unexpected value
-            if (ret->Kind == PathogenOperatorOverloadKind.Invalid)
-            { throw new NotSupportedException("The specified function is an operator overload, but Clang returned an unexpected operator overload kind."); }
-
-            return ref Unsafe.AsRef<PathogenOperatorOverloadInfo>(ret);
-        }
-
-        public static ulong GetEnumConstantValueZeroExtended(this CXCursor cursor)
-            => PathogenExtensions.pathogen_getEnumConstantDeclValueZeroExtended(cursor);
-
-        public static ulong GetConstantValueZeroExtended(this EnumConstantDecl enumConstant)
-            => enumConstant.Handle.GetEnumConstantValueZeroExtended();
-
-        public static PathogenArgPassingKind GetRecordArgPassingRestrictions(this CXCursor cursor)
-            => PathogenExtensions.pathogen_getArgPassingRestrictions(cursor);
-
-        public static PathogenArgPassingKind GetArgPassingRestrictions(this RecordDecl record)
-            => record.Handle.GetRecordArgPassingRestrictions();
 
         public static bool RecordMustBePassedByReference(this CXCursor cursor)
         {

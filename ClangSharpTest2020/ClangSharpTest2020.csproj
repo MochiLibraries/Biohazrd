@@ -10,12 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="ClangSharp" Version="10.0.0-beta" />
-    <!--
-    We use our own version of libClang, omit the one ClangSharp references
-    https://docs.microsoft.com/en-us/nuget/concepts/dependency-resolution#excluding-references
-    This doesn't work with the libclang meta package directly, we have to exclude the specific runtime package.
-    -->
-    <PackageReference Include="libclang.runtime.$(RuntimeIdentifier)" Version="*" ExcludeAssets="All" />
+    <PackageReference Include="ClangSharp.Pathogen" Version="0.0.0-ci3" />
     <!--
     We're using a pre-release compiler to get access to function pointers
     This is not any particular version, it's just the latest from the Roslyn CI.

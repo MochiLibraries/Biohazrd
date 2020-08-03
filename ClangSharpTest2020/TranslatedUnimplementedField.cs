@@ -1,4 +1,6 @@
-﻿namespace ClangSharpTest2020
+﻿using ClangSharp.Pathogen;
+
+namespace ClangSharpTest2020
 {
     public sealed class TranslatedUnimplementedField : TranslatedField
     {

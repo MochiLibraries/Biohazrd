@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

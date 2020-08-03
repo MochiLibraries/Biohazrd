@@ -10,13 +10,12 @@
 #define EMIT_GENERATED_ASSEMBLY
 using ClangSharp;
 using ClangSharp.Interop;
+using ClangSharp.Pathogen;
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
-using System.Reflection;
-using System.Runtime.InteropServices;
 using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
@@ -25,31 +24,10 @@ namespace ClangSharpTest2020
     {
         public static void Main(string[] args)
         {
-            NativeLibrary.SetDllImportResolver(typeof(Program).Assembly, ImportResolver);
-
             DoTest();
             Console.WriteLine();
             Console.WriteLine("Done.");
             Console.ReadLine();
-        }
-
-        private static IntPtr ImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
-        {
-            // Note: The debug build of libclang is weirdly unstable (when built from Visual Studio?)
-            // Some issues it has:
-            // * Building the debug configuration twice in a row isn't successful due to the table generator not working https://bugs.llvm.org/show_bug.cgi?id=41367
-            // * I'll crash in the CRT over things that don't seem to be our fault.
-            // * The AST context isn't fully initialized.
-            // Note: This isn't a build system issue since it happens even when using Ninja,
-            // which seems to be the workflow recommended by the official documentation https://clang.llvm.org/get_started.html
-            // We might be able to build with Clang instead of MSVC to fix these issues.
-            if (libraryName == "libclang.dll")
-            //{ return NativeLibrary.Load(@"C:\Scratch\llvm-project\build\Debug\bin\libclang.dll"); }
-            //{ return NativeLibrary.Load(@"C:\Scratch\llvm-project\build\Release\bin\libclang.dll"); }
-            //{ return NativeLibrary.Load(@"C:\Scratch\llvm-project\build_ninja\bin\libclang.dll"); }
-            { return NativeLibrary.Load(@"C:\Scratch\llvm-project\build_ninja-release\bin\libclang.dll"); }
-
-            return IntPtr.Zero;
         }
 
         private static void DoTest()
@@ -347,7 +325,7 @@ namespace ClangSharpTest2020
                     else if (record.Definition is null)
                     { extra += " <UNDEFINED>"; }
                     else if (record.Definition is object)
-                    { extra += $" Definition={ClangSharpLocationHelper.GetFriendlyLocation(record.Definition)}"; }
+                    { extra += $" Definition={record.Definition.GetFriendlyLocation()}"; }
 
                     if (type.Handle.IsPODType)
                     { extra += " <POD>"; }
@@ -726,7 +704,7 @@ namespace ClangSharpTest2020
 
             if (type is TagType tagType)
             {
-                typeInfo += $" DeclKind={tagType.Decl.CursorKindDetailed()} Decl=`{tagType.Decl}` Location=`{ClangSharpLocationHelper.GetFriendlyLocation(tagType.Decl)}`";
+                typeInfo += $" DeclKind={tagType.Decl.CursorKindDetailed()} Decl=`{tagType.Decl}` Location=`{tagType.Decl.GetFriendlyLocation()}`";
             }
 
             // Write to main output

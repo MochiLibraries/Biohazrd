@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using ClangSharp.Pathogen;
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -73,7 +74,7 @@ namespace ClangSharpTest2020
             // Get the function's calling convention
             string errorMessage;
             CXCallingConv clangCallingConvention = Function.GetCallingConvention();
-            CallingConvention = clangCallingConvention.GetCSharpCallingConvention(out errorMessage);
+            CallingConvention = clangCallingConvention.ToDotNetCallingConvention(out errorMessage);
 
             if (errorMessage is object)
             { File.Diagnostic(Severity.Error, Function, errorMessage); }
