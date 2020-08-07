@@ -34,7 +34,7 @@ namespace ClangSharpTest2020
             {
                 Declaration = declaration;
                 Name = Declaration.Name.ToString();
-                Value = Declaration.GetConstantValueZeroExtended();
+                Value = Declaration.Handle.EnumConstantDeclUnsignedValue;
 
                 // Determine how this constant is defined
                 IntegerLiteral integerLiteral = TryGetValueLiteral(file, declaration);

@@ -193,6 +193,7 @@ namespace ClangSharpTest2020
                         {
                             cSharpTypeSize = 0;
 
+#if false
                             if (context == TypeTranslationContext.ForField)
                             {
                                 Diagnostic
@@ -202,6 +203,7 @@ namespace ClangSharpTest2020
                                     $"Backing field for enum probably not translated correctly. Enum's size is {cSharpTypeSize}, but the field's size is {type.Handle.SizeOf}."
                                 );
                             }
+#endif
                         }
 
                         // If the enum is translated as loose constants, we translate the underlying integer type instead
