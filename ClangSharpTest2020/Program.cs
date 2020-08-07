@@ -59,17 +59,26 @@ namespace ClangSharpTest2020
 
             List<string> files = new List<string>();
 
-#if true
+#if false
             files.AddRange(Directory.EnumerateFiles("TestHeaders", "*.h", SearchOption.AllDirectories));
             const string outputDirectory = "Output";
-#elif true
+#elif false
+            //files.Add(@"TestHeaders\PxFlagsTest.h");
+            //files.Add(@"TestHeaders\PxFlagsFromAnotherFile.h");
+            //files.Add(@"TestHeaders\OperatorOverloads.h");
+            //files.Add(@"TestHeaders\ConstOverloads.h");
+            //files.Add(@"TestHeaders\UndefinedType.h");
+            //files.Add(@"TestHeaders\PhysXPadding.h");
+            //files.Add(@"TestHeaders\Deprecated.h");
+            files.Add(@"TestHeaders\StructAlwaysByReference.h");
+            const string outputDirectory = "Output2";
+#elif false
             files.Add(@"C:\Scratch\imgui\imgui.h");
             const string outputDirectory = "OutputImgui";
 #else
             const string outputDirectory = "OutputPhysX";
             HashSet<string> allowedFiles = new HashSet<string>()
             {
-                "PxFoundation.h"
             };
 
             HashSet<string> skippedFiles = new HashSet<string>()
@@ -235,6 +244,7 @@ namespace ClangSharpTest2020
                 //CXTranslationUnit_Flags.CXTranslationUnit_Incomplete |
                 // I was hoping this would help figure out what ranges are included, but it's only really informational.
                 // It *can* however be used to determine if a source range is a macro expansion.
+                // This option does make Clang a lot slower for whatever reason.
                 //CXTranslationUnit_Flags.CXTranslationUnit_DetailedPreprocessingRecord |
                 0
             ;
