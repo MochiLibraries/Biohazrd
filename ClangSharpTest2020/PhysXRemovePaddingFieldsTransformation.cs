@@ -15,26 +15,29 @@ namespace ClangSharpTest2020
         public override string ToString()
             => $"PhysX padding field {TargetField}";
 
-        public static TranslationTransformation Factory(TranslatedDeclaration declaration)
+        public sealed class Factory : TranslationTransformationFactory
         {
-            // Look for fields
-            if (!(declaration is TranslatedField field) || !(field.Declaration is FieldDecl clangField))
-            { return null; }
+            protected override TranslationTransformation Create(TranslatedDeclaration declaration)
+            {
+                // Look for fields
+                if (!(declaration is TranslatedField field) || !(field.Declaration is FieldDecl clangField))
+                { return null; }
 
-            // Check if the field's type is PxPadding
-            if (!(clangField.Type is TemplateSpecializationType templateSpecialization))
-            { return null; }
+                // Check if the field's type is PxPadding
+                if (!(clangField.Type is TemplateSpecializationType templateSpecialization))
+                { return null; }
 
-            // Get the declaration
-            if (!(declaration.Library.FindCursor(templateSpecialization.Handle.Declaration) is ClassTemplateSpecializationDecl templateSpecializationDeclaration))
-            { return null; }
+                // Get the declaration
+                if (!(FindCursor(templateSpecialization.Handle.Declaration) is ClassTemplateSpecializationDecl templateSpecializationDeclaration))
+                { return null; }
 
-            // Make sure this declaration is for PxPadding
-            if (templateSpecializationDeclaration.Name != "PxPadding")
-            { return null; }
+                // Make sure this declaration is for PxPadding
+                if (templateSpecializationDeclaration.Name != "PxPadding")
+                { return null; }
 
-            // Create the transformation
-            return new PhysXRemovePaddingFieldsTransformation(field);
+                // Create the transformation
+                return new PhysXRemovePaddingFieldsTransformation(field);
+            }
         }
     }
 }

@@ -16,8 +16,4 @@
     <PackageReference Include="ClangSharp.Pathogen" Version="0.0.0-ci5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="ClangSharpTest2020" />
-  </ItemGroup>
-
 </Project>

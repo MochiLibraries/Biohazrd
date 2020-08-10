@@ -8,10 +8,10 @@ namespace ClangSharpTest2020
     public abstract class TranslatedDeclaration
     {
         public TranslatedLibrary Library { get; }
-        internal TranslatedFile File => Parent?.File;
+        public TranslatedFile File => Parent?.File; //TODO: Ideally this is internal-only, it's used by PhysXFlagsEnumTransformation to access __HACK__LooseDeclarationsContainer
 
         private IDeclarationContainer _parent;
-        internal IDeclarationContainer Parent
+        public IDeclarationContainer Parent
         {
             get => _parent;
             set
@@ -62,12 +62,12 @@ namespace ClangSharpTest2020
         public void ReplaceWith(TranslatedDeclaration other)
         {
             other.Parent = Parent;
-            //TODO: Reorder members of Parent so that other is in the same spot was us.
+            //TODO: Reorder members of Parent so that other is in the same spot as us.
             Parent = null;
         }
 
         private Decl _declaration;
-        internal Decl Declaration
+        public Decl Declaration
         {
             get => _declaration;
             private protected set

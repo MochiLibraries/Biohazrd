@@ -270,7 +270,7 @@ namespace ClangSharpTest2020
             return TranslationUnit.GetOrCreate(cursorHandle);
         }
 
-        public ClangType FindType(CXType typeHandle)
+        internal ClangType FindType(CXType typeHandle)
         {
             if (typeHandle.kind == CXTypeKind.CXType_Invalid)
             {
@@ -290,7 +290,10 @@ namespace ClangSharpTest2020
             { file.Validate(); }
         }
 
-        public void ApplyTransformation(TranslationTransformation.FactoryDelegate transformationFactory)
+        public void ApplyTransformation(Func<TranslatedDeclaration, TranslationTransformation> transformationFactoryMethod)
+            => ApplyTransformation(new SimpleTranslationTransformationFactory(transformationFactoryMethod));
+
+        public void ApplyTransformation(TranslationTransformationFactory transformationFactory)
         {
             List<TranslationTransformation> transformations = new List<TranslationTransformation>();
             EnumerateTransformations(transformationFactory, transformations);
@@ -302,17 +305,17 @@ namespace ClangSharpTest2020
             }
         }
 
-        private void EnumerateTransformations(TranslationTransformation.FactoryDelegate transformationFactory, List<TranslationTransformation> transformations)
+        private void EnumerateTransformations(TranslationTransformationFactory transformationFactory, List<TranslationTransformation> transformations)
         {
             foreach (TranslatedFile file in Files)
             { EnumerateTransformations(transformationFactory, transformations, file); }
         }
 
-        private void EnumerateTransformations(TranslationTransformation.FactoryDelegate transformationFactory, List<TranslationTransformation> transformations, IDeclarationContainer container)
+        private void EnumerateTransformations(TranslationTransformationFactory transformationFactory, List<TranslationTransformation> transformations, IDeclarationContainer container)
         {
             foreach (TranslatedDeclaration declaration in container)
             {
-                TranslationTransformation transformation = transformationFactory(declaration);
+                TranslationTransformation transformation = transformationFactory.CreateInternal(declaration);
 
                 if (transformation != null)
                 { transformations.Add(transformation); }

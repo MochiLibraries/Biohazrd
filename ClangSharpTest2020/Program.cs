@@ -169,9 +169,9 @@ namespace ClangSharpTest2020
             Console.WriteLine("Performing library-specific transformations...");
             Console.WriteLine("==============================================================================");
             library.ApplyTransformation(ConstOverloadRenamer.Factory);
-            library.ApplyTransformation(PhysXRemovePaddingFieldsTransformation.Factory);
+            library.ApplyTransformation(new PhysXRemovePaddingFieldsTransformation.Factory());
             library.ApplyTransformation(PhysXEnumTransformation.Factory);
-            library.ApplyTransformation(PhysxFlagsEnumTransformation.Factory);
+            library.ApplyTransformation(new PhysxFlagsEnumTransformation.Factory());
             library.ApplyTransformation(MakeEverythingPublicTransformation.Factory);
 
             using (var generateModuleDefinition = new GenerateModuleDefinitionTransformation(@"C:\Scratch\PhysX\physx\PhysXPathogen.def", files))

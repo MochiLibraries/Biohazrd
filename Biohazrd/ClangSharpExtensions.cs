@@ -8,12 +8,12 @@ using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
-    internal static class ClangSharpExtensions
+    public static class ClangSharpExtensions
     {
-        public static bool IsFromMainFile(this Cursor cursor)
+        internal static bool IsFromMainFile(this Cursor cursor)
             => cursor.Extent.IsFromMainFile();
 
-        public static bool IsFromMainFile(this CXSourceRange extent)
+        internal static bool IsFromMainFile(this CXSourceRange extent)
         {
 #if false
             // This property uses libclang's clang_Location_isFromMainFile which in turn uses SourceManager::isWrittenInMainFile
@@ -128,7 +128,7 @@ namespace ClangSharpTest2020
             return UnderlyingEnumType.Int;
         }
 
-        public static bool RecordMustBePassedByReference(this CXCursor cursor)
+        internal static bool RecordMustBePassedByReference(this CXCursor cursor)
         {
             if (!cursor.IsDeclaration || cursor.DeclKind < CX_DeclKind.CX_DeclKind_FirstRecord || cursor.DeclKind > CX_DeclKind.CX_DeclKind_LastRecord)
             { throw new ArgumentException("The cursor must be a record declaration.", nameof(cursor)); }
@@ -158,10 +158,10 @@ namespace ClangSharpTest2020
             }
         }
 
-        public static bool MustBePassedByReference(this RecordDecl record)
+        internal static bool MustBePassedByReference(this RecordDecl record)
             => record.Handle.RecordMustBePassedByReference();
 
-        public static bool MustBePassedByReference(this ClangType type)
+        internal static bool MustBePassedByReference(this ClangType type)
         {
             switch (type)
             {

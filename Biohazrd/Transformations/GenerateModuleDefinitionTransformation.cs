@@ -7,7 +7,7 @@ using System.IO;
 
 namespace ClangSharpTest2020
 {
-    internal sealed class GenerateModuleDefinitionTransformation : IDisposable
+    public sealed class GenerateModuleDefinitionTransformation : IDisposable
     {
         private readonly StreamWriter DefWriter;
         private readonly StreamWriter InlineReferenceFile;

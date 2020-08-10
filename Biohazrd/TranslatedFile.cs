@@ -29,7 +29,7 @@ namespace ClangSharpTest2020
 
         /// <summary>The name of the type which will contain the declarations from <see cref="LooseDeclarations"/>.</summary>
         private string LooseDeclarationsTypeName { get; }
-        internal IDeclarationContainer __HACK__LooseDeclarationsContainer { get; private set; }
+        public IDeclarationContainer __HACK__LooseDeclarationsContainer { get; private set; }
 
         /// <summary>True if <see cref="Diagnostics"/> contains any diagnostic with <see cref="TranslationDiagnostic.IsError"/> or true.</summary>
         public bool HasErrors { get; private set; }
