@@ -30,14 +30,14 @@ namespace ClangSharpTest2020
             public readonly bool HasExplicitValue;
             public readonly bool IsHexValue;
 
-            public EnumConstant(TranslatedFile file, EnumConstantDecl declaration)
+            public EnumConstant(EnumConstantDecl declaration)
             {
                 Declaration = declaration;
                 Name = Declaration.Name.ToString();
                 Value = Declaration.Handle.EnumConstantDeclUnsignedValue;
 
                 // Determine how this constant is defined
-                IntegerLiteral integerLiteral = TryGetValueLiteral(file, declaration);
+                IntegerLiteral integerLiteral = TryGetValueLiteral(declaration);
 
                 if (integerLiteral is null)
                 {
@@ -52,7 +52,7 @@ namespace ClangSharpTest2020
                 }
             }
 
-            private static IntegerLiteral TryGetValueLiteral(TranslatedFile file, Cursor declaration)
+            private static IntegerLiteral TryGetValueLiteral(Cursor declaration)
             {
                 foreach (Cursor cursor in declaration.CursorChildren)
                 {
@@ -61,7 +61,7 @@ namespace ClangSharpTest2020
                     { return integerLiteral; }
 
                     // Check recursively
-                    IntegerLiteral ret = TryGetValueLiteral(file, cursor);
+                    IntegerLiteral ret = TryGetValueLiteral(cursor);
                     if (ret is object)
                     { return ret; }
                 }
@@ -90,7 +90,7 @@ namespace ClangSharpTest2020
             foreach (Cursor cursor in EnumDeclaration.CursorChildren)
             {
                 if (cursor is EnumConstantDecl enumConstant)
-                { Values.Add(new EnumConstant(File, enumConstant)); }
+                { Values.Add(new EnumConstant(enumConstant)); }
                 else
                 { File.Diagnostic(Severity.Warning, cursor, $"Encountered unexpected {cursor.CursorKindDetailed()} cursor in enum declaration."); }
             }
