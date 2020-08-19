@@ -4,9 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using static ClangSharpTest2020.CodeWriter;
+using static Biohazrd.CodeWriter;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedRecord : TranslatedDeclaration, IDeclarationContainer
     {

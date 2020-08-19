@@ -1,6 +1,6 @@
 ﻿using System.Linq;
 
-namespace ClangSharpTest2020
+namespace Biohazrd.Transformations
 {
     public sealed class ConstOverloadRenamer : TranslationTransformation
     {

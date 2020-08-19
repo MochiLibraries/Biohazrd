@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace ClangSharpTest2020
+namespace Biohazrd.Transformations
 {
     public sealed class GenerateModuleDefinitionTransformation : IDisposable
     {

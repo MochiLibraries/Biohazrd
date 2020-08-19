@@ -4,7 +4,7 @@ using ClangSharp.Pathogen;
 using System;
 using ClangType = ClangSharp.Type;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public abstract class TranslatedField : TranslatedDeclaration
     {

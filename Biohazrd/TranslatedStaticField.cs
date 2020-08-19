@@ -1,7 +1,7 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     /// <summary>A translated static field or global variable.</summary>
     public sealed class TranslatedStaticField : TranslatedDeclaration

@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Text;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     internal static class EncodingEx
     {

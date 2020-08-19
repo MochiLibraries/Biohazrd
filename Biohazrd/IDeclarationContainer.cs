@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public interface IDeclarationContainer : IEnumerable<TranslatedDeclaration>
     {

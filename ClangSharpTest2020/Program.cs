@@ -8,6 +8,8 @@
 //#define USE_FILE_ALLOWLIST
 #define BUILD_GENERATED_CODE
 #define EMIT_GENERATED_ASSEMBLY
+using Biohazrd;
+using Biohazrd.Transformations;
 using ClangSharp;
 using ClangSharp.Interop;
 using ClangSharp.Pathogen;

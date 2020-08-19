@@ -3,7 +3,7 @@ using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public abstract class TranslatedDeclaration
     {

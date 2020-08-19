@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     internal sealed class UnnamedNamer
     {

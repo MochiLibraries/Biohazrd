@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using static ClangSharp.Interop.CXTypeKind;
 using ClangType = ClangSharp.Type;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     partial class TranslatedFile
     {

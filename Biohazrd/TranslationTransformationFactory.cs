@@ -3,7 +3,7 @@ using ClangSharp;
 using ClangSharp.Interop;
 using ClangType = ClangSharp.Type;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public abstract class TranslationTransformationFactory
     {

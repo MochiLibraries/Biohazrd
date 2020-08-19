@@ -1,4 +1,4 @@
-﻿namespace ClangSharpTest2020
+﻿namespace Biohazrd
 {
     public enum LibraryTranslationMode
     {

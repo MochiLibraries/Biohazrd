@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     internal sealed class SimpleTranslationTransformationFactory : TranslationTransformationFactory
     {

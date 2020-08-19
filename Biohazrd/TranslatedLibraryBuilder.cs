@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedLibraryBuilder
     {

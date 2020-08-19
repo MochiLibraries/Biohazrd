@@ -1,6 +1,6 @@
 ﻿using ClangSharp.Pathogen;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedUnimplementedField : TranslatedField
     {

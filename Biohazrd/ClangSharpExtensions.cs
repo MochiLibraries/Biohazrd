@@ -6,7 +6,7 @@ using System.Diagnostics;
 using static ClangSharp.Interop.CXTypeKind;
 using ClangType = ClangSharp.Type;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public static class ClangSharpExtensions
     {

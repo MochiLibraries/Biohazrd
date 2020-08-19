@@ -3,9 +3,9 @@ using ClangSharp.Pathogen;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using static ClangSharpTest2020.CodeWriter;
+using static Biohazrd.CodeWriter;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedVTable : TranslatedDeclaration
     {

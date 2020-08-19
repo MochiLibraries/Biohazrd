@@ -5,7 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public class CodeWriter : TextWriter
     {

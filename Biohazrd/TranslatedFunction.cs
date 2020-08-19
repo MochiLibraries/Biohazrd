@@ -4,9 +4,9 @@ using ClangSharp.Pathogen;
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using static ClangSharpTest2020.CodeWriter;
+using static Biohazrd.CodeWriter;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedFunction : TranslatedDeclaration
     {

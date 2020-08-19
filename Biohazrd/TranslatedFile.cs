@@ -8,7 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed partial class TranslatedFile : IDeclarationContainer
     {

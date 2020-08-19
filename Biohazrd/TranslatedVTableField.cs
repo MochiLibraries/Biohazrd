@@ -3,7 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedVTableField : TranslatedField
     {

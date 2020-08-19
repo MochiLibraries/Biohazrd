@@ -1,6 +1,6 @@
 ﻿using ClangSharp;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedTypedef : TranslatedDeclaration
     {

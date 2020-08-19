@@ -1,7 +1,7 @@
 ﻿using ClangSharp.Interop;
 using System;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public struct TranslationDiagnostic
     {

@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedEnum : TranslatedDeclaration
     {

@@ -2,7 +2,7 @@
 using System;
 using System.Linq;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedBaseField : TranslatedField
     {

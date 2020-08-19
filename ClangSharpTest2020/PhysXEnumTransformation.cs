@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Biohazrd;
+using System.Diagnostics;
 
 namespace ClangSharpTest2020
 {

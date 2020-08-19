@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using ClangType = ClangSharp.Type;
 
-namespace ClangSharpTest2020
+namespace Biohazrd
 {
     public sealed class TranslatedLibrary : IDisposable
     {
