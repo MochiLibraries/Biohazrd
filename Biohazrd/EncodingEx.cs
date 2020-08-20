@@ -8,7 +8,7 @@ namespace Biohazrd
     {
         public static byte[] GetBytesNullTerminated(this Encoding encoding, string text)
         {
-            byte[] ret = new byte[encoding.GetByteCount(text) + 1]; //PERF: Use GC.AllocateUninitializedArray
+            byte[] ret = GC.AllocateUninitializedArray<byte>(encoding.GetByteCount(text) + 1);
 
             int bytesWritten = encoding.GetBytes(text.AsSpan(), ret.AsSpan().Slice(0, ret.Length - 1));
             Debug.Assert(bytesWritten == (ret.Length - 1), "It's expected that the encoder uses the entire buffer sans null terminator.");
