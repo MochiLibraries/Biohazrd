@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <!--
       ClangSharp.Pathogen requires Windows x64 right now
       This is also indirectly a workaround for https://github.com/microsoft/ClangSharp/issues/118#issuecomment-598305888
