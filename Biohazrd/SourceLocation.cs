@@ -43,7 +43,7 @@ namespace Biohazrd
             string sourceFile = SourceFile ?? "<null>";
 
             if (Line == 0)
-            { return SourceFile; }
+            { return sourceFile; }
 
             if (Column != 0 && includeColumn)
             { return $"{sourceFile}:{Line}:{Column}"; }

@@ -9,11 +9,17 @@
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="ClangSharp" Version="10.0.0-beta" />
     <PackageReference Include="ClangSharp.Pathogen" Version="0.0.0-ci5" />
+    <!-- Using nighly compiler since the one in the current .NET Preview has outdated codegen for records -->
+    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="3.8.0-3.20421.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

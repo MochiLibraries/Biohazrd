@@ -1,4 +1,5 @@
-﻿namespace Biohazrd.Transformations
+﻿#if false
+namespace Biohazrd.Transformations
 {
     public sealed class MakeEverythingPublicTransformation : TranslationTransformation
     {
@@ -14,3 +15,4 @@
             => new MakeEverythingPublicTransformation(declaration);
     }
 }
+#endif

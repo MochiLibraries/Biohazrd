@@ -1,4 +1,4 @@
-﻿#nullable enable
+﻿#if false
 using ClangSharp;
 using ClangSharp.Interop;
 using ClangType = ClangSharp.Type;
@@ -44,3 +44,4 @@ namespace Biohazrd
         protected abstract TranslationTransformation? Create(TranslatedDeclaration declaration);
     }
 }
+#endif

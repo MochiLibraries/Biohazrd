@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if false
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -197,7 +198,7 @@ namespace Biohazrd
                 for (int i = 0; i < IndentLevel * IndentSize; i++)
                 { Write(' '); }
 
-                if (LinePrefix is object)
+                if (LinePrefix is not null)
                 { Write(LinePrefix); }
             }
 
@@ -424,3 +425,4 @@ namespace Biohazrd
         }
     }
 }
+#endif

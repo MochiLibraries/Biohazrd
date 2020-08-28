@@ -1,4 +1,5 @@
-﻿//TODO: Global variables
+﻿#if false
+//TODO: Global variables
 using ClangSharp;
 using ClangSharp.Interop;
 using System;
@@ -63,7 +64,7 @@ namespace Biohazrd.Transformations
             // It'd be nice if we could type these variables with `auto`, but we need target typing for overloads.
             InlineReferenceFile.Write($"{functionDeclaration.ReturnType.CanonicalType} (");
 
-            if (methodDeclaration is object && !methodDeclaration.IsStatic)
+            if (methodDeclaration is not null && !methodDeclaration.IsStatic)
             {
                 WriteOutNamespaceAndType(InlineReferenceFile, functionDeclaration);
                 InlineReferenceFile.Write("* ");
@@ -86,7 +87,7 @@ namespace Biohazrd.Transformations
 
             InlineReferenceFile.Write(")");
 
-            if (methodDeclaration is object && methodDeclaration.IsConst)
+            if (methodDeclaration is not null && methodDeclaration.IsConst)
             { InlineReferenceFile.Write(" const"); }
 
             InlineReferenceFile.Write(" = &");
@@ -140,7 +141,7 @@ namespace Biohazrd.Transformations
                 CXXDestructorDecl destructorDeclaration = methodDeclaration as CXXDestructorDecl;
 
                 // Skip destructors for now.
-                if (destructorDeclaration is object)
+                if (destructorDeclaration is not null)
                 { return null; }
 
                 // Skip private and protected members for now.
@@ -161,7 +162,7 @@ namespace Biohazrd.Transformations
                 { return null; }
 
                 // Skip constructors on abstract tyes
-                if (constructorDeclaration is object && function.Record.Record is CXXRecordDecl cppClass && cppClass.IsAbstract)
+                if (constructorDeclaration is not null && function.Record.Record is CXXRecordDecl cppClass && cppClass.IsAbstract)
                 { return null; }
 
                 DefWriter.WriteLine($"    {function.Function.Handle.Mangling}");
@@ -173,7 +174,7 @@ namespace Biohazrd.Transformations
                     //ClangSharpInfoDumper.Dump(InlineReferenceFile, functionDeclaration);
                     //InlineReferenceFile.WriteLine("*/");
 
-                    if (constructorDeclaration is object)
+                    if (constructorDeclaration is not null)
                     { WriteConstructorReference(function, constructorDeclaration); }
                     else
                     { WriteFunctionReference(function, functionDeclaration, methodDeclaration); }
@@ -192,3 +193,4 @@ namespace Biohazrd.Transformations
         }
     }
 }
+#endif

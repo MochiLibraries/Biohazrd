@@ -2,34 +2,14 @@
 
 namespace Biohazrd
 {
-    public sealed class TranslatedTypedef : TranslatedDeclaration
+    public sealed record TranslatedTypedef : TranslatedDeclaration
     {
-        public TypedefDecl Typedef { get; }
+        public TranslatedTypeReference UnderlyingType { get; }
 
-        public override string DefaultName { get; }
-        public override bool CanBeRoot => true;
-        public override bool IsDummy => true;
-
-        internal TranslatedTypedef(IDeclarationContainer container, TypedefDecl typedef)
-            : base(container)
+        internal TranslatedTypedef(TranslatedFile file, TypedefDecl typedef)
+            : base(file, typedef)
         {
-            Typedef = typedef;
-            Declaration = Typedef;
-            Accessibility = Typedef.Access.ToTranslationAccessModifier();
-            DefaultName = Typedef.Name;
-        }
-
-        protected override void TranslateImplementation(CodeWriter writer)
-        {
-            if (GlobalConfiguration.DumpClangDetails)
-            {
-                writer.Write("// ");
-
-                if (!(Parent is TranslatedFile))
-                { writer.Write($"{Accessibility.ToCSharpKeyword()} "); }
-
-                writer.WriteLine($"typedef '{Typedef.UnderlyingType}' '{this}'");
-            }
+            UnderlyingType = new TranslatedTypeReference(typedef.UnderlyingType);
         }
     }
 }

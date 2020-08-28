@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if false
+using System;
 
 namespace Biohazrd
 {
@@ -13,3 +14,4 @@ namespace Biohazrd
             => FactoryMethod(declaration);
     }
 }
+#endif
