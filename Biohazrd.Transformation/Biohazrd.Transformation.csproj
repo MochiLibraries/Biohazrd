@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <!--
+      ClangSharp.Pathogen requires Windows x64 right now
+      This is also indirectly a workaround for https://github.com/microsoft/ClangSharp/issues/118#issuecomment-598305888
+    -->
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Biohazrd\Biohazrd.csproj" />
+    <!-- Using nighly compiler since the one in the current .NET Preview has outdated codegen for records -->
+    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="3.8.0-3.20421.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
