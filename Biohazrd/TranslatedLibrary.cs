@@ -34,8 +34,43 @@ namespace Biohazrd
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
-        internal TranslatedDeclaration TryFindTranslation(Decl declaration)
-            => throw new NotImplementedException(); //TODO Debug.Fail
+        private WeakReference<TranslatedLibrary>? DeclarationLookupCacheLibrary = null;
+        private Dictionary<Decl, TranslatedDeclaration?>? DeclarationLookupCache = null;
+        public TranslatedDeclaration? TryFindTranslation(Decl declaration)
+        {
+            // Check if the cachce is stale
+            // (Ideally we just don't bring over the cache when this object is cloned, but 
+            if (DeclarationLookupCache is not null)
+            {
+                if (DeclarationLookupCacheLibrary is null || !DeclarationLookupCacheLibrary.TryGetTarget(out TranslatedLibrary? cacheLibrary) || !ReferenceEquals(cacheLibrary, this))
+                { DeclarationLookupCache = null; }
+            }
+
+            // Create a new cache if there is none
+            if (DeclarationLookupCache is null)
+            {
+                DeclarationLookupCacheLibrary = new WeakReference<TranslatedLibrary>(this);
+                DeclarationLookupCache = new Dictionary<Decl, TranslatedDeclaration?>();
+            }
+
+            // Search for the declaration
+            TranslatedDeclaration? result = null;
+
+            if (DeclarationLookupCache.TryGetValue(declaration, out result))
+            { return result; }
+
+            foreach (TranslatedDeclaration child in this.EnumerateRecursively())
+            {
+                if (child.Declaration == declaration)
+                {
+                    result = child;
+                    break;
+                }
+            }
+
+            DeclarationLookupCache.Add(declaration, result);
+            return result;
+        }
 
         public void Dispose()
             => TranslationUnitAndIndex?.Dispose();
