@@ -141,6 +141,26 @@ namespace Biohazrd
             Members = membersBuilder.ToImmutable();
         }
 
+        /// <summary>The total count of all members in this record, not just the ones contained within <see cref="Members"/>.</summary>
+        public int TotalMemberCount
+        {
+            get
+            {
+                int ret = Members.Count + UnsupportedMembers.Count;
+
+                if (NonVirtualBaseField is not null)
+                { ret++; }
+
+                if (VTableField is not null)
+                { ret++; }
+
+                if (VTable is not null)
+                { ret++; }
+
+                return ret;
+            }
+        }
+
         public override IEnumerator<TranslatedDeclaration> GetEnumerator()
         {
             foreach (TranslatedDeclaration member in Members)
