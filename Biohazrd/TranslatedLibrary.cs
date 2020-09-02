@@ -6,7 +6,7 @@ using System.Collections.Immutable;
 
 namespace Biohazrd
 {
-    public sealed record TranslatedLibrary : IDisposable, IEnumerable<TranslatedDeclaration>
+    public sealed record TranslatedLibrary : IEnumerable<TranslatedDeclaration>
     {
         private readonly TranslationUnitAndIndex TranslationUnitAndIndex;
 
@@ -71,8 +71,5 @@ namespace Biohazrd
             DeclarationLookupCache.Add(declaration, result);
             return result;
         }
-
-        public void Dispose()
-            => TranslationUnitAndIndex?.Dispose();
     }
 }
