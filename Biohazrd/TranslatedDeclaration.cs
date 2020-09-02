@@ -1,5 +1,7 @@
 ﻿using ClangSharp;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -7,7 +9,7 @@ using System.Text;
 
 namespace Biohazrd
 {
-    public abstract record TranslatedDeclaration : IEquatable<TranslatedDeclaration>
+    public abstract record TranslatedDeclaration : IEquatable<TranslatedDeclaration>, IEnumerable<TranslatedDeclaration>
     {
         public TranslatedFile File { get; }
 
@@ -57,6 +59,12 @@ namespace Biohazrd
             if (Declaration is not null)
             { Accessibility = Declaration.Access.ToTranslationAccessModifier(); }
         }
+
+        public virtual IEnumerator<TranslatedDeclaration> GetEnumerator()
+            => EmptyEnumerator<TranslatedDeclaration>.Instance;
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => GetEnumerator();
 
         public override string ToString()
             => (IsOriginal || Original.Name == Name) ? Name : $"{Name} ({Original.Name})";

@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Pathogen;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Biohazrd
@@ -35,5 +36,8 @@ namespace Biohazrd
 
             Values = valuesBuilder.ToImmutable();
         }
+
+        public override IEnumerator<TranslatedDeclaration> GetEnumerator()
+            => Values.GetEnumerator();
     }
 }

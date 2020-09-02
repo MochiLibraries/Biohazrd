@@ -140,5 +140,23 @@ namespace Biohazrd
             // Apply members
             Members = membersBuilder.ToImmutable();
         }
+
+        public override IEnumerator<TranslatedDeclaration> GetEnumerator()
+        {
+            foreach (TranslatedDeclaration member in Members)
+            { yield return member; }
+
+            if (NonVirtualBaseField is not null)
+            { yield return NonVirtualBaseField; }
+
+            if (VTableField is not null)
+            { yield return VTableField; }
+
+            if (VTable is not null)
+            { yield return VTable; }
+
+            foreach (TranslatedDeclaration unsupportedMember in UnsupportedMembers)
+            { yield return unsupportedMember; }
+        }
     }
 }

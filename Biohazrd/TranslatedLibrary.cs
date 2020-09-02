@@ -1,10 +1,12 @@
 ﻿using ClangSharp;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Biohazrd
 {
-    public sealed record TranslatedLibrary : IDisposable
+    public sealed record TranslatedLibrary : IDisposable, IEnumerable<TranslatedDeclaration>
     {
         private readonly TranslationUnitAndIndex TranslationUnitAndIndex;
 
@@ -25,6 +27,12 @@ namespace Biohazrd
             Files = files;
             ParsingDiagnostics = parsingDiagnostics;
         }
+
+        public IEnumerator<TranslatedDeclaration> GetEnumerator()
+            => Declarations.GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => GetEnumerator();
 
         internal TranslatedDeclaration TryFindTranslation(Decl declaration)
             => throw new NotImplementedException(); //TODO Debug.Fail

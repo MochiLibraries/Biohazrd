@@ -2,6 +2,7 @@
 using ClangSharp.Interop;
 using ClangSharp.Pathogen;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 
@@ -88,6 +89,12 @@ namespace Biohazrd
             { Name = "Constructor"; }
             else if (function is CXXDestructorDecl)
             { Name = "Destructor"; }
+        }
+
+        public override IEnumerator<TranslatedDeclaration> GetEnumerator()
+        {
+            foreach (TranslatedParameter parameter in Parameters)
+            { yield return parameter; }
         }
     }
 }
