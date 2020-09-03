@@ -103,5 +103,30 @@ namespace Biohazrd
                     return false;
             }
         }
+
+        internal static Cursor FindCursor(this TranslationUnit translationUnit, CXCursor handle)
+        {
+            if (handle.IsNull)
+            { throw new ArgumentException("The specified cursor handle is null.", nameof(handle)); }
+
+#if DEBUG
+            if (handle.TranslationUnit != translationUnit.Handle)
+            { throw new ArgumentException("The specified cursor handle comes from an unrelated ClangSharp translation unit.", nameof(handle)); }
+#endif
+
+            Cursor ret = translationUnit.GetOrCreate(handle);
+            Debug.Assert(ret is not null);
+            return ret;
+        }
+
+        internal static ClangType FindType(this TranslationUnit translationUnit, CXType handle)
+        {
+            if (handle.kind == CXTypeKind.CXType_Invalid)
+            { throw new ArgumentException("The specified type handle is invalid.", nameof(handle)); }
+
+            ClangType ret = translationUnit.GetOrCreate(handle);
+            Debug.Assert(ret is not null);
+            return ret;
+        }
     }
 }

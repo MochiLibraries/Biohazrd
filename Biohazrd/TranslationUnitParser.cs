@@ -55,29 +55,10 @@ namespace Biohazrd
         }
 
         internal Cursor FindCursor(CXCursor handle)
-        {
-            if (handle.IsNull)
-            { throw new ArgumentException("The specified cursor handle is null.", nameof(handle)); }
-
-#if DEBUG
-            if (handle.TranslationUnit != TranslationUnit.Handle)
-            { throw new ArgumentException("The specified curosr handle comes from an unrelated ClangSharp translation unit.", nameof(handle)); }
-#endif
-
-            Cursor ret = TranslationUnit.GetOrCreate(handle);
-            Debug.Assert(ret is not null);
-            return ret;
-        }
+            => TranslationUnit.FindCursor(handle);
 
         internal ClangType FindType(CXType handle)
-        {
-            if (handle.kind == CXTypeKind.CXType_Invalid)
-            { throw new ArgumentException("The specified type handle is invalid.", nameof(handle)); }
-
-            ClangType ret = TranslationUnit.GetOrCreate(handle);
-            Debug.Assert(ret is not null);
-            return ret;
-        }
+            => TranslationUnit.FindType(handle);
 
         private void ProcessTranslationUnit()
         {

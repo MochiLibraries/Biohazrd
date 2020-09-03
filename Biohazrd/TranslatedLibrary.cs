@@ -1,8 +1,10 @@
 ﻿using ClangSharp;
+using ClangSharp.Interop;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using ClangType = ClangSharp.Type;
 
 namespace Biohazrd
 {
@@ -71,5 +73,25 @@ namespace Biohazrd
             DeclarationLookupCache.Add(declaration, result);
             return result;
         }
+
+        /// <summary>Finds the ClangSharp <see cref="Cursor"/> for the given <see cref="CXCursor"/> handle.</summary>
+        /// <remarks>
+        /// The provided cursor handle must be valid, non-null, and come from the same translation unit as the one used by this library.
+        ///
+        /// This method is provided for advanced scenarios only.
+        /// Typically you should not need it unless you're accessing Clang information that ClangSharp doesn't expose in a clean manner.
+        /// </remarks>
+        public Cursor FindClangCursor(CXCursor handle)
+            => TranslationUnitAndIndex.TranslationUnit.FindCursor(handle);
+
+        /// <summary>Finds the ClangSharp <see cref="ClangType"/> for the given <see cref="CXType"/> handle.</summary>
+        /// <remarks>
+        /// The provided type handle must be valid, and come from the same translation unit as the one used by this library.
+        ///
+        /// This method is provided for advanced scenarios only.
+        /// Typically you should not need it unless you're accessing Clang information that ClangSharp doesn't expose in a clean manner.
+        /// </remarks>
+        public ClangType FindClangType(CXType handle)
+            => TranslationUnitAndIndex.TranslationUnit.FindType(handle);
     }
 }
