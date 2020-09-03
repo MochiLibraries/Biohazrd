@@ -1,5 +1,5 @@
 ﻿using Biohazrd;
-using Biohazrd.Transformations;
+using Biohazrd.Transformation.Common;
 using ClangSharp.Interop;
 using Microsoft.CodeAnalysis;
 using System;
@@ -95,7 +95,7 @@ namespace ClangSharpTest2020
             libraryBuilder.AddCommandLineArguments(clangCommandLineArgs);
             libraryBuilder.AddFiles(files);
 
-            using TranslatedLibrary library = libraryBuilder.Create();
+            TranslatedLibrary library = libraryBuilder.Create();
 
             // Perform validation
             Console.WriteLine("==============================================================================");
@@ -107,11 +107,11 @@ namespace ClangSharpTest2020
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing library-specific transformations...");
             Console.WriteLine("==============================================================================");
-            library.ApplyTransformation(ConstOverloadRenamer.Factory);
-            library.ApplyTransformation(new PhysXRemovePaddingFieldsTransformation.Factory());
-            library.ApplyTransformation(PhysXEnumTransformation.Factory);
-            library.ApplyTransformation(new PhysxFlagsEnumTransformation.Factory());
-            library.ApplyTransformation(MakeEverythingPublicTransformation.Factory);
+            library = new ConstOverloadRenameTransformation().Transform(library);
+            library = new PhysXRemovePaddingFieldsTransformation().Transform(library);
+            library = new PhysXEnumTransformation().Transform(library);
+            library = new PhysXFlagsEnumTransformation(library).Transform(library);
+            library = new MakeEvereythingPublicTransformation().Transform(library);
 
             using (var generateModuleDefinition = new GenerateModuleDefinitionTransformation(@"C:\Scratch\PhysX\physx\PhysXPathogen.def", files))
             {

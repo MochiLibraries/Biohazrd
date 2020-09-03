@@ -1,131 +1,99 @@
 ﻿using Biohazrd;
+using Biohazrd.Transformation;
 using ClangSharp;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using ClangType = ClangSharp.Type;
 
 namespace ClangSharpTest2020
 {
-    public sealed class PhysxFlagsEnumTransformation : TranslationTransformation
+    //TODO: Add sanity checks that the transformations called for during initialization actually happened.
+    public sealed class PhysXFlagsEnumTransformation : TransformationBase
     {
-        private readonly TranslatedEnum TargetEnum;
-        private readonly TranslatedTypedef FlagsTypedef;
-        private readonly UnderlyingEnumType UnderlyingType;
-        private readonly List<TranslatedFunction> OperatorOverloads;
+        private HashSet<TranslatedTypedef> FlagsTypedefs = new();
+        private Dictionary<EnumDecl, (TranslatedTypedef FlagsTypedef, ClangType UnderlyingType)> FlagsEnums = new();
+        private HashSet<ClangType> FlagsCanonicalTypes = new();
 
-        private PhysxFlagsEnumTransformation(TranslatedEnum targetEnum, TranslatedTypedef flagsTypedef, UnderlyingEnumType underlyingType, List<TranslatedFunction> operatorOverloads)
+        //TODO: This transformation has a heavy reliance on Clang stuff. Ideally it should be able to work with what Biohazrd provides alone.
+        public PhysXFlagsEnumTransformation(TranslatedLibrary library)
         {
-            TargetEnum = targetEnum;
-            FlagsTypedef = flagsTypedef;
-            UnderlyingType = underlyingType;
-            OperatorOverloads = operatorOverloads;
-        }
-
-        public override void Apply()
-        {
-            // Update the target enum
-            TargetEnum.TranslatedName = FlagsTypedef.TranslatedName;
-            TargetEnum.IsFlags = true;
-            TargetEnum.UnderlyingType = UnderlyingType;
-
-            // Delete the typedef
-            FlagsTypedef.Parent = null;
-            TargetEnum.AddSecondaryDeclaration(FlagsTypedef.Declaration);
-
-            // Delete the PX_FLAGS_OPERATORS operator overloads
-            foreach (TranslatedFunction operatorOverload in OperatorOverloads)
-            { operatorOverload.Parent = null; }
-        }
-
-        public override string ToString()
-            => $"PhysX-style flags enum {FlagsTypedef.TranslatedName}";
-
-        public sealed class Factory : TranslationTransformationFactory
-        {
-            protected override TranslationTransformation Create(TranslatedDeclaration declaration)
+            // Run an initial pass through the library to identify PxFlags enums
+            foreach (TranslatedDeclaration declaration in library.EnumerateRecursively())
             {
                 // Look for typedefs
-                if (!(declaration is TranslatedTypedef typedef))
-                { return null; }
+                if (declaration is not TranslatedTypedef typedef)
+                { continue; }
 
                 // Look for typedefs that are template specializations
-                if (!(typedef.Typedef.UnderlyingType is TemplateSpecializationType templateSpecialization))
-                { return null; }
+                if (typedef.UnderlyingType.Type is not TemplateSpecializationType templateSpecialization)
+                { continue; }
 
                 // Get the declaration
-                if (!(FindCursor(templateSpecialization.Handle.Declaration) is ClassTemplateSpecializationDecl templateSpecializationDeclaration))
+                if (library.FindClangCursor(templateSpecialization.Handle.Declaration) is not ClassTemplateSpecializationDecl templateSpecializationDeclaration)
                 {
                     Debug.Assert(false, "The declaration for a TemplateSpecializationType is expected to be a ClassTemplateSpecializationDecl.");
-                    return null;
+                    continue;
                 }
 
-                // Make sure this declaration is for PxFlags
+                // Look for PxFlags
                 if (templateSpecializationDeclaration.Name != "PxFlags")
-                { return null; }
+                { continue; }
 
                 // We expect there to be two template arguments: PxFlags<enumtype, storagetype>
-                // (There will always be 2 arguments even if the default value for storagetype is used.)
                 if (templateSpecializationDeclaration.TemplateArgs.Count != 2)
                 {
                     Debug.Assert(false, "PxFlags should always have two template arguments.");
-                    return null;
+                    continue;
                 }
 
                 // Extract the arguments
                 ClangType enumArgument = templateSpecializationDeclaration.TemplateArgs[0];
                 ClangType storageType = templateSpecializationDeclaration.TemplateArgs[1];
 
-                // Make sure the type referred to by enumType is actually an enum
-                if (!(enumArgument is EnumType enumType))
-                {
-                    Diagnostic(Severity.Warning, typedef.Typedef, "The first argument of PxFlags is expected to be an enum.");
-                    return null;
-                }
+                // The first argument should be an EnumType with a corresponding EnumDecl
+                if (enumArgument is not EnumType { Decl: EnumDecl enumDecl })
+                { continue; }
 
-                // Get the translation of the enum
-                TranslatedDeclaration translatedDeclaration = TryFindTranslation(enumType.Decl);
-                if (translatedDeclaration is null)
-                {
-                    Diagnostic(Severity.Warning, typedef.Typedef, $"Could not find translation of enum '{enumType}'");
-                    return null;
-                }
-
-                if (!(translatedDeclaration is TranslatedEnum translatedEnum))
-                {
-                    Diagnostic(Severity.Warning, typedef.Typedef, $"The translation of the enum '{enumType}' is not a {nameof(TranslatedEnum)}");
-                    return null;
-                }
-
-                // Get the translation of the storage type
-                UnderlyingEnumType underlyingType = storageType.ToUnderlyingEnumType(typedef.Typedef, declaration.File);
-
-                // Find the PX_FLAGS_OPERATORS operator overloads
-                List<TranslatedFunction> operatorOverloads = new List<TranslatedFunction>(capacity: 3);
-                //HACK: We need to get the loose functions, but when transformations run they might already be moved to a container
-                // We either need a purpose-built API for enumerating loose declarations or we need to make sure this runs before loose declarations are associated.
-                IDeclarationContainer container = declaration.File.__HACK__LooseDeclarationsContainer ?? declaration.File;
-
-                foreach (TranslatedFunction operatorOverload in container.OfType<TranslatedFunction>())
-                {
-                    // Only consider operator overloads
-                    if (!operatorOverload.IsOperatorOverload)
-                    { continue; }
-
-                    // Only consider static operator overloads (This is a workaround to make sure the function was a loose function)
-                    if (operatorOverload.IsInstanceMethod)
-                    { continue; }
-
-                    // Only consider functions which have a return type of PxFlags<,>
-                    if (operatorOverload.Function.ReturnType.CanonicalType != templateSpecialization.CanonicalType)
-                    { continue; }
-
-                    operatorOverloads.Add(operatorOverload);
-                }
-
-                // Create the transformation
-                return new PhysxFlagsEnumTransformation(translatedEnum, typedef, underlyingType, operatorOverloads);
+                // Record the relevant info needed to perform the transformation
+                FlagsTypedefs.Add(typedef);
+                FlagsEnums.Add(enumDecl, (typedef, storageType));
+                FlagsCanonicalTypes.Add(templateSpecialization.CanonicalType); //TODO: Is this the same for all PxFlags?
             }
+        }
+
+        protected override TransformationResult TransformTypedef(TransformationContext context, TranslatedTypedef declaration)
+        {
+            // Delete the targeted typedefs
+            if (FlagsTypedefs.Remove(declaration))
+            { return null; }
+
+            return declaration;
+        }
+
+        protected override TransformationResult TransformEnum(TransformationContext context, TranslatedEnum declaration)
+        {
+            // Update targeted enums
+            if (declaration.Declaration is EnumDecl enumDecl && FlagsEnums.Remove(enumDecl, out (TranslatedTypedef FlagsTypedef, ClangType UnderlyingType) enumInfo))
+            {
+                return declaration with
+                {
+                    Name = enumInfo.FlagsTypedef.Name,
+                    IsFlags = true,
+                    UnderlyingType = new TranslatedTypeReference(enumInfo.UnderlyingType),
+                    SecondaryDeclarations = declaration.SecondaryDeclarations.AddIfNotNull(enumInfo.FlagsTypedef.Declaration)
+                };
+            }
+
+            return declaration;
+        }
+
+        protected override TransformationResult TransformFunction(TransformationContext context, TranslatedFunction declaration)
+        {
+            // Remove the PX_FLAGS_OPERATORS, which we define as static operator overloads that return one of the enumerated PxFlags<,> types.
+            if (declaration is { IsOperatorOverload: true, IsInstanceMethod: false, Declaration: FunctionDecl functionDecl } && FlagsCanonicalTypes.Contains(functionDecl.ReturnType.CanonicalType))
+            { return null; }
+
+            return declaration;
         }
     }
 }

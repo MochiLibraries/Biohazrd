@@ -7,7 +7,7 @@ namespace Biohazrd
         public ClangType Type { get; }
         public bool MustBePassedByReference { get; }
 
-        internal TranslatedTypeReference(ClangType type)
+        public TranslatedTypeReference(ClangType type)
         {
             Type = type;
             MustBePassedByReference = type.MustBePassedByReference();

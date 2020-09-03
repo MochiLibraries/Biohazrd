@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Biohazrd\Biohazrd.csproj" />
+    <ProjectReference Include="..\Biohazrd.Transformation\Biohazrd.Transformation.csproj" />
   </ItemGroup>
 
   <ItemGroup>
