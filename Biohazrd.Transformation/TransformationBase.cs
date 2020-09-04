@@ -81,7 +81,7 @@ namespace Biohazrd.Transformation
                 TranslatedEnumConstant enumConstantDeclaration => TransformEnumConstant(context, enumConstantDeclaration),
                 TranslatedEnum enumDeclaration => TransformEnum(context, enumDeclaration),
                 // Fallback declaration
-                TranslatedDeclaration => TransformDeclaration(context, declaration)
+                TranslatedDeclaration => TransformUnknownDeclarationType(context, declaration)
             };
 
         protected virtual TransformationResult TransformChildren(TransformationContext context, TranslatedDeclaration declaration)
@@ -93,5 +93,8 @@ namespace Biohazrd.Transformation
                 // In the default case, the declaration has no children:
                 TranslatedDeclaration => declaration
             };
+
+        protected virtual TransformationResult TransformUnknownDeclarationType(TransformationContext context, TranslatedDeclaration declaration)
+            => TransformDeclaration(context, declaration);
     }
 }
