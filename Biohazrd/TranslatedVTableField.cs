@@ -7,7 +7,6 @@ namespace Biohazrd
     public sealed record TranslatedVTableField : TranslatedField
     {
         private const string DefaultName = "VirtualMethodTablePointer";
-        public string TranslatedTypeName => "VirtualMethodTable";
 
         internal unsafe TranslatedVTableField(TranslationUnitParser parsingContext, TranslatedFile file, PathogenRecordField* field)
             : base(parsingContext, file, field)
@@ -21,7 +20,7 @@ namespace Biohazrd
         }
 
         /// <summary>Creates a virtual method table pointer field aliased from a base field.</summary>
-        internal TranslatedVTableField(TranslatedBaseField baseField)
+        public TranslatedVTableField(TranslatedBaseField baseField)
             : base(baseField.File)
         {
             // The base must be at offset 0
@@ -29,6 +28,7 @@ namespace Biohazrd
             { throw new ArgumentException("VTable pointer aliases must correspond to bases at offset 0."); }
 
             Offset = 0;
+            Name = DefaultName;
         }
     }
 }

@@ -109,6 +109,8 @@ namespace ClangSharpTest2020
             library = new PhysXRemovePaddingFieldsTransformation().Transform(library);
             library = new PhysXEnumTransformation().Transform(library);
             library = new PhysXFlagsEnumTransformation(library).Transform(library);
+
+            library = new AddBaseVTableAliasTransformation().Transform(library);
             library = new ConstOverloadRenameTransformation().Transform(library);
             library = new MakeEvereythingPublicTransformation().Transform(library);
 
