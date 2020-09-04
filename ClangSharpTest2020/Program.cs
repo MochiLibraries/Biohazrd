@@ -1,4 +1,5 @@
 ﻿using Biohazrd;
+using Biohazrd.CSharp;
 using Biohazrd.Transformation.Common;
 using ClangSharp.Interop;
 using Microsoft.CodeAnalysis;
@@ -97,22 +98,31 @@ namespace ClangSharpTest2020
 
             TranslatedLibrary library = libraryBuilder.Create();
 
-            // Perform validation
-            Console.WriteLine("==============================================================================");
-            Console.WriteLine("Performing pre-translation validation...");
-            Console.WriteLine("==============================================================================");
-            library.Validate();
-
             // Apply transformations
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing library-specific transformations...");
             Console.WriteLine("==============================================================================");
-            library = new ConstOverloadRenameTransformation().Transform(library);
+
+            BrokenDeclarationExtractor brokenDeclarationExtractor = new();
+            library = brokenDeclarationExtractor.Transform(library);
+
             library = new PhysXRemovePaddingFieldsTransformation().Transform(library);
             library = new PhysXEnumTransformation().Transform(library);
             library = new PhysXFlagsEnumTransformation(library).Transform(library);
+            library = new ConstOverloadRenameTransformation().Transform(library);
             library = new MakeEvereythingPublicTransformation().Transform(library);
 
+            // Perform validation
+            Console.WriteLine("==============================================================================");
+            Console.WriteLine("Performing post-translation validation...");
+            Console.WriteLine("==============================================================================");
+            library = new CSharpTranslationVerifier().Transform(library);
+
+            // Remove final broken declarations
+            library = brokenDeclarationExtractor.Transform(library);
+            //TODO: Emit the diagnostics from the library and from the broken declarations
+
+            // Generate module definition
             using (var generateModuleDefinition = new GenerateModuleDefinitionTransformation(@"C:\Scratch\PhysX\physx\PhysXPathogen.def", files))
             {
                 library.ApplyTransformation(generateModuleDefinition.Factory);

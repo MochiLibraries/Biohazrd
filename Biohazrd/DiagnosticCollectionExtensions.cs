@@ -5,7 +5,7 @@ using System.Collections.Immutable;
 
 namespace Biohazrd
 {
-    internal static class DiagnosticCollectionExtensions
+    public static class DiagnosticCollectionExtensions
     {
         public static TList Add<TList>(this TList list, Severity severity, SourceLocation location, string message)
             where TList : IImmutableList<TranslationDiagnostic>
