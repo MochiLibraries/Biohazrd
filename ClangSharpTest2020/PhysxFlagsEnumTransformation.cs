@@ -10,6 +10,10 @@ namespace ClangSharpTest2020
     //TODO: Add sanity checks that the transformations called for during initialization actually happened.
     public sealed class PhysXFlagsEnumTransformation : TransformationBase
     {
+        // This transformation almost supports concurrency, but the fact that we remove elements from the sets as they are processed means that it is not
+        // It should be relatively easy to adapt this type to support concurrency, it's just a matter of doing it.
+        protected override bool SupportsConcurrency => false;
+
         private HashSet<TranslatedTypedef> FlagsTypedefs = new();
         private Dictionary<EnumDecl, (TranslatedTypedef FlagsTypedef, ClangType UnderlyingType)> FlagsEnums = new();
         private HashSet<ClangType> FlagsCanonicalTypes = new();

@@ -4,6 +4,18 @@ namespace Biohazrd.Transformation
 {
     public abstract partial class TransformationBase
     {
+        /// <summary>Indicates whether this transformation supports concurrency.</summary>
+        /// <remarks>
+        /// While Biohazrd's transformation infrastructure does not currently support processing declarations within a library concurrently, it is designed such that it will be possible in the future.
+        /// 
+        /// Typical transformations do not need state beyond the immutable state passed to each method. As such, most should be concurrent-friendly by default.
+        ///
+        /// However, some transformations (in particular, multi-stage transformations) may have extra state that may be manipulated by multiple Transform* methods at the same time.
+        /// If these transformations are not written with concurreny in mind, they will not work once this feature is implemented.
+        /// As such, they should override this property and return false to indicate they must be executed serially.
+        /// </remarks>
+        protected virtual bool SupportsConcurrency => true;
+
         public TranslatedLibrary Transform(TranslatedLibrary library)
         {
             TransformationContext context = new(library);
