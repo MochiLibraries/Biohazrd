@@ -1,5 +1,6 @@
 ﻿using Biohazrd;
 using Biohazrd.CSharp;
+using Biohazrd.OutputGeneration;
 using Biohazrd.Transformation.Common;
 using ClangSharp.Interop;
 using Microsoft.CodeAnalysis;
@@ -125,11 +126,12 @@ namespace ClangSharpTest2020
             library = brokenDeclarationExtractor.Transform(library);
             //TODO: Emit the diagnostics from the library and from the broken declarations
 
+            // Start output session
+            using OutputSession outputSession = new();
+
             // Generate module definition
-            using (var generateModuleDefinition = new GenerateModuleDefinitionTransformation(@"C:\Scratch\PhysX\physx\PhysXPathogen.def", files))
-            {
-                library.ApplyTransformation(generateModuleDefinition.Factory);
-            }
+            ModuleDefinitionGenerator.Generate(outputSession, @"C:\Scratch\PhysX\physx\PhysXPathogen.def", library, "PhysXPathogen_64");
+            InlineReferenceFileGenerator.Generate(outputSession, @"C:\Scratch\PhysX\physx\PhysXPathogen.cpp", library);
 
             // Emit the translation
             Console.WriteLine("==============================================================================");
