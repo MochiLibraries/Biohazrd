@@ -106,6 +106,7 @@ namespace ClangSharpTest2020
             BrokenDeclarationExtractor brokenDeclarationExtractor = new();
             library = brokenDeclarationExtractor.Transform(library);
 
+            library = new RemoveBadPhysXDeclarationsTransformation().Transform(library);
             library = new PhysXRemovePaddingFieldsTransformation().Transform(library);
             library = new PhysXEnumTransformation().Transform(library);
             library = new PhysXFlagsEnumTransformation(library).Transform(library);
