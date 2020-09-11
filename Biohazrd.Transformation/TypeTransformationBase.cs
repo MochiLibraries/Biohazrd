@@ -8,7 +8,7 @@ namespace Biohazrd.Transformation
         /// <remarks>Persistent transformation only occurs when the actual type reference changes. Persistent transformation does not occur if only diagnostics are added.</remarks>
         protected virtual bool PersistentTypeTransformation => true;
 
-        private TypeTransformationResult TransformTypeRecursively(TypeTransformationContext context, TypeReference type)
+        protected TypeTransformationResult TransformTypeRecursively(TypeTransformationContext context, TypeReference type)
         {
             // Transform this type
             TypeTransformationResult result = TransformType(context, type);
@@ -40,9 +40,11 @@ namespace Biohazrd.Transformation
         protected virtual TypeTransformationResult TransformType(TypeTransformationContext context, TypeReference type)
             => type switch
             {
-                TranslatedTypeReference translatedType => TransformTranslatedTypeReference(context, translatedType),
-                PointerTypeReference pointerType => TransformPointerTypeReference(context, pointerType),
                 ClangTypeReference clangType => TransformClangTypeReference(context, clangType),
+                FunctionPointerTypeReference functionPointer => TransformFunctionPointerTypeReference(context, functionPointer),
+                PointerTypeReference pointerType => TransformPointerTypeReference(context, pointerType),
+                TranslatedTypeReference translatedType => TransformTranslatedTypeReference(context, translatedType),
+                VoidTypeReference voidType => TransformVoidTypeReference(context, voidType),
                 // Fallback type
                 TypeReference => TransformUnknownTypeReference(context, type)
             };
@@ -50,6 +52,7 @@ namespace Biohazrd.Transformation
         protected virtual TypeTransformationResult TransformTypeChildren(TypeTransformationContext context, TypeReference type)
             => type switch
             {
+                FunctionPointerTypeReference functionPointer => TransformFunctionPointerTypeReferenceChildren(context.Add(type), functionPointer),
                 PointerTypeReference pointerType => TransformPointerTypeReferenceChildren(context.Add(type), pointerType),
                 TypeReference => type
             };

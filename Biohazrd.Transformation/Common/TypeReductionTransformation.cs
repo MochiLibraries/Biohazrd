@@ -53,6 +53,10 @@ namespace Biohazrd.Transformation.Common
                     ClangTypeReference inner = new(incompleteArrayType.ElementType);
                     return new PointerTypeReference(inner);
                 }
+                case FunctionProtoType functionProtoType:
+                {
+                    return new FunctionPointerTypeReference(functionProtoType);
+                }
                 // Don't know how to reduce this type
                 default:
                 {
