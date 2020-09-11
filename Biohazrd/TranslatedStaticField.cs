@@ -5,11 +5,13 @@ namespace Biohazrd
     /// <summary>A translated static field or global variable.</summary>
     public sealed record TranslatedStaticField : TranslatedDeclaration
     {
-        public TranslatedTypeReference Type { get; init; }
+        public TypeReference Type { get; init; }
         
         internal TranslatedStaticField(TranslatedFile file, VarDecl variable)
             : base(file, variable)
         {
+            Type = new ClangTypeReference(variable.Type);
+
             // Static variables outside of records should always be public.
             if (variable.CursorParent is not RecordDecl)
             { Accessibility = AccessModifier.Public; }

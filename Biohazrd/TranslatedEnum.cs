@@ -7,7 +7,7 @@ namespace Biohazrd
 {
     public sealed record TranslatedEnum : TranslatedDeclaration
     {
-        public TranslatedTypeReference UnderlyingType { get; init; }
+        public TypeReference UnderlyingType { get; init; }
         public ImmutableList<TranslatedEnumConstant> Values { get; init; }
 
         public bool TranslateAsLooseConstants { get; init; }
@@ -16,7 +16,7 @@ namespace Biohazrd
         internal TranslatedEnum(TranslatedFile file, EnumDecl enumDeclaration)
             : base(file, enumDeclaration)
         {
-            UnderlyingType = new TranslatedTypeReference(enumDeclaration.IntegerType);
+            UnderlyingType = new ClangTypeReference(enumDeclaration.IntegerType);
 
             // If this enum is anonymous and not an enum class, it will be translated as loose constants by default instead of a normal enum type
             //TODO: This isn't ideal when this anonymous enum is used to type a field. A more sensible default would probably be to name ourselves after the field. (IE: <FieldName>Enum)

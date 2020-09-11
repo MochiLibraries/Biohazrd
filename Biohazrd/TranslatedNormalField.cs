@@ -5,7 +5,7 @@ namespace Biohazrd
 {
     public sealed record TranslatedNormalField : TranslatedField
     {
-        public TranslatedTypeReference Type { get; init; }
+        public TypeReference Type { get; init; }
         public bool IsBitField { get; init; }
 
         internal unsafe TranslatedNormalField(TranslationUnitParser parsingContext, TranslatedFile file, PathogenRecordField* field)
@@ -14,7 +14,7 @@ namespace Biohazrd
             if (field->Kind != PathogenRecordFieldKind.Normal)
             { throw new ArgumentException("The specified field must be a normal field.", nameof(field)); }
 
-            Type = new TranslatedTypeReference(parsingContext.FindType(field->Type));
+            Type = new ClangTypeReference(parsingContext, field->Type);
             IsBitField = field->IsBitField != 0;
         }
     }

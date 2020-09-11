@@ -29,7 +29,7 @@ namespace ClangSharpTest2020
                 { continue; }
 
                 // Look for typedefs that are template specializations
-                if (typedef.UnderlyingType.Type is not TemplateSpecializationType templateSpecialization)
+                if (typedef.UnderlyingType is not ClangTypeReference clangType || clangType.ClangType is not TemplateSpecializationType templateSpecialization)
                 { continue; }
 
                 // Get the declaration
@@ -83,7 +83,7 @@ namespace ClangSharpTest2020
                 {
                     Name = enumInfo.FlagsTypedef.Name,
                     IsFlags = true,
-                    UnderlyingType = new TranslatedTypeReference(enumInfo.UnderlyingType),
+                    UnderlyingType = new ClangTypeReference(enumInfo.UnderlyingType),
                     SecondaryDeclarations = declaration.SecondaryDeclarations.AddIfNotNull(enumInfo.FlagsTypedef.Declaration)
                 };
             }
