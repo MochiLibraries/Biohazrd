@@ -40,7 +40,7 @@ namespace Biohazrd.Transformation
             return library;
         }
 
-        private TransformationResult TransformRecursively(TransformationContext context, TranslatedDeclaration declaration)
+        protected TransformationResult TransformRecursively(TransformationContext context, TranslatedDeclaration declaration)
         {
             // Transform this declaration
             TransformationResult result = Transform(context, declaration);

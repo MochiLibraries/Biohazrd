@@ -15,32 +15,23 @@ namespace Biohazrd.Transformation
 
             // Transform members
             foreach (TranslatedDeclaration member in declaration.Members)
-            { newMembers.Add(Transform(context, member)); }
+            { newMembers.Add(TransformRecursively(context, member)); }
 
             // Transform non-virtual base field
             if (declaration.NonVirtualBaseField is not null)
-            {
-                Assumes.IsSealed<TranslatedBaseField>();
-                newNonVirtualBaseField.SetValue(TransformBaseField(context, declaration.NonVirtualBaseField));
-            }
+            { newNonVirtualBaseField.SetValue(TransformRecursively(context, declaration.NonVirtualBaseField)); }
 
             // Transform vtable field
             if (declaration.VTableField is not null)
-            {
-                Assumes.IsSealed<TranslatedVTableField>();
-                newVTableField.SetValue(TransformVTableField(context, declaration.VTableField));
-            }
+            { newVTableField.SetValue(TransformRecursively(context, declaration.VTableField)); }
 
             // Transform vtable
             if (declaration.VTable is not null)
-            {
-                Assumes.IsSealed<TranslatedVTable>();
-                newVTable.SetValue(TransformVTable(context, declaration.VTable));
-            }
+            { newVTable.SetValue(TransformRecursively(context, declaration.VTable)); }
 
             // Transform unsupported members
             foreach (TranslatedDeclaration unsupportedMember in declaration.UnsupportedMembers)
-            { newUnsupportedMembers.Add(Transform(context, unsupportedMember)); }
+            { newUnsupportedMembers.Add(TransformRecursively(context, unsupportedMember)); }
 
             // If the record changed, mutate it
             if (newMembers.WasChanged || newNonVirtualBaseField.WasChanged || newVTableField.WasChanged || newVTable.WasChanged || newUnsupportedMembers.WasChanged)
@@ -80,8 +71,7 @@ namespace Biohazrd.Transformation
             ArrayTransformHelper<TranslatedParameter> newParameters = new(declaration.Parameters);
             foreach (TranslatedParameter parameter in declaration.Parameters)
             {
-                Assumes.IsSealed<TranslatedParameter>();
-                newParameters.Add(TransformParameter(context, parameter));
+                newParameters.Add(TransformRecursively(context, parameter));
 
                 // In theory we could handle this situation by returning the other declarations as siblings of the function, but for now we consider it invalid.
                 if (newParameters.HasOtherDeclarations)
@@ -106,8 +96,7 @@ namespace Biohazrd.Transformation
             using ListTransformHelper<TranslatedEnumConstant> newValues = new(declaration.Values);
             foreach (TranslatedEnumConstant value in declaration.Values)
             {
-                Assumes.IsSealed<TranslatedEnumConstant>();
-                newValues.Add(TransformEnumConstant(context, value));
+                newValues.Add(TransformRecursively(context, value));
 
                 // In theory we could handle this situation by returning the other declarations as siblings of the enum, but for now we consider it invalid.
                 if (newValues.HasOtherDeclarations)
