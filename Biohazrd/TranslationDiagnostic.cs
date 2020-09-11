@@ -21,7 +21,7 @@ namespace Biohazrd
             Message = message;
         }
 
-        private TranslationDiagnostic(Severity severity, string message)
+        public TranslationDiagnostic(Severity severity, string message)
             : this(SourceLocation.Null, severity, message)
         { }
 

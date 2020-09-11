@@ -27,21 +27,28 @@ namespace Biohazrd.Transformation
             Parents = ImmutableArray<TranslatedDeclaration>.Empty;
         }
 
+        private TransformationContext(TransformationContext other)
+            => this = other;
+
         public TransformationContext Add(TranslatedDeclaration newParent)
-            => new TransformationContext(Library)
+            => new TransformationContext(this)
             {
                 Parents = Parents.Add(newParent)
             };
 
         public override string ToString()
         {
-            StringBuilder ret = new();
-            ret.Append(nameof(TranslatedLibrary));
+            StringBuilder builder = new();
+            ToString(builder);
+            return builder.ToString();
+        }
+
+        internal void ToString(StringBuilder builder)
+        {
+            builder.Append(nameof(TranslatedLibrary));
 
             foreach (TranslatedDeclaration parent in Parents)
-            { ret.Append($".{parent.Name}"); }
-
-            return ret.ToString();
+            { builder.Append($".{parent.Name}"); }
         }
     }
 }
