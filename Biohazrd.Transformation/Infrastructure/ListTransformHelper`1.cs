@@ -9,10 +9,10 @@ namespace Biohazrd.Transformation.Infrastructure
     /// This type is used to construct a <see cref="ImmutableList{TDeclaration}"/> when its contents might match an existing one.
     ///
     /// When <typeparamref name="TDeclaration"/> is <see cref="TranslatedDeclaration"/>, you should prefer <see cref="ListTransformHelper"/> instead.
-    /// The only difference of this type is it will accumulate types which are not <typeparamref name="TDeclaration"/> in a separate list.
+    /// The only difference of this type is it will accumulate types which are not <typeparamref name="TDeclaration"/> in a separate collection.
     ///
     /// Use the <see cref="Add(TransformationResult)"/> method to add the result of a transformation.
-    /// If the sequence of adds would've resulted in an identical list, no new list will be constructed and no additional memory will be allocated.
+    /// If the sequence of adds would've resulted in an identical collection, no new collection will be constructed and no additional memory will be allocated.
     ///
     /// Essentially this type is a lazyily-created <see cref="ImmutableList{TDeclaration}.Builder"/>.
     ///
@@ -29,11 +29,11 @@ namespace Biohazrd.Transformation.Infrastructure
         private int LastGoodIndex;
         private bool IsFinished;
 
-        /// <summary>Indicates whether the additions have resulted in a modified list yet.</summary>
-        /// <remarks>Note that this will not indicate a truncated list until <see cref="Finish"/> is called.</remarks>
+        /// <summary>Indicates whether the additions have resulted in a modified collection yet.</summary>
+        /// <remarks>Note that this will not indicate a truncated collection until <see cref="Finish"/> is called.</remarks>
         public bool WasChanged => Builder is not null;
 
-        /// <summary>Indicates if an attempt was made to add declarations to this list which weren't of type <typeparamref name="TDeclaration"/>.</summary>
+        /// <summary>Indicates if an attempt was made to add declarations to this collection which weren't of type <typeparamref name="TDeclaration"/>.</summary>
         /// <remarks>This value is always <c>false</c> when <see cref="WasChanged"/> is <c>false</c>.</remarks>
         public bool HasOtherDeclarations => OtherDeclarationsBuilder is not null;
 
@@ -104,7 +104,7 @@ namespace Biohazrd.Transformation.Infrastructure
             if (transformation.Count != 1)
             { return true; }
 
-            // Advance the enumerator to check what's in the original list at the "current" location
+            // Advance the enumerator to check what's in the original collection at the "current" location
             if (!Enumerator.MoveNext())
             {
                 // The enumerator has no more elements, so this is an addition.
@@ -124,16 +124,16 @@ namespace Biohazrd.Transformation.Infrastructure
             }
             else
             {
-                // Equality check failed, the list is being changed.
+                // Equality check failed, the collection is being changed.
                 return true;
             }
         }
 
-        /// <summary>Appends the given transformation result to this list.</summary>
+        /// <summary>Appends the given transformation result to this collection.</summary>
         public void Add(TransformationResult transformation)
         {
             if (IsFinished)
-            { throw new InvalidOperationException("Can't add to a list once it's been finished."); }
+            { throw new InvalidOperationException("Can't add to a collection once it's been finished."); }
             
             // If we were already changed, just add the results
             if (WasChanged)
@@ -142,7 +142,7 @@ namespace Biohazrd.Transformation.Infrastructure
                 return;
             }
 
-            // If this transformation doesn't change the list, do nothing.
+            // If this transformation doesn't change the collection, do nothing.
             if (!CheckIsChange(transformation))
             { return; }
 
@@ -150,11 +150,11 @@ namespace Biohazrd.Transformation.Infrastructure
             CreateBuilder(transformation);
         }
 
-        /// <summary>Indicates that the list is complete and no more calls to <see cref="Add(TransformationResult)"/> will be performed.</summary>
+        /// <summary>Indicates that the collection is complete and no more calls to <see cref="Add(TransformationResult)"/> will be performed.</summary>
         /// <remarks>
-        /// Calling this method will change the value of <see cref="WasChanged"/> in the event the list was truncated.
+        /// Calling this method will change the value of <see cref="WasChanged"/> in the event the collection was truncated.
         ///
-        /// After marking a list as finished, you can no longer call <see cref="Add(TransformationResult)"/>.
+        /// After marking a collection as finished, you can no longer call <see cref="Add(TransformationResult)"/>.
         /// </remarks>
         public void Finish()
         {
@@ -177,13 +177,13 @@ namespace Biohazrd.Transformation.Infrastructure
                 return;
             }
 
-            // If we *didn't* exhaust the entire original list, the list was truncated so we'll need to create a new one.
+            // If we *didn't* exhaust the entire original collection, the collection was truncated so we'll need to create a new one.
             // (A default TransformationResult normally results in a deletion, but in this case we use it to add nothing.)
             CreateBuilder(default);
         }
 
         /// <summary>Constructs a new <see cref="ImmutableList{TDeclaration}"/> based on the changes made to this instance.</summary>
-        /// <returns>A modified list if changes were made, the original list otherwise.</returns>
+        /// <returns>A modified collection if changes were made, the original collection otherwise.</returns>
         /// <remarks>This method automatically calls <see cref="Finish"/>. As such, you can no longer add to this instance after calling this method.</remarks>
         public ImmutableList<TDeclaration> ToImmutable()
         {
@@ -191,8 +191,8 @@ namespace Biohazrd.Transformation.Infrastructure
             return Builder?.ToImmutable() ?? Original;
         }
 
-        /// <summary>Constructs a list of declarations added to this instance that weren't of the expected type.</summary>
-        /// <returns>If <see cref="HasOtherDeclarations"/> is true, returns a list of declarations. Otherwise an empty list is returned.</returns>
+        /// <summary>Constructs a collection of declarations added to this instance that weren't of the expected type.</summary>
+        /// <returns>If <see cref="HasOtherDeclarations"/> is true, returns a collection of declarations. Otherwise an empty collection is returned.</returns>
         /// <remarks>Unlike <see cref="ToImmutable"/>, this will not call <see cref="Finish"/>.</remarks>
         public ImmutableList<TranslatedDeclaration> GetOtherDeclarations()
             => OtherDeclarationsBuilder?.ToImmutable() ?? ImmutableList<TranslatedDeclaration>.Empty;
