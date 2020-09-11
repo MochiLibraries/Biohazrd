@@ -116,6 +116,8 @@ namespace ClangSharpTest2020
             library = new ConstOverloadRenameTransformation().Transform(library);
             library = new MakeEvereythingPublicTransformation().Transform(library);
 
+            library = new TypeReductionTransformation().Transform(library);
+
             // Perform validation
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing post-translation validation...");
