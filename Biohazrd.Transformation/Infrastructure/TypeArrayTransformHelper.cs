@@ -13,27 +13,19 @@ namespace Biohazrd.Transformation.Infrastructure
     ///
     /// Essentially this type is a lazyily-created <see cref="ImmutableArray{TypeReference}.Builder"/>.
     ///
-    /// Consumers of this type are expected to use <see cref="HasDiagnostics"/> and <see cref="GetDiagnostics"/> to handle the case where
-    /// a transformation yields diagnostics.
+    /// Diagnostics emitted by the added transformations are accumulated in the assocaited <see cref="DiagnosticAccumulator"/>.
     /// </remarks>
     public ref struct TypeArrayTransformHelper
     {
         private readonly ImmutableArray<TypeReference> Original;
         private ImmutableArray<TypeReference>.Builder? Builder;
-        private ImmutableArray<TranslationDiagnostic>.Builder? DiagnosticsBuilder;
+        private DiagnosticAccumulatorRef Diagnostics;
         private int LastGoodIndex;
         private bool IsFinished;
         private bool MoveToImmutableCalled;
-        private bool GetDiagnosticsCalled;
 
-        /// <summary>Indicates whether the additions have result in a modified collection or any diagnostics.</summary>
-        public bool WasChanged => CollectionWasChanged || HasDiagnostics;
-
-        /// <summary>Indicates whether the additions have resulted in a modified collection yet.</summary>
-        public bool CollectionWasChanged => Builder is not null;
-
-        /// <summary>Indicates whether the additions have resulted in any diagnostics.</summary>
-        public bool HasDiagnostics => DiagnosticsBuilder is not null;
+        /// <summary>Indicates whether the additions have result in a modified collection.</summary>
+        public bool WasChanged => Builder is not null;
 
         /// <summary>True when all elements of the original collection have been transformed.</summary>
         /// <remarks>Unlike with declaration transformations, transformations of type collections cannot be truncated.</remarks>
@@ -48,15 +40,14 @@ namespace Biohazrd.Transformation.Infrastructure
             }
         }
 
-        public TypeArrayTransformHelper(ImmutableArray<TypeReference> original)
+        public TypeArrayTransformHelper(ImmutableArray<TypeReference> original, ref DiagnosticAccumulator diagnosticAccumulator)
         {
             Original = original;
             Builder = null;
-            DiagnosticsBuilder = null;
+            Diagnostics = new DiagnosticAccumulatorRef(ref diagnosticAccumulator);
             LastGoodIndex = -1;
             IsFinished = false;
             MoveToImmutableCalled = false;
-            GetDiagnosticsCalled = false;
         }
 
         private ImmutableArray<TypeReference>.Builder CreateBuilder()
@@ -108,12 +99,7 @@ namespace Biohazrd.Transformation.Infrastructure
 
             // If the transformation has diagnostics, accumulate them
             if (transformation.Diagnostics.Length > 0)
-            {
-                if (DiagnosticsBuilder is null)
-                { DiagnosticsBuilder = ImmutableArray.CreateBuilder<TranslationDiagnostic>(transformation.Diagnostics.Length); }
-
-                DiagnosticsBuilder.AddRange(transformation.Diagnostics);
-            }
+            { Diagnostics.AddRange(transformation.Diagnostics); }
 
             // If the builder was already created, just add the type
             if (Builder is not null)
@@ -154,16 +140,6 @@ namespace Biohazrd.Transformation.Infrastructure
             MoveToImmutableCalled = true;
             Finish();
             return Builder is not null ? Builder.MoveToImmutable() : Original;
-        }
-
-        public ImmutableArray<TranslationDiagnostic> GetDiagnostics()
-        {
-            if (GetDiagnosticsCalled)
-            { throw new InvalidOperationException("This method can only be called once."); }
-
-            GetDiagnosticsCalled = true;
-            Finish();
-            return DiagnosticsBuilder is not null ? DiagnosticsBuilder.MoveToImmutable() : ImmutableArray<TranslationDiagnostic>.Empty;
         }
     }
 }

@@ -6,27 +6,42 @@ namespace Biohazrd.Transformation
     {
         private TypeTransformationResult TransformPointerTypeReferenceChildren(TypeTransformationContext context, PointerTypeReference type)
         {
-            TypeTransformationResult innerResult = TransformTypeRecursively(context, type.Inner);
+            DiagnosticAccumulator diagnostics = new();
+            SingleTypeTransformHelper newInner = new(type.Inner, ref diagnostics);
 
-            if (innerResult.IsChange(type.Inner))
+            // Transform inner
+            newInner.SetValue(TransformTypeRecursively(context, type.Inner));
+
+            // Create the result
+            TypeTransformationResult result;
+
+            if (newInner.WasChanged)
             {
-                return innerResult.WithType(type with
+                result = type with
                 {
-                    Inner = innerResult.TypeReference
-                });
+                    Inner = newInner.NewValue
+                };
             }
             else
-            { return type; }
+            { result = type; }
+
+            // Add any diagnostics to the result
+            result.AddDiagnostics(diagnostics.MoveToImmutable());
+
+            // Return the result
+            return result;
         }
 
         private TypeTransformationResult TransformFunctionPointerTypeReferenceChildren(TypeTransformationContext context, FunctionPointerTypeReference type)
         {
+            DiagnosticAccumulator diagnostics = new();
+            SingleTypeTransformHelper newReturnType = new(type.ReturnType, ref diagnostics);
+            TypeArrayTransformHelper newParameterTypes = new(type.ParameterTypes, ref diagnostics);
+
             // Transform return type
-            TypeTransformationResult newReturnType = TransformTypeRecursively(context, type.ReturnType);
+            newReturnType.SetValue(TransformTypeRecursively(context, type.ReturnType));
 
             // Transform parameters
-            TypeArrayTransformHelper newParameterTypes = new(type.ParameterTypes);
-
             foreach (TypeReference parameterType in type.ParameterTypes)
             { newParameterTypes.Add(TransformTypeRecursively(context, parameterType)); }
 
@@ -35,12 +50,11 @@ namespace Biohazrd.Transformation
             // Create the result
             TypeTransformationResult result;
 
-            // Create a new funciton pointer if there were changes
-            if (newReturnType.IsChange(type.ReturnType) || newParameterTypes.CollectionWasChanged)
+            if (newReturnType.WasChanged || newParameterTypes.WasChanged)
             {
                 result = type with
                 {
-                    ReturnType = newReturnType.TypeReference,
+                    ReturnType = newReturnType.NewValue,
                     ParameterTypes = newParameterTypes.MoveToImmutable()
                 };
             }
@@ -48,8 +62,7 @@ namespace Biohazrd.Transformation
             { result = type; }
 
             // Add any diagnostics to the result
-            result = result.AddDiagnostics(newReturnType.Diagnostics);
-            result = result.AddDiagnostics(newParameterTypes.GetDiagnostics());
+            result = result.AddDiagnostics(diagnostics.MoveToImmutable());
 
             // Return the result
             return result;
