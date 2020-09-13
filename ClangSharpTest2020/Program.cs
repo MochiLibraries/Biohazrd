@@ -117,6 +117,8 @@ namespace ClangSharpTest2020
             library = new MakeEvereythingPublicTransformation().Transform(library);
 
             library = new TypeReductionTransformation().Transform(library);
+            library = new CSharpBuiltinTypeTransformation().Transform(library);
+            library = new KludgeUnknownClangTypesIntoBuiltinTypesTransformation(emitErrorOnFail: true).Transform(library);
 
             // Perform validation
             Console.WriteLine("==============================================================================");

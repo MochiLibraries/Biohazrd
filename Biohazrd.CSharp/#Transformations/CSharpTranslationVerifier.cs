@@ -47,8 +47,24 @@ namespace Biohazrd.CSharp
             => base.TransformUnknownDeclarationType(context, declaration.WithError($"C# translation does not support '{declaration.GetType().FullName}'"));
 
         protected override TransformationResult TransformEnum(TransformationContext context, TranslatedEnum declaration)
-            //TODO: Ensure the underlying type is valid for C#
-            => base.TransformEnum(context, declaration);
+        {
+            // If the enum will be translated as a C# enum, the underlying type must be supported by C#.
+            // If the type is not supported, we force it to be translated as loose constants and add a warning to it.
+            if (!declaration.TranslateAsLooseConstants && declaration.UnderlyingType is not CSharpBuiltinTypeReference { Type: { IsValidUnderlyingEnumType: true } })
+            {
+                declaration = declaration with
+                {
+                    TranslateAsLooseConstants = true,
+                    Diagnostics = declaration.Diagnostics.Add
+                    (
+                        Severity.Warning,
+                        $"Enum declaration had an underlying type of '{declaration.UnderlyingType}', which is not supported by C#."
+                    )
+                };
+            }
+
+            return base.TransformEnum(context, declaration);
+        }
 
         protected override TransformationResult TransformEnumConstant(TransformationContext context, TranslatedEnumConstant declaration)
         {
