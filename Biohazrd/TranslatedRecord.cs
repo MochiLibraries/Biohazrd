@@ -78,7 +78,7 @@ namespace Biohazrd
                     // Create VTable types
                     for (PathogenVTable* vTable = layout->FirstVTable; vTable != null; vTable = vTable->NextVTable)
                     {
-                        TranslatedVTable newVTable = new(file, vTable);
+                        TranslatedVTable newVTable = new(parsingContext, file, vTable);
 
                         if (VTable is null)
                         { VTable = newVTable; }

@@ -33,6 +33,9 @@
                     break;
 
                 // Sealed children of TranslatedDeclaration
+                case TranslatedVTableEntry vTableEntry:
+                    VisitVTableEntry(context, vTableEntry);
+                    break;
                 case TranslatedVTable vTableDeclaration:
                     VisitVTable(context, vTableDeclaration);
                     break;

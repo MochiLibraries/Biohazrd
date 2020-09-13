@@ -114,5 +114,30 @@ namespace Biohazrd.Transformation
             else
             { return declaration; }
         }
+
+        private TransformationResult TransformVTableChildren(TransformationContext context, TranslatedVTable declaration)
+        {
+            // Transform entries
+            ArrayTransformHelper<TranslatedVTableEntry> newEntries = new(declaration.Entries);
+            foreach (TranslatedVTableEntry entry in declaration.Entries)
+            {
+                newEntries.Add(TransformRecursively(context, entry));
+
+                // In theory we could handle this situation by returning the other declarations as siblings of the vTable, but for now we consider it invalid.
+                if (newEntries.HasOtherDeclarations)
+                { throw new InvalidOperationException("Tried to transform an vTable entry into something other than a vTable entry in the context of an vTable."); }
+            }
+
+            // If the vTable changed, mutate it
+            if (newEntries.WasChanged)
+            {
+                return declaration with
+                {
+                    Entries = newEntries.MoveToImmutable()
+                };
+            }
+            else
+            { return declaration; }
+        }
     }
 }

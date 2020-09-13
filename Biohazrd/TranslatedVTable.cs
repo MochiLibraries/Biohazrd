@@ -10,7 +10,7 @@ namespace Biohazrd
     {
         public ImmutableArray<TranslatedVTableEntry> Entries { get; init; }
 
-        internal unsafe TranslatedVTable(TranslatedFile file, PathogenVTable* vTable)
+        internal unsafe TranslatedVTable(TranslationUnitParser parsingContext, TranslatedFile file, PathogenVTable* vTable)
             : base(file)
         {
             ImmutableArray<TranslatedVTableEntry>.Builder entriesBuilder = ImmutableArray.CreateBuilder<TranslatedVTableEntry>(vTable->EntryCount);
@@ -65,11 +65,17 @@ namespace Biohazrd
                 }
 
                 // Record the entry
-                entriesBuilder.Add(new TranslatedVTableEntry(info, name));
+                entriesBuilder.Add(new TranslatedVTableEntry(parsingContext, file, info, name));
             }
 
             Debug.Assert(entriesBuilder.Count == vTable->EntryCount);
             Entries = entriesBuilder.MoveToImmutable();
+        }
+
+        public override IEnumerator<TranslatedDeclaration> GetEnumerator()
+        {
+            foreach (TranslatedVTableEntry entry in Entries)
+            { yield return entry; }
         }
     }
 }

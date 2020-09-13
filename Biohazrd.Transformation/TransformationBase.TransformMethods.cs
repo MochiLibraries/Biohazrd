@@ -25,6 +25,8 @@
             => TransformDeclaration(context, declaration);
         protected virtual TransformationResult TransformVTable(TransformationContext context, TranslatedVTable declaration)
             => TransformDeclaration(context, declaration);
+        protected virtual TransformationResult TransformVTableEntry(TransformationContext context, TranslatedVTableEntry declaration)
+            => TransformDeclaration(context, declaration);
 
         protected virtual TransformationResult TransformField(TransformationContext context, TranslatedField declaration)
             => TransformDeclaration(context, declaration);

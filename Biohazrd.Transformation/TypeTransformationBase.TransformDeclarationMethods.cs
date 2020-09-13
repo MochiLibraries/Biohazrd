@@ -123,6 +123,23 @@ namespace Biohazrd.Transformation
             { return declaration; }
         }
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        protected override TransformationResult TransformVTableEntry(TransformationContext context, TranslatedVTableEntry declaration)
+        {
+            TypeTransformationResult result = TransformTypeRecursively(context, declaration.Type);
+
+            if (result.IsChange(declaration.Type))
+            {
+                return declaration with
+                {
+                    Type = result.TypeReference,
+                    Diagnostics = declaration.Diagnostics.AddRange(result.Diagnostics)
+                };
+            }
+            else
+            { return declaration; }
+        }
+
         //===========================================================================================================================================
         // Declarations which have no type references
         //===========================================================================================================================================

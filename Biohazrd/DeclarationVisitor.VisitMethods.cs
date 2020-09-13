@@ -38,6 +38,8 @@
             => VisitDeclaration(context, declaration);
         protected virtual void VisitVTable(VisitorContext context, TranslatedVTable declaration)
             => VisitDeclaration(context, declaration);
+        protected virtual void VisitVTableEntry(VisitorContext context, TranslatedVTableEntry declaration)
+            => VisitDeclaration(context, declaration);
 
         protected virtual void VisitField(VisitorContext context, TranslatedField declaration)
             => VisitDeclaration(context, declaration);

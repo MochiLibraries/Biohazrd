@@ -82,6 +82,7 @@ namespace Biohazrd.Transformation
                 TranslatedBaseField baseFieldDeclaration => TransformBaseField(context, baseFieldDeclaration),
                 TranslatedField fieldDeclaration => TransformField(context, fieldDeclaration),
                 // Sealed children of TranslatedDeclaration
+                TranslatedVTableEntry vTableEntry => TransformVTableEntry(context, vTableEntry),
                 TranslatedVTable vTableDeclaration => TransformVTable(context, vTableDeclaration),
                 TranslatedUnsupportedDeclaration unsupportedDeclarationDeclaration => TransformUnsupportedDeclaration(context, unsupportedDeclarationDeclaration),
                 TranslatedUndefinedRecord undefinedRecordDeclaration => TransformUndefinedRecord(context, undefinedRecordDeclaration),
@@ -102,6 +103,7 @@ namespace Biohazrd.Transformation
                 TranslatedRecord recordDeclaration => TransformRecordChildren(context.Add(declaration), recordDeclaration),
                 TranslatedFunction functionDeclaration => TransformFunctionChildren(context.Add(declaration), functionDeclaration),
                 TranslatedEnum enumDeclaration => TransformEnumChildren(context.Add(declaration), enumDeclaration),
+                TranslatedVTable vTableDeclaration => TransformVTableChildren(context.Add(declaration), vTableDeclaration),
                 // In the default case, the declaration has no children:
                 TranslatedDeclaration => declaration
             };
