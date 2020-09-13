@@ -1,4 +1,5 @@
 ﻿using ClangSharp;
+using ClangSharp.Interop;
 
 namespace Biohazrd.Transformation.Common
 {
@@ -8,10 +9,21 @@ namespace Biohazrd.Transformation.Common
         {
             switch (type.ClangType)
             {
+                // Void type
+                case BuiltinType { Kind: CXTypeKind.CXType_Void }:
+                {
+                    return VoidTypeReference.Instance;
+                }
                 // Elaborated types are namespace-qualified types like physx::PxU32 instead of just PxU32.
                 case ElaboratedType elaboratedType:
                 {
                     return new ClangTypeReference(elaboratedType.NamedType);
+                }
+                // We don't care that `auto` or `decltype` was used for a type, so we just replace them with their canonical form
+                case AutoType:
+                case DecltypeType:
+                {
+                    return new ClangTypeReference(type.ClangType.CanonicalType);
                 }
                 // If a typedef is mapped to a translated declaration, it becomes a translated type reference.
                 // Otherwise we eliminate the typedef
@@ -56,6 +68,14 @@ namespace Biohazrd.Transformation.Common
                 case FunctionProtoType functionProtoType:
                 {
                     return new FunctionPointerTypeReference(functionProtoType);
+                }
+                case EnumType enumType:
+                {
+                    return new TranslatedTypeReference(enumType.Decl);
+                }
+                case RecordType recordType:
+                {
+                    return new TranslatedTypeReference(recordType.Decl);
                 }
                 // Don't know how to reduce this type
                 default:
