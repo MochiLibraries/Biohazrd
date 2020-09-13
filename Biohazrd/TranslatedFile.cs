@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Biohazrd
 {
     /// <summary>A reference to a single C++ header used as input to translation.</summary>
-    public sealed class TranslatedFile
+    public sealed class TranslatedFile : IEquatable<TranslatedFile>
     {
         /// <remarks>
         /// This will be the path provided to <see cref="TranslatedLibraryBuilder"/> during library construction.
@@ -26,5 +27,20 @@ namespace Biohazrd
             FilePath = filePath;
             Handle = handle;
         }
+
+        public static bool operator ==(TranslatedFile? a, TranslatedFile? b)
+            => ReferenceEquals(a, b) || (a is not null && a.Equals(b));
+
+        public static bool operator !=(TranslatedFile? a, TranslatedFile? b)
+            => !(a == b);
+
+        public override bool Equals(object? obj)
+            => obj is TranslatedFile other && Equals(other);
+
+        public bool Equals([AllowNull] TranslatedFile other)
+            => other is not null && this.Handle == other.Handle;
+
+        public override int GetHashCode()
+            => Handle.GetHashCode();
     }
 }

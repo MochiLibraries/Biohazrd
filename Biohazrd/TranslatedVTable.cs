@@ -13,6 +13,8 @@ namespace Biohazrd
         internal unsafe TranslatedVTable(TranslationUnitParser parsingContext, TranslatedFile file, PathogenVTable* vTable)
             : base(file)
         {
+            Name = "VirtualMethodTable";
+
             ImmutableArray<TranslatedVTableEntry>.Builder entriesBuilder = ImmutableArray.CreateBuilder<TranslatedVTableEntry>(vTable->EntryCount);
 
             // These are used to disambiguate names

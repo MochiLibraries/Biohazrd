@@ -135,7 +135,7 @@ namespace ClangSharpTest2020
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing translation...");
             Console.WriteLine("==============================================================================");
-            library.Translate(LibraryTranslationMode.OneFilePerInputFile);
+            ImmutableArray<TranslationDiagnostic> generationDiagnostics = CSharpLibraryGenerator.Generate(outputSession, outputDirectory, library, LibraryTranslationMode.OneFilePerInputFile);
 
             // Build csproj
             Console.WriteLine("==============================================================================");

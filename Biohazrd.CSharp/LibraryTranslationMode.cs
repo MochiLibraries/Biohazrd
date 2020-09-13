@@ -1,4 +1,4 @@
-﻿namespace Biohazrd
+﻿namespace Biohazrd.CSharp
 {
     public enum LibraryTranslationMode
     {

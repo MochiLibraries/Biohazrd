@@ -34,6 +34,7 @@ namespace Biohazrd
             {
                 Decl decl => library.TryFindTranslation(decl),
                 Func<TranslatedLibrary, TranslatedDeclaration> lookupFunction => lookupFunction(library),
+                TranslatedDeclaration _ => throw new InvalidOperationException("Eager type references must not be used with other libraries."),
                 _ => throw new InvalidOperationException("The type reference is in an invalid state.")
             };
         }
@@ -48,10 +49,11 @@ namespace Biohazrd
                 NamedDecl tagDecl => tagDecl.Name,
                 Decl decl => decl.ToString(),
                 Func<TranslatedLibrary, TranslatedDeclaration> _ => "lookup function",
+                TranslatedDeclaration preResolved => $"pre-resolved to {preResolved.Name}",
                 _ => "unknown",
             });
 
-            if (CachedDeclaration is not null)
+            if (CachedDeclaration is not null && Key is not TranslatedDeclaration)
             { builder.Append($" ({CachedDeclaration.Name})"); }
 
             builder.Append('`');
@@ -70,6 +72,20 @@ namespace Biohazrd
         /// </remarks>
         public TranslatedTypeReference(Func<TranslatedLibrary, TranslatedDeclaration?> lookupFunction)
             => Key = lookupFunction;
+
+        /// <summary>Creates an eager type reference which has already been resolved to a specific <see cref="TranslatedDeclaration"/>.</summary>
+        /// <remarks>
+        /// This type reference will only resolve for the specified library, attempting to resolve it with other libraries will result in <see cref="InvalidOperationException"/> and invalidation of the reference.
+        ///
+        /// This constructor is intended to simplify scenarios where you're going to consume the type reference immediately and then discard it. (Such as to reuse existing type formatting infrastructure.)
+        /// You should never attach these references to actual declarations.
+        /// </remarks>
+        public TranslatedTypeReference(TranslatedLibrary library, TranslatedDeclaration declaration)
+        {
+            Key = declaration;
+            CachedLibrary = library;
+            CachedDeclaration = declaration;
+        }
 
         // We need a custom GetHashCode and Equals to avoid considering the private cache fields for equality.
         public override int GetHashCode()

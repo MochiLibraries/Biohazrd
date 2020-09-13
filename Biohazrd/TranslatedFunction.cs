@@ -22,9 +22,6 @@ namespace Biohazrd
         public bool IsOperatorOverload { get; }
 
         public bool HideFromIntellisense { get; init; } //TODO: C# leak
-        // When this function is an instance method, we add a suffix to the P/Invoke method to ensure they don't conflict with other methods.
-        // (For instance, when there's a SomeClass::Method() method in addition to a SomeClass::Method(SomeClass*) method.)
-        public string DllImportName => IsInstanceMethod ? $"{Name}_PInvoke" : Name; //TODO: C# leak
 
         public string DllFileName { get; init; } = "TODO.dll";
         public string MangledName { get; }
