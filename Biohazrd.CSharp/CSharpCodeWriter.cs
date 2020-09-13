@@ -21,7 +21,7 @@ namespace Biohazrd.CSharp
         public void Using(string @namespace)
             => UsingNamespaces.Add(@namespace);
 
-        public LeftAdjustedScope DisableScope(bool disabled, string message)
+        public LeftAdjustedScope DisableScope(bool disabled, string? message)
         {
             if (!disabled)
             { return default; }
@@ -38,6 +38,15 @@ namespace Biohazrd.CSharp
             NoSeparationNeededBeforeNextLine();
             return ret;
         }
+
+        public LeftAdjustedScope DisableScope(bool disabled)
+            => DisableScope(disabled, null);
+
+        public LeftAdjustedScope DisableScope(string message)
+            => DisableScope(true, message);
+
+        public LeftAdjustedScope DisableScope()
+            => DisableScope(true, null);
 
         public void WriteIdentifier(string identifier)
             => Write(SanitizeIdentifier(identifier));
