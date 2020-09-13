@@ -7,6 +7,7 @@ namespace Biohazrd
     {
         public TypeReference Type { get; init; }
 
+        public string DllFileName { get; init; } = "TODO.dll";
         public string MangledName { get; init; }
         
         internal TranslatedStaticField(TranslatedFile file, VarDecl variable)

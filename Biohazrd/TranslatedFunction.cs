@@ -26,6 +26,7 @@ namespace Biohazrd
         // (For instance, when there's a SomeClass::Method() method in addition to a SomeClass::Method(SomeClass*) method.)
         public string DllImportName => IsInstanceMethod ? $"{Name}_PInvoke" : Name; //TODO: C# leak
 
+        public string DllFileName { get; init; } = "TODO.dll";
         public string MangledName { get; }
 
         internal TranslatedFunction(TranslatedFile file, FunctionDecl function)
