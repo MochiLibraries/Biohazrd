@@ -2,7 +2,6 @@
 using Biohazrd.CSharp;
 using Biohazrd.OutputGeneration;
 using Biohazrd.Transformation.Common;
-using ClangSharp.Interop;
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
@@ -46,14 +45,9 @@ namespace ClangSharpTest2020
 
             string[] clangCommandLineArgs = _clangCommandLineArgs.ToArray();
 
-            CXIndex index = CXIndex.Create(displayDiagnostics: true);
-
             List<string> files = new List<string>();
 
             const string outputDirectory = "OutputPhysX";
-            HashSet<string> allowedFiles = new HashSet<string>()
-            {
-            };
 
             HashSet<string> skippedFiles = new HashSet<string>()
             {
