@@ -5,22 +5,10 @@ namespace Biohazrd
 {
     public record ClangTypeReference : TypeReference
     {
-        private ClangType _ClangType;
-        public ClangType ClangType
-        {
-            get => _ClangType;
-            init
-            {
-                _ClangType = value;
-                MustBePassedByReference = value.MustBePassedByReference();
-            }
-        }
+        public ClangType ClangType { get; init; }
 
         public ClangTypeReference(ClangType clangType)
-        {
-            _ClangType = null!; // This will be assigned when ClangType is assigned.
-            ClangType = clangType;
-        }
+            => ClangType = clangType;
 
         internal ClangTypeReference(TranslationUnitParser parsingContext, CXType clangType)
             : this(parsingContext.FindType(clangType))

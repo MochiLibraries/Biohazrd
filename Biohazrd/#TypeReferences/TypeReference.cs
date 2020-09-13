@@ -11,9 +11,6 @@ namespace Biohazrd
     /// </remarks>
     public abstract record TypeReference
     {
-        /// <summary>True if, this type must be passed/returned by reference.</summary>
-        public bool MustBePassedByReference { get; init; }
-
         public override string ToString()
             => GetType().Name;
 

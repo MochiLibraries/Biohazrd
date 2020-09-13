@@ -13,6 +13,7 @@ namespace Biohazrd
         public CallingConvention CallingConvention { get; }
 
         public TypeReference ReturnType { get; init; }
+        public bool ReturnByReference { get; init; }
         public ImmutableArray<TranslatedParameter> Parameters { get; init; }
 
         public bool IsInstanceMethod { get; }
@@ -32,6 +33,7 @@ namespace Biohazrd
         {
             MangledName = function.Handle.Mangling.ToString();
             ReturnType = new ClangTypeReference(function.ReturnType);
+            ReturnByReference = function.ReturnType.MustBePassedByReference();
 
             // Enumerate parameters
             ImmutableArray<TranslatedParameter>.Builder parametersBuilder = ImmutableArray.CreateBuilder<TranslatedParameter>();
