@@ -3,6 +3,7 @@ using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace Biohazrd
 {
@@ -123,7 +124,25 @@ namespace Biohazrd
 
                 // All other children are handled by the normal cursor processing.
                 foreach (TranslatedDeclaration childDeclaration in parsingContext.CreateDeclarations(cursor, File))
-                { membersBuilder.Add(childDeclaration); }
+                {
+                    membersBuilder.Add(childDeclaration);
+
+                    // If the cursor is an anonymous union, emit the field corresponding to that union
+                    if (childDeclaration is TranslatedRecord { Kind: RecordKind.Union, IsUnnamed: true, Declaration: RecordDecl anonymousUnion })
+                    {
+                        foreach ((FieldDecl fieldDeclaration, TranslatedNormalField normalField) in normalFields)
+                        {
+                            // If the type of this field matches the type of this union, emit the field now.
+                            if (fieldDeclaration.Type == anonymousUnion.TypeForDecl)
+                            {
+                                membersBuilder.Add(normalField);
+                                bool success = normalFields.Remove(fieldDeclaration);
+                                Debug.Assert(success, "The call to Remove must succeed.");
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
             // Add any fields that weren't encountered while processing children to the unsupported members list
