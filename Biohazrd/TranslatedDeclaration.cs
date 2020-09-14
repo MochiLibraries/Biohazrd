@@ -66,14 +66,17 @@ namespace Biohazrd
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
-        public override string ToString()
+        private string DefaultToString()
             => (IsOriginal || Original.Name == Name) ? Name : $"{Name} ({Original.Name})";
+
+        public override string ToString()
+            => DefaultToString();
 
         // We explicitly implement PrintMembers to opt-out of the compiler's default implementation.
         // We need to do this to avoid infinite recursion in ToString in derived types.
         protected virtual bool PrintMembers(StringBuilder builder)
         {
-            builder.Append(this);
+            builder.Append(DefaultToString());
             return true;
         }
 
