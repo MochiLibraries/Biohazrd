@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Pathogen;
+using System.Collections.Immutable;
 
 namespace Biohazrd
 {
@@ -34,6 +35,20 @@ namespace Biohazrd
                     MethodDeclaration = methodDeclaration;
 
                     FunctionPointerTypeReference functionTypeReference = new(functionType);
+
+                    // Convert parameters which must be passed by reference into pointers
+                    //HACK: This really shouldn't be done here because it's making an assumption about how the generator will interpret this type.
+                    // Ideally we should be able to encode this some other way.
+                    for (int i = 0; i < functionTypeReference.ParameterTypes.Length; i++)
+                    {
+                        if (functionTypeReference.ParameterTypes[i] is ClangTypeReference clangType && clangType.ClangType.MustBePassedByReference())
+                        {
+                            functionTypeReference = functionTypeReference with
+                            {
+                                ParameterTypes = functionTypeReference.ParameterTypes.SetItem(i, new PointerTypeReference(clangType))
+                            };
+                        }
+                    }
 
                     //TODO: This depends on the calling convention
                     // Add the retbuf parameter if necessary
