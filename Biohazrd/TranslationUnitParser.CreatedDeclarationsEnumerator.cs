@@ -89,9 +89,10 @@ namespace Biohazrd
                     }
 
                     // Create nested declarations for the cursor
-                    for (; ChildIndex < ParentCursor.CursorChildren.Count; ChildIndex++)
+                    for (; ChildIndex < ParentCursor.CursorChildren.Count;)
                     {
                         Cursor childCursor = ParentCursor.CursorChildren[ChildIndex];
+                        ChildIndex++;
                         CreateDeclarationsEnumerator childEnumerator = Parser.CreateDeclarations(childCursor, File);
                         switch (childEnumerator)
                         {
