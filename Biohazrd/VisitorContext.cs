@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
@@ -21,17 +22,33 @@ namespace Biohazrd
         /// </remarks>
         public IEnumerable<TranslatedDeclaration> Parent => (IEnumerable<TranslatedDeclaration>?)ParentDeclaration ?? Library;
 
+        internal bool IsDefault => Library is null;
+
         internal VisitorContext(TranslatedLibrary library)
         {
             Library = library;
             Parents = ImmutableArray<TranslatedDeclaration>.Empty;
         }
 
+        private VisitorContext(VisitorContext other)
+            => this = other;
+
         public VisitorContext Add(TranslatedDeclaration newParent)
-            => new VisitorContext(Library)
+            => new VisitorContext(this)
             {
                 Parents = Parents.Add(newParent)
             };
+
+        public VisitorContext MakePrevious()
+        {
+            if (Parents.Length == 0)
+            { throw new InvalidOperationException("Can't create previous context from root context."); }
+
+            return new VisitorContext(this)
+            {
+                Parents = Parents.RemoveAt(Parents.Length - 1)
+            };
+        }
 
         public override string ToString()
         {

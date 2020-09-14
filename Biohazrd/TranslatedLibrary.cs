@@ -4,6 +4,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using ClangType = ClangSharp.Type;
 
 namespace Biohazrd
@@ -36,24 +38,32 @@ namespace Biohazrd
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
+        //TODO: Thread safety
         private WeakReference<TranslatedLibrary>? DeclarationLookupCacheLibrary = null;
         private Dictionary<Decl, TranslatedDeclaration?>? DeclarationLookupCache = null;
+        private Dictionary<Decl, VisitorContext>? DeclarationContextLookupCache = null;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void InvalidateCacheIfStale()
+        {
+            // Check if this library is the same one the cache corresponds to
+            // (Ideally we just don't bring over the cache when this object is cloned, but records don't currently allow this.)
+            if (DeclarationLookupCacheLibrary is null || !DeclarationLookupCacheLibrary.TryGetTarget(out TranslatedLibrary? cacheLibrary) || !ReferenceEquals(cacheLibrary, this))
+            {
+                DeclarationLookupCacheLibrary = new WeakReference<TranslatedLibrary>(this);
+                DeclarationLookupCache = null;
+                DeclarationContextLookupCache = null;
+            }
+        }
+
         public TranslatedDeclaration? TryFindTranslation(Decl declaration)
         {
-            // Check if the cachce is stale
-            // (Ideally we just don't bring over the cache when this object is cloned, but 
-            if (DeclarationLookupCache is not null)
-            {
-                if (DeclarationLookupCacheLibrary is null || !DeclarationLookupCacheLibrary.TryGetTarget(out TranslatedLibrary? cacheLibrary) || !ReferenceEquals(cacheLibrary, this))
-                { DeclarationLookupCache = null; }
-            }
+            // Invalidate the cache if necessary
+            InvalidateCacheIfStale();
 
             // Create a new cache if there is none
             if (DeclarationLookupCache is null)
-            {
-                DeclarationLookupCacheLibrary = new WeakReference<TranslatedLibrary>(this);
-                DeclarationLookupCache = new Dictionary<Decl, TranslatedDeclaration?>();
-            }
+            { DeclarationLookupCache = new Dictionary<Decl, TranslatedDeclaration?>(); }
 
             // Search for the declaration
             TranslatedDeclaration? result = null;
@@ -70,7 +80,51 @@ namespace Biohazrd
                 }
             }
 
+            // Cache the result and return it
             DeclarationLookupCache.Add(declaration, result);
+            return result;
+        }
+
+        public TranslatedDeclaration? TryFindTranslation(Decl declaration, out VisitorContext context)
+        {
+            // Invalidate the cache if necessary
+            InvalidateCacheIfStale();
+
+            // Create a new cache if there is none
+            if (DeclarationLookupCache is null)
+            { DeclarationLookupCache = new Dictionary<Decl, TranslatedDeclaration?>(); }
+
+            if (DeclarationContextLookupCache is null)
+            { DeclarationContextLookupCache = new Dictionary<Decl, VisitorContext>(); }
+
+            // Search for the declaration
+            TranslatedDeclaration? result = null;
+            VisitorContext resultContext = default;
+
+            if (DeclarationLookupCache.TryGetValue(declaration, out result) && DeclarationContextLookupCache.TryGetValue(declaration, out context))
+            { return result; }
+
+            foreach ((VisitorContext childContext, TranslatedDeclaration child) in this.EnumerateRecursivelyWithContext())
+            {
+                if (child.Declaration == declaration)
+                {
+                    resultContext = childContext;
+                    result = child;
+                    break;
+                }
+            }
+
+            // If there is no result, make the context valid
+            if (resultContext.IsDefault)
+            {
+                Debug.Assert(result is null, "There must be context for a non-null result!");
+                resultContext = new VisitorContext(this);
+            }
+
+            // Cache the results and return them
+            DeclarationLookupCache[declaration] = result;
+            DeclarationContextLookupCache[declaration] = resultContext;
+            context = resultContext;
             return result;
         }
 

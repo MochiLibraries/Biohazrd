@@ -29,7 +29,8 @@ namespace Biohazrd.CSharp
                 return;
                 case TranslatedTypeReference translatedType:
                 {
-                    TranslatedDeclaration? referenced = translatedType.TryResolve(context.Library);
+                    VisitorContext referencedContext;
+                    TranslatedDeclaration? referenced = translatedType.TryResolve(context.Library, out referencedContext);
 
                     if (referenced is null)
                     {
@@ -43,7 +44,27 @@ namespace Biohazrd.CSharp
                     }
                     else
                     {
-                        //TODO: We need to write out the containing types when the declaration is a subtype
+                        int i = 0;
+                        bool canSkipCommonParents = true;
+                        foreach (TranslatedDeclaration parentDeclaration in referencedContext.Parents)
+                        {
+                            // Skip the portion of the referenced context which matches our current context
+                            if (canSkipCommonParents && i < context.Parents.Length && ReferenceEquals(parentDeclaration, context.Parents[i]))
+                            {
+                                i++;
+                                continue;
+                            }
+
+                            canSkipCommonParents = false;
+
+                            // Skip enums translated as loose constants since they are not represented in the output
+                            if (parentDeclaration is TranslatedEnum { TranslateAsLooseConstants: true })
+                            { continue; }
+
+                            Writer.WriteIdentifier(parentDeclaration.Name);
+                            Writer.Write('.');
+                        }
+
                         Writer.WriteIdentifier(referenced.Name);
                     }
                 }

@@ -27,7 +27,7 @@ namespace Biohazrd
                     // Enumerator had another item, make it our current
                     Current = enumerator.Current;
 
-                    // If the new item is non-empty, push it to the top of the neumerator stack
+                    // If the new item is non-empty, push it to the top of the enumerator stack
                     // (Most TranslatedDeclaration implementations are empty so we generally want to skip them.)
                     IEnumerator<TranslatedDeclaration> childEnumerator = Current.GetEnumerator();
                     if (childEnumerator is not EmptyEnumerator<TranslatedDeclaration>)

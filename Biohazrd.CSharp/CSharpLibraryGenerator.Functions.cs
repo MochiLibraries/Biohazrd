@@ -25,7 +25,7 @@ namespace Biohazrd.CSharp
                 else
                 {
                     if (context.ParentDeclaration is TranslatedRecord parentRecord)
-                    { ThisType = new PointerTypeReference(new TranslatedTypeReference(context.Library, parentRecord)); }
+                    { ThisType = new PointerTypeReference(new TranslatedTypeReference(context.MakePrevious(), parentRecord)); }
                     else
                     { ThisType = VoidTypeReference.PointerInstance; }
                 }
