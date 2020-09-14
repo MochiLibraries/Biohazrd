@@ -67,24 +67,23 @@ namespace ClangSharpTest2020
                 }
             }
 
-            // Ensure all files are absolute paths since we're about to change directories
-            for (int i = 0; i < files.Count; i++)
-            {
-                if (!Path.IsPathRooted(files[i]))
-                { files[i] = Path.GetFullPath(files[i]); }
-            }
-
+            // Delete any existing files in the output
             if (Directory.Exists(outputDirectory))
             {
                 foreach (string file in Directory.EnumerateFiles(outputDirectory))
                 { File.Delete(file); }
             }
 
-            using WorkingDirectoryScope _ = new WorkingDirectoryScope(outputDirectory);
+            // Start output session
+            using OutputSession outputSession = new OutputSession()
+            {
+                AutoRenameConflictingFiles = true,
+                BaseOutputDirectory = outputDirectory
+            };
 
             // Copy the file to the output directory for easier inspection.
             foreach (string file in files)
-            { File.Copy(file, Path.GetFileName(file)); }
+            { outputSession.CopyFile(file); }
 
             // Create the library
             TranslatedLibraryBuilder libraryBuilder = new TranslatedLibraryBuilder();
@@ -124,9 +123,6 @@ namespace ClangSharpTest2020
             library = brokenDeclarationExtractor.Transform(library);
             //TODO: Emit the diagnostics from the library and from the broken declarations
 
-            // Start output session
-            using OutputSession outputSession = new();
-
             // Generate module definition
             ModuleDefinitionGenerator.Generate(outputSession, @"C:\Scratch\PhysX\physx\PhysXPathogen.def", library, "PhysXPathogen_64");
             InlineReferenceFileGenerator.Generate(outputSession, @"C:\Scratch\PhysX\physx\PhysXPathogen.cpp", library);
@@ -135,7 +131,7 @@ namespace ClangSharpTest2020
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing translation...");
             Console.WriteLine("==============================================================================");
-            ImmutableArray<TranslationDiagnostic> generationDiagnostics = CSharpLibraryGenerator.Generate(outputSession, outputDirectory, library, LibraryTranslationMode.OneFilePerInputFile);
+            ImmutableArray<TranslationDiagnostic> generationDiagnostics = CSharpLibraryGenerator.Generate(outputSession, library, LibraryTranslationMode.OneFilePerInputFile);
 
             // Build csproj
             Console.WriteLine("==============================================================================");

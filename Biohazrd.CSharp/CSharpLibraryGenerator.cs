@@ -27,7 +27,7 @@ namespace Biohazrd.CSharp
             : this(session, filePath)
             => DeclarationFilter = filter;
 
-        public static ImmutableArray<TranslationDiagnostic> Generate(OutputSession session, string outputFolder, TranslatedLibrary library, LibraryTranslationMode mode)
+        public static ImmutableArray<TranslationDiagnostic> Generate(OutputSession session, TranslatedLibrary library, LibraryTranslationMode mode)
         {
             ImmutableArray<TranslationDiagnostic>.Builder diagnosticsBuilder = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
 
@@ -46,10 +46,7 @@ namespace Biohazrd.CSharp
                     allNonNestedTypes.Visit(library);
 
                     foreach (TranslatedDeclaration nonNestedType in allNonNestedTypes.NonNestedTypes)
-                    {
-                        string filePath = Path.Combine(outputFolder, nonNestedType.Name + ".cs");
-                        DoGenerate(new CSharpLibraryGenerator(session, filePath, filter: nonNestedType));
-                    }
+                    { DoGenerate(new CSharpLibraryGenerator(session, $"{nonNestedType.Name}.cs", filter: nonNestedType)); }
                 }
                 break;
                 case LibraryTranslationMode.OneFilePerInputFile:
@@ -66,16 +63,15 @@ namespace Biohazrd.CSharp
                         if (!filesWithDeclarations.Contains(file))
                         { continue; }
 
-                        string filePath = Path.Combine(outputFolder, Path.GetFileNameWithoutExtension(file.FilePath) + ".cs");
-                        DoGenerate(new CSharpLibraryGenerator(session, filePath, filter: file));
+                        string fileName = Path.GetFileNameWithoutExtension(file.FilePath) + ".cs";
+                        DoGenerate(new CSharpLibraryGenerator(session, fileName, filter: file));
 
                     }
                 }
                 break;
                 case LibraryTranslationMode.OneFile:
                 {
-                    string filePath = Path.Combine(outputFolder, "TranslatedLibrary.cs");
-                    DoGenerate(new CSharpLibraryGenerator(session, filePath));
+                    DoGenerate(new CSharpLibraryGenerator(session, "TranslatedLibrary.cs"));
                 }
                 break;
                 default:
