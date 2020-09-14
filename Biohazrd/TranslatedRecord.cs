@@ -86,17 +86,6 @@ namespace Biohazrd
                         { UnsupportedMembers = UnsupportedMembers.Add(VTable); }
                     }
                 }
-
-                // Add any fields that weren't encountered while processing children to the unsupported members list
-                // (This should never happen, so we probably don't want them to appear in the output.)
-                foreach ((FieldDecl fieldDeclaration, TranslatedNormalField normalField) in normalFields)
-                {
-                    TranslatedNormalField unsupportedField = normalField with
-                    {
-                        Diagnostics = normalField.Diagnostics.Add(Severity.Warning, fieldDeclaration, $"Field was found while enumerating the layout of {this}, but was not encountered in Clang's cursor tree.")
-                    };
-                    UnsupportedMembers = UnsupportedMembers.Add(unsupportedField);
-                }
             }
             finally
             {
@@ -135,6 +124,17 @@ namespace Biohazrd
                 // All other children are handled by the normal cursor processing.
                 foreach (TranslatedDeclaration childDeclaration in parsingContext.CreateDeclarations(cursor, File))
                 { membersBuilder.Add(childDeclaration); }
+            }
+
+            // Add any fields that weren't encountered while processing children to the unsupported members list
+            // (This should never happen, so we probably don't want them to appear in the output.)
+            foreach ((FieldDecl fieldDeclaration, TranslatedNormalField normalField) in normalFields)
+            {
+                TranslatedNormalField unsupportedField = normalField with
+                {
+                    Diagnostics = normalField.Diagnostics.Add(Severity.Warning, fieldDeclaration, $"Field was found while enumerating the layout of {this}, but was not encountered in Clang's cursor tree.")
+                };
+                UnsupportedMembers = UnsupportedMembers.Add(unsupportedField);
             }
 
             // Apply members
