@@ -43,7 +43,7 @@ namespace Biohazrd
         public AccessModifier Accessibility { get; init; } = AccessModifier.Internal;
 
         public Decl? Declaration { get; init; }
-        public ImmutableArray<Decl> SecondaryDeclarations { get; init;  } = ImmutableArray<Decl>.Empty;
+        public ImmutableArray<Decl> SecondaryDeclarations { get; init; } = ImmutableArray<Decl>.Empty;
 
         public ImmutableArray<TranslationDiagnostic> Diagnostics { get; init; } = ImmutableArray<TranslationDiagnostic>.Empty;
 

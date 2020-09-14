@@ -12,7 +12,7 @@ namespace Biohazrd
         ///
         /// In the case of in-memory files, this path will be the automatically-generated name used for Clang.
         /// </remarks>
-        public string FilePath { get;  }
+        public string FilePath { get; }
 
         /// <summary>The libclang handle associated with this file.</summary>
         /// <remarks>

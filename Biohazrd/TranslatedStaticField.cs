@@ -9,7 +9,7 @@ namespace Biohazrd
 
         public string DllFileName { get; init; } = "TODO.dll";
         public string MangledName { get; init; }
-        
+
         internal TranslatedStaticField(TranslatedFile file, VarDecl variable)
             : base(file, variable)
         {

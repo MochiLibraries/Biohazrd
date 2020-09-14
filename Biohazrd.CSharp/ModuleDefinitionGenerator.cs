@@ -5,7 +5,7 @@ using System.IO;
 
 namespace Biohazrd.CSharp
 {
-    public static class ModuleDefinitionGenerator 
+    public static class ModuleDefinitionGenerator
     {
         internal static bool CanFunctionBeExported(TranslatedFunction declaration)
         {

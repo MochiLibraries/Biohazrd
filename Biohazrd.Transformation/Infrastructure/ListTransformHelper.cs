@@ -109,7 +109,7 @@ namespace Biohazrd.Transformation.Infrastructure
         {
             if (IsFinished)
             { throw new InvalidOperationException("Can't add to a collection once it's been finished."); }
-            
+
             // If we were already changed, just add the results
             if (WasChanged)
             {
