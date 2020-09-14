@@ -73,7 +73,7 @@ namespace Biohazrd
 
             foreach (TranslatedDeclaration child in this.EnumerateRecursively())
             {
-                if (child.Declaration == declaration)
+                if (child.IsTranslationOf(declaration))
                 {
                     result = child;
                     break;
@@ -106,7 +106,7 @@ namespace Biohazrd
 
             foreach ((VisitorContext childContext, TranslatedDeclaration child) in this.EnumerateRecursivelyWithContext())
             {
-                if (child.Declaration == declaration)
+                if (child.IsTranslationOf(declaration))
                 {
                     resultContext = childContext;
                     result = child;

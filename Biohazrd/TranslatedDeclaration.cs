@@ -60,6 +60,20 @@ namespace Biohazrd
             { Accessibility = Declaration.Access.ToTranslationAccessModifier(); }
         }
 
+        internal bool IsTranslationOf(Decl declaration)
+        {
+            if (declaration == Declaration)
+            { return true; }
+
+            foreach (Decl secondaryDeclaration in SecondaryDeclarations)
+            {
+                if (declaration == secondaryDeclaration)
+                { return true; }
+            }
+
+            return false;
+        }
+
         public virtual IEnumerator<TranslatedDeclaration> GetEnumerator()
             => EmptyEnumerator<TranslatedDeclaration>.Instance;
 
