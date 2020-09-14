@@ -122,7 +122,6 @@ namespace ClangSharpTest2020
 
             // Remove final broken declarations
             library = brokenDeclarationExtractor.Transform(library);
-            //TODO: Emit the diagnostics from the library and from the broken declarations
 
             // Generate module definition
             ModuleDefinitionGenerator.Generate(outputSession, @"C:\Scratch\PhysX\physx\PhysXPathogen.def", library, "PhysXPathogen_64");
@@ -133,6 +132,60 @@ namespace ClangSharpTest2020
             Console.WriteLine("Performing translation...");
             Console.WriteLine("==============================================================================");
             ImmutableArray<TranslationDiagnostic> generationDiagnostics = CSharpLibraryGenerator.Generate(outputSession, library, LibraryTranslationMode.OneFilePerInputFile);
+
+            // Write out diagnostics log
+            using StreamWriter diagnosticsOutput = outputSession.Open<StreamWriter>("Diagnostics.log");
+
+            void OutputDiagnostic(in TranslationDiagnostic diagnostic)
+            {
+                WriteDiagnosticToConsole(diagnostic);
+                WriteDiagnosticToWriter(diagnostic, diagnosticsOutput);
+            }
+
+            diagnosticsOutput.WriteLine("==============================================================================");
+            diagnosticsOutput.WriteLine("Translation Diagnostics");
+            diagnosticsOutput.WriteLine("==============================================================================");
+
+            foreach (TranslatedDeclaration declaration in library.EnumerateRecursively())
+            {
+                if (declaration.Diagnostics.Length > 0)
+                {
+                    diagnosticsOutput.WriteLine($"--------------- {declaration.GetType().Name} {declaration.Name} ---------------");
+
+                    foreach (TranslationDiagnostic diagnostic in declaration.Diagnostics)
+                    { OutputDiagnostic(diagnostic); }
+                }
+            }
+
+            if (brokenDeclarationExtractor.BrokenDeclarations.Length > 0)
+            {
+                diagnosticsOutput.WriteLine("==============================================================================");
+                diagnosticsOutput.WriteLine("Broken Declarations");
+                diagnosticsOutput.WriteLine("==============================================================================");
+
+                foreach (TranslatedDeclaration declaration in brokenDeclarationExtractor.BrokenDeclarations)
+                {
+                    diagnosticsOutput.WriteLine($"=============== {declaration.GetType().Name} {declaration.Name} ===============");
+
+                    foreach (TranslationDiagnostic diagnostic in declaration.Diagnostics)
+                    { OutputDiagnostic(diagnostic); }
+                }
+            }
+
+            diagnosticsOutput.WriteLine("==============================================================================");
+            diagnosticsOutput.WriteLine("Generation Diagnostics");
+            diagnosticsOutput.WriteLine("==============================================================================");
+
+            if (generationDiagnostics.Length == 0)
+            { diagnosticsOutput.WriteLine("Generation completed successfully."); }
+            else
+            {
+                foreach (TranslationDiagnostic diagnostic in generationDiagnostics)
+                { OutputDiagnostic(diagnostic); }
+            }
+
+            // Close the output session to unlock all of the output files so they can be read for building
+            outputSession.Dispose();
 
             // Build csproj
             Console.WriteLine("==============================================================================");
@@ -163,13 +216,70 @@ namespace ClangSharpTest2020
                             break;
                     }
 
-                    WriteDiagnostic(diagnostic);
+                    WriteDiagnosticToConsole(diagnostic);
                 }
 
                 Console.WriteLine($"========== C# build {(errorCount > 0 ? "failed" : "succeeded")}: {errorCount} error(s), {warningCount} warning(s) ==========");
             }
         }
-        private static void WriteDiagnostic(Diagnostic diagnostic)
+
+        private static void WriteDiagnosticToConsole(in TranslationDiagnostic diagnostic)
+        {
+            TextWriter output;
+            ConsoleColor oldForegroundColor = Console.ForegroundColor;
+            ConsoleColor oldBackgroundColor = Console.BackgroundColor;
+
+            try
+            {
+                switch (diagnostic.Severity)
+                {
+                    case Severity.Ignored:
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
+                        output = Console.Out;
+                        break;
+                    case Severity.Note:
+                        output = Console.Out;
+                        break;
+                    case Severity.Warning:
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        output = Console.Error;
+                        break;
+                    case Severity.Error:
+                        Console.ForegroundColor = ConsoleColor.DarkRed;
+                        output = Console.Error;
+                        break;
+                    case Severity.Fatal:
+                    default:
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.BackgroundColor = ConsoleColor.DarkRed;
+                        output = Console.Error;
+                        break;
+                }
+
+                WriteDiagnosticToWriter(diagnostic, output);
+            }
+            finally
+            {
+                Console.BackgroundColor = oldBackgroundColor;
+                Console.ForegroundColor = oldForegroundColor;
+            }
+        }
+
+        private static void WriteDiagnosticToWriter(in TranslationDiagnostic diagnostic, TextWriter output)
+        {
+            if (!diagnostic.Location.IsNull)
+            {
+                string fileName = Path.GetFileName(diagnostic.Location.SourceFile);
+                if (diagnostic.Location.Line != 0)
+                { output.WriteLine($"{diagnostic.Severity} at {fileName}:{diagnostic.Location.Line}: {diagnostic.Message}"); }
+                else
+                { output.WriteLine($"{diagnostic.Severity} at {fileName}: {diagnostic.Message}"); }
+            }
+            else
+            { output.WriteLine($"{diagnostic.Severity}: {diagnostic.Message}"); }
+        }
+
+        private static void WriteDiagnosticToConsole(Diagnostic diagnostic)
         {
             TextWriter output;
             ConsoleColor oldForegroundColor = Console.ForegroundColor;
