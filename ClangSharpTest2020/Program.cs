@@ -194,6 +194,7 @@ namespace ClangSharpTest2020
             outputSession.Dispose();
 
             // Build csproj
+            using StreamWriter cSharpDiagnosticsLog = new(Path.Combine(outputDirectory, "Diagnostics_Roslyn.log"));
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Building generated C# code...");
             Console.WriteLine("==============================================================================");
@@ -223,9 +224,12 @@ namespace ClangSharpTest2020
                     }
 
                     WriteDiagnosticToConsole(diagnostic);
+                    cSharpDiagnosticsLog.WriteLine(diagnostic);
                 }
 
-                Console.WriteLine($"========== C# build {(errorCount > 0 ? "failed" : "succeeded")}: {errorCount} error(s), {warningCount} warning(s) ==========");
+                string summaryLine = $"========== C# build {(errorCount > 0 ? "failed" : "succeeded")}: {errorCount} error(s), {warningCount} warning(s) ==========";
+                Console.WriteLine(summaryLine);
+                cSharpDiagnosticsLog.WriteLine(summaryLine);
             }
         }
 
