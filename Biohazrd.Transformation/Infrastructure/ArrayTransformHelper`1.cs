@@ -212,10 +212,7 @@ namespace Biohazrd.Transformation.Infrastructure
             Finish();
 
             if (Builder is not null)
-            {
-                Builder.Capacity = Builder.Count;
-                return Builder.MoveToImmutable();
-            }
+            { return Builder.MoveToImmutableSafe(); }
             else
             { return Original; }
         }
@@ -234,7 +231,7 @@ namespace Biohazrd.Transformation.Infrastructure
 
             GetOtherDeclarationsCalled = true;
 
-            return OtherDeclarationsBuilder?.MoveToImmutable() ?? ImmutableArray<TranslatedDeclaration>.Empty;
+            return OtherDeclarationsBuilder?.MoveToImmutableSafe() ?? ImmutableArray<TranslatedDeclaration>.Empty;
         }
     }
 }

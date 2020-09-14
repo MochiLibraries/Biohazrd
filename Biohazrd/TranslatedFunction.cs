@@ -34,7 +34,7 @@ namespace Biohazrd
             ReturnByReference = function.ReturnType.MustBePassedByReference();
 
             // Enumerate parameters
-            ImmutableArray<TranslatedParameter>.Builder parametersBuilder = ImmutableArray.CreateBuilder<TranslatedParameter>();
+            ImmutableArray<TranslatedParameter>.Builder parametersBuilder = ImmutableArray.CreateBuilder<TranslatedParameter>(function.Parameters.Count);
 
             foreach (ParmVarDecl parameter in function.Parameters)
             { parametersBuilder.Add(new TranslatedParameter(file, parameter)); }

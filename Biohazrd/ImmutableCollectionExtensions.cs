@@ -11,5 +11,11 @@ namespace Biohazrd
         public static ImmutableArray<T> AddIfNotNull<T>(this ImmutableArray<T> array, T? value)
             where T : class
             => value is not null ? array.Add(value) : array;
+
+        public static ImmutableArray<T> MoveToImmutableSafe<T>(this ImmutableArray<T>.Builder builder)
+        {
+            builder.Capacity = builder.Count;
+            return builder.MoveToImmutable();
+        }
     }
 }

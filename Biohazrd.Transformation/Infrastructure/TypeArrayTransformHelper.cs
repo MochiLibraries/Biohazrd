@@ -139,7 +139,7 @@ namespace Biohazrd.Transformation.Infrastructure
 
             MoveToImmutableCalled = true;
             Finish();
-            return Builder is not null ? Builder.MoveToImmutable() : Original;
+            return Builder is not null ? Builder.MoveToImmutableSafe() : Original;
         }
     }
 }

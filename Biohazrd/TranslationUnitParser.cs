@@ -367,8 +367,8 @@ namespace Biohazrd
             { throw new InvalidOperationException("Results can be fetched only once."); }
 
             ResultsFetched = true;
-            files = FilesBuilder.MoveToImmutable();
-            parsingDiagnostics = ParsingDiagnosticsBuilder.MoveToImmutable();
+            files = FilesBuilder.MoveToImmutableSafe();
+            parsingDiagnostics = ParsingDiagnosticsBuilder.MoveToImmutableSafe();
             declarations = DeclarationsBuilder.ToImmutable();
         }
     }

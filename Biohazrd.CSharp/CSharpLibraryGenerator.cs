@@ -82,7 +82,7 @@ namespace Biohazrd.CSharp
                     throw new ArgumentException("The specified mode is invalid.", nameof(mode));
             }
 
-            return diagnosticsBuilder.MoveToImmutable();
+            return diagnosticsBuilder.MoveToImmutableSafe();
         }
 
         protected override void Visit(VisitorContext context, TranslatedDeclaration declaration)

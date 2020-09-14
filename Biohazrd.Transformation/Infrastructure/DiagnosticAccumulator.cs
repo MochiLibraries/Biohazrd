@@ -16,8 +16,7 @@ namespace Biohazrd.Transformation.Infrastructure
             if (_Diagnostics is null)
             { return ImmutableArray<TranslationDiagnostic>.Empty; }
 
-            _Diagnostics.Capacity = _Diagnostics.Count;
-            return _Diagnostics.MoveToImmutable();
+            return _Diagnostics.MoveToImmutableSafe();
         }
     }
 }
