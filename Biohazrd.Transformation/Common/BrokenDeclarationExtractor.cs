@@ -22,7 +22,7 @@ namespace Biohazrd.Transformation.Common
                 // As such, it's just as heavy for us to just convert it to an ImmutableArray whenever it's requested and avoided unecessary mass allocation whenever the bag
                 // is iterated over more than once.
                 // This makes the assumption that elements are only ever added to the bag, never removed.
-                if (BrokenDeclarationsCached.Length != _BrokenDeclarations.Count)
+                if (BrokenDeclarationsCached.IsDefault || BrokenDeclarationsCached.Length != _BrokenDeclarations.Count)
                 { BrokenDeclarationsCached = _BrokenDeclarations.ToImmutableArray(); }
 
                 return BrokenDeclarationsCached;
