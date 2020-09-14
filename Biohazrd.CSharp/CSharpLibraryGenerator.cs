@@ -83,6 +83,14 @@ namespace Biohazrd.CSharp
 
         protected override void Visit(VisitorContext context, TranslatedDeclaration declaration)
         {
+            if (context.Parents.Length == 0)
+            {
+                if (DeclarationFilter is not null && !ReferenceEquals(declaration, DeclarationFilter))
+                { return; }
+                else if (FileFilter is not null && declaration.File != FileFilter)
+                { return; }
+            }
+
 #if DEBUG
             // Dump Clang information
             if (declaration.Declaration is not null)
