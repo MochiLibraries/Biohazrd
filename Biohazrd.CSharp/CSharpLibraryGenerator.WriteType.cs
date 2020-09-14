@@ -84,10 +84,21 @@ namespace Biohazrd.CSharp
                     {
                         Writer.Write($"delegate* {callingConvention.ToString().ToLowerInvariant()}<");
 
+                        // This is a workaround for the fact that VTable function pointers have been modified to add the implicit this and retbuf parameters
+                        // The retbuf parameter is expected to be translated as a C# out parameter, but we have no way to express this in FunctionPointerTypeReference.
+                        bool __HACK__emitSecondParameterAsOut = declaration is TranslatedVTableEntry { MethodDeclaration: not null } vTableEntry
+                            // https://github.com/dotnet/roslyn/issues/47676
+                            && vTableEntry.MethodDeclaration!.ReturnType.MustBePassedByReference();
+
+                        int i = 0;
                         foreach (TypeReference parameterType in functionPointer.ParameterTypes)
                         {
+                            if (__HACK__emitSecondParameterAsOut && i == 1)
+                            { Writer.Write("out "); }
+
                             WriteType(context, declaration, parameterType);
                             Writer.Write(", ");
+                            i++;
                         }
 
                         WriteType(context, declaration, functionPointer.ReturnType);

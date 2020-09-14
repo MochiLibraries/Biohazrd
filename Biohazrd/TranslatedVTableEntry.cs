@@ -29,10 +29,37 @@ namespace Biohazrd
                 IsFunctionPointer = true;
                 Cursor methodDeclarationCursor = parsingContext.FindCursor(info.MethodDeclaration);
 
-                if (methodDeclarationCursor is CXXMethodDecl methodDeclaration)
+                if (methodDeclarationCursor is CXXMethodDecl { Type: FunctionProtoType functionType }  methodDeclaration)
                 {
                     MethodDeclaration = methodDeclaration;
-                    Type = new ClangTypeReference(methodDeclaration.Type);
+
+                    FunctionPointerTypeReference functionTypeReference = new(functionType);
+
+                    //TODO: This depends on the calling convention
+                    // Add the retbuf parameter if necessary
+                    if (functionType.ReturnType.MustBePassedByReference())
+                    {
+                        functionTypeReference = functionTypeReference with
+                        {
+                            ParameterTypes = functionTypeReference.ParameterTypes.Insert(0, functionTypeReference.ReturnType),
+                            ReturnType = VoidTypeReference.Instance
+                        };
+                    }
+
+                    // Add the this pointer parameter
+                    TypeReference thisPointerType = VoidTypeReference.PointerInstance;
+
+                    if (methodDeclaration.Parent is RecordDecl recordDeclaration)
+                    { thisPointerType = new PointerTypeReference(new TranslatedTypeReference(recordDeclaration)); }
+                    else
+                    { Diagnostics = Diagnostics.Add(Severity.Warning, $"Could not figure out this pointer type for {methodDeclaration}."); }
+
+                    functionTypeReference = functionTypeReference with
+                    {
+                        ParameterTypes = functionTypeReference.ParameterTypes.Insert(0, thisPointerType)
+                    };
+
+                    Type = functionTypeReference;
                 }
                 else
                 { Diagnostics = Diagnostics.Add(Severity.Warning, $"VTable function point did not resolve to a C++ method declaration."); }

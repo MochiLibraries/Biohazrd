@@ -89,7 +89,7 @@ namespace Biohazrd
         internal static bool MustBePassedByReference(this RecordDecl record)
             => record.Handle.RecordMustBePassedByReference();
 
-        internal static bool MustBePassedByReference(this ClangType type)
+        public static bool MustBePassedByReference(this ClangType type)
         {
             switch (type)
             {
