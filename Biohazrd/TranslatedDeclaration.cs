@@ -26,7 +26,7 @@ namespace Biohazrd
             {
                 // If there's an attempt to set this value to null, use a default name
                 // (We do this here since C++ has lots of situations where you don't actually need to name things.)
-                if (value is null)
+                if (String.IsNullOrEmpty(value))
                 {
                     IsUnnamed = true;
                     _name = $"<>Unnamed{GetType().Name}";
