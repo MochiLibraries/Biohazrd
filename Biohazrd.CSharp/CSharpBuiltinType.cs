@@ -7,6 +7,7 @@ namespace Biohazrd.CSharp
     {
         public int SizeOf { get; }
         public string CSharpKeyword { get; }
+        public string FullyQualifiedDotNetName { get; }
 
         public bool IsValidUnderlyingEnumType { get; init; }
         public bool IsIntegral { get; init; }
@@ -28,15 +29,17 @@ namespace Biohazrd.CSharp
 
         internal CSharpBuiltinTypeReference Reference { get; }
 
-        private CSharpBuiltinType(int sizeOf, string cSharpKeyword)
+        private CSharpBuiltinType(int sizeOf, string cSharpKeyword, string fullyQualifiedDotNetName)
         {
             SizeOf = sizeOf;
             CSharpKeyword = cSharpKeyword;
             Reference = new CSharpBuiltinTypeReference(this);
+            FullyQualifiedDotNetName = fullyQualifiedDotNetName;
         }
 
         public override string ToString()
-            => CSharpKeyword;
+            // We use the fully qualified .NET name to make it easier to tell the difference between this and Clang types in the debugger.
+            => FullyQualifiedDotNetName;
 
         public static implicit operator CSharpBuiltinTypeReference(CSharpBuiltinType type)
             => type.Reference;
@@ -47,7 +50,7 @@ namespace Biohazrd.CSharp
         //=========================================================================================================================================================================
         // Type definitions
         //=========================================================================================================================================================================
-        public static readonly CSharpBuiltinType Byte = new(sizeof(byte), "byte")
+        public static readonly CSharpBuiltinType Byte = new(sizeof(byte), "byte", "System.Byte")
         {
             IsValidUnderlyingEnumType = true,
             IsIntegral = true,
@@ -55,7 +58,7 @@ namespace Biohazrd.CSharp
             MaxValue = byte.MaxValue
         };
 
-        public static readonly CSharpBuiltinType SByte = new(sizeof(sbyte), "sbyte")
+        public static readonly CSharpBuiltinType SByte = new(sizeof(sbyte), "sbyte", "System.SByte")
         {
             IsValidUnderlyingEnumType = true,
             IsIntegral = true,
@@ -63,7 +66,7 @@ namespace Biohazrd.CSharp
             MaxValue = (long)sbyte.MaxValue
         };
 
-        public static readonly CSharpBuiltinType Short = new(sizeof(short), "short")
+        public static readonly CSharpBuiltinType Short = new(sizeof(short), "short", "System.Int16")
         {
             IsValidUnderlyingEnumType = true,
             IsIntegral = true,
@@ -71,7 +74,7 @@ namespace Biohazrd.CSharp
             MaxValue = (long)short.MaxValue
         };
 
-        public static readonly CSharpBuiltinType UShort = new(sizeof(ushort), "ushort")
+        public static readonly CSharpBuiltinType UShort = new(sizeof(ushort), "ushort", "System.UInt16")
         {
             IsValidUnderlyingEnumType = true,
             IsIntegral = true,
@@ -79,7 +82,7 @@ namespace Biohazrd.CSharp
             MaxValue = ushort.MaxValue
         };
 
-        public static readonly CSharpBuiltinType Int = new(sizeof(int), "int")
+        public static readonly CSharpBuiltinType Int = new(sizeof(int), "int", "System.Int32")
         {
             IsValidUnderlyingEnumType = true,
             IsIntegral = true,
@@ -87,7 +90,7 @@ namespace Biohazrd.CSharp
             MaxValue = int.MaxValue
         };
 
-        public static readonly CSharpBuiltinType UInt = new(sizeof(uint), "uint")
+        public static readonly CSharpBuiltinType UInt = new(sizeof(uint), "uint", "System.UInt32")
         {
             IsValidUnderlyingEnumType = true,
             IsIntegral = true,
@@ -95,7 +98,7 @@ namespace Biohazrd.CSharp
             MaxValue = uint.MaxValue
         };
 
-        public static readonly CSharpBuiltinType Long = new(sizeof(long), "long")
+        public static readonly CSharpBuiltinType Long = new(sizeof(long), "long", "System.Int64")
         {
             IsValidUnderlyingEnumType = true,
             IsIntegral = true,
@@ -103,7 +106,7 @@ namespace Biohazrd.CSharp
             MaxValue = long.MaxValue
         };
 
-        public static readonly CSharpBuiltinType ULong = new(sizeof(ulong), "ulong")
+        public static readonly CSharpBuiltinType ULong = new(sizeof(ulong), "ulong", "System.UInt64")
         {
             IsValidUnderlyingEnumType = true,
             IsIntegral = true,
@@ -111,10 +114,10 @@ namespace Biohazrd.CSharp
             MaxValue = ulong.MaxValue
         };
 
-        public static readonly CSharpBuiltinType Bool = new(sizeof(bool), "bool");
-        public static readonly CSharpBuiltinType Char = new(sizeof(char), "char");
-        public static readonly CSharpBuiltinType Float = new(sizeof(float), "float");
-        public static readonly CSharpBuiltinType Double = new(sizeof(double), "double");
+        public static readonly CSharpBuiltinType Bool = new(sizeof(bool), "bool", "System.Boolean");
+        public static readonly CSharpBuiltinType Char = new(sizeof(char), "char", "System.Char");
+        public static readonly CSharpBuiltinType Float = new(sizeof(float), "float", "System.Single");
+        public static readonly CSharpBuiltinType Double = new(sizeof(double), "double", "System.Double");
 
         public static readonly ImmutableArray<CSharpBuiltinType> AllTypes = ImmutableArray.Create
         (

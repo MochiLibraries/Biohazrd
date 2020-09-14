@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Text;
 
 namespace Biohazrd.Transformation
 {
@@ -82,5 +83,40 @@ namespace Biohazrd.Transformation
                 1 => declarations[0],
                 _ => declarations
             };
+
+        public override string ToString()
+        {
+            switch (NewDeclarationOrDeclarations)
+            {
+                case TranslatedDeclaration singleDeclaration:
+                    return $"{singleDeclaration.GetType().Name} {singleDeclaration.Name}";
+                case ImmutableList<TranslatedDeclaration> declarations:
+                {
+                    StringBuilder builder = new();
+
+                    int i = 0;
+                    foreach (TranslatedDeclaration declaration in declarations)
+                    {
+                        if (i > 0)
+                        { builder.Append(", "); }
+
+                        if (i >= 3 && declarations.Count > 4)
+                        {
+                            builder.Append($"and {declarations.Count - i} more...");
+                            break;
+                        }
+
+                        builder.Append($"{declaration.GetType().Name} {declaration.Name}");
+                        i++;
+                    }
+
+                    return builder.ToString();
+                }
+                case null:
+                    return "Deletion";
+                default:
+                    return "<INVALID>";
+            }
+        }
     }
 }

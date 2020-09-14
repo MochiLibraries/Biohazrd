@@ -41,5 +41,8 @@ namespace Biohazrd
             IsFromClang = true;
             Message = clangDiagnostic.Format(ClangFormatOptions).ToString();
         }
+
+        public override string ToString()
+            => $"[{Severity}] {Message}";
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace Biohazrd
 {
@@ -42,5 +43,8 @@ namespace Biohazrd
 
         public override int GetHashCode()
             => Handle.GetHashCode();
+
+        public override string ToString()
+            => Path.GetFileName(FilePath);
     }
 }

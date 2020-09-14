@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Text;
 
 namespace Biohazrd.Transformation
 {
@@ -58,5 +59,21 @@ namespace Biohazrd.Transformation
 
         public static implicit operator TypeTransformationResult(TypeReference typeReference)
             => new TypeTransformationResult(typeReference);
+
+        public override string ToString()
+        {
+            if (Diagnostics.Length == 0)
+            { return TypeReference.ToString(); }
+
+            StringBuilder builder = new();
+            builder.Append(TypeReference);
+
+            if (Diagnostics.Length == 1)
+            { builder.Append($" ({Diagnostics[0]})"); }
+            else
+            { builder.Append($" (With {Diagnostics.Length} diagnostics)"); }
+
+            return builder.ToString();
+        }
     }
 }
