@@ -51,7 +51,7 @@ namespace Biohazrd.Transformation
             switch (result.Count)
             {
                 case 1:
-                    result = TransformChildren(context, declaration);
+                    result = TransformChildren(context, result.SingleDeclaration);
                     break;
                 case > 1:
                 {
