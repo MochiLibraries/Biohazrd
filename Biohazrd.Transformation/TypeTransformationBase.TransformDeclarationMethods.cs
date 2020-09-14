@@ -7,6 +7,7 @@ namespace Biohazrd.Transformation
         [EditorBrowsable(EditorBrowsableState.Never)]
         protected sealed override TransformationResult TransformEnum(TransformationContext context, TranslatedEnum declaration)
         {
+            context = context.Add(declaration);
             TypeTransformationResult result = TransformTypeRecursively(context, declaration.UnderlyingType);
 
             if (result.IsChange(declaration.UnderlyingType))
@@ -24,6 +25,7 @@ namespace Biohazrd.Transformation
         [EditorBrowsable(EditorBrowsableState.Never)]
         protected sealed override TransformationResult TransformFunction(TransformationContext context, TranslatedFunction declaration)
         {
+            context = context.Add(declaration);
             TypeTransformationResult result = TransformTypeRecursively(context, declaration.ReturnType);
 
             if (result.IsChange(declaration.ReturnType))
@@ -41,6 +43,7 @@ namespace Biohazrd.Transformation
         [EditorBrowsable(EditorBrowsableState.Never)]
         protected sealed override TransformationResult TransformParameter(TransformationContext context, TranslatedParameter declaration)
         {
+            context = context.Add(declaration);
             TypeTransformationResult result = TransformTypeRecursively(context, declaration.Type);
 
             if (result.IsChange(declaration.Type))
@@ -58,6 +61,7 @@ namespace Biohazrd.Transformation
         [EditorBrowsable(EditorBrowsableState.Never)]
         protected sealed override TransformationResult TransformStaticField(TransformationContext context, TranslatedStaticField declaration)
         {
+            context = context.Add(declaration);
             TypeTransformationResult result = TransformTypeRecursively(context, declaration.Type);
 
             if (result.IsChange(declaration.Type))
@@ -75,6 +79,7 @@ namespace Biohazrd.Transformation
         [EditorBrowsable(EditorBrowsableState.Never)]
         protected sealed override TransformationResult TransformBaseField(TransformationContext context, TranslatedBaseField declaration)
         {
+            context = context.Add(declaration);
             TypeTransformationResult result = TransformTypeRecursively(context, declaration.Type);
 
             if (result.IsChange(declaration.Type))
@@ -92,6 +97,7 @@ namespace Biohazrd.Transformation
         [EditorBrowsable(EditorBrowsableState.Never)]
         protected sealed override TransformationResult TransformNormalField(TransformationContext context, TranslatedNormalField declaration)
         {
+            context = context.Add(declaration);
             TypeTransformationResult result = TransformTypeRecursively(context, declaration.Type);
 
             if (result.IsChange(declaration.Type))
@@ -109,6 +115,7 @@ namespace Biohazrd.Transformation
         [EditorBrowsable(EditorBrowsableState.Never)]
         protected sealed override TransformationResult TransformTypedef(TransformationContext context, TranslatedTypedef declaration)
         {
+            context = context.Add(declaration);
             TypeTransformationResult result = TransformTypeRecursively(context, declaration.UnderlyingType);
 
             if (result.IsChange(declaration.UnderlyingType))
@@ -126,6 +133,7 @@ namespace Biohazrd.Transformation
         [EditorBrowsable(EditorBrowsableState.Never)]
         protected override TransformationResult TransformVTableEntry(TransformationContext context, TranslatedVTableEntry declaration)
         {
+            context = context.Add(declaration);
             TypeTransformationResult result = TransformTypeRecursively(context, declaration.Type);
 
             if (result.IsChange(declaration.Type))
