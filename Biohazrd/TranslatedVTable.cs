@@ -22,7 +22,7 @@ namespace Biohazrd
             Dictionary<string, int> countOfName = new(); // name => count
 
             // Iterate through each entry and assign it a name
-            for (int i = 0; i < Entries.Length; i++)
+            for (int i = 0; i < vTable->EntryCount; i++)
             {
                 PathogenVTableEntry info = vTable->Entries[i];
 
