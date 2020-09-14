@@ -38,5 +38,10 @@ namespace Biohazrd
                 { Diagnostics = Diagnostics.Add(Severity.Warning, $"VTable function point did not resolve to a C++ method declaration."); }
             }
         }
+
+
+
+        public override string ToString()
+            => $"VTable {Info.Kind} {base.ToString()}";
     }
 }

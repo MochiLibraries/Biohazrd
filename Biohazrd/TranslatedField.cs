@@ -36,5 +36,8 @@ namespace Biohazrd
                 PathogenRecordFieldKind.VTablePtr => new TranslatedVTableField(parsingContext, file, field),
                 _ => new TranslatedUnimplementedField(parsingContext, file, field)
             };
+
+        public override string ToString()
+            => $"Field {base.ToString()} @ {Offset}";
     }
 }

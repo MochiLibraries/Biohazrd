@@ -96,5 +96,18 @@ namespace Biohazrd
             foreach (TranslatedParameter parameter in Parameters)
             { yield return parameter; }
         }
+
+        public override string ToString()
+        {
+            string baseString = base.ToString();
+            if (IsVirtual)
+            { return $"Virtual Method {baseString}"; }
+            else if (IsInstanceMethod)
+            { return $"Instance Method {baseString}"; }
+            else if (Declaration is CXXMethodDecl)
+            { return $"Static Method {baseString}"; }
+            else
+            { return $"Function {baseString}"; }
+        }
     }
 }

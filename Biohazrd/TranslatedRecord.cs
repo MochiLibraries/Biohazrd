@@ -178,5 +178,8 @@ namespace Biohazrd
             foreach (TranslatedDeclaration unsupportedMember in UnsupportedMembers)
             { yield return unsupportedMember; }
         }
+
+        public override string ToString()
+            => $"Record {base.ToString()}";
     }
 }

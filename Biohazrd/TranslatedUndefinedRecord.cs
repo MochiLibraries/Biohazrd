@@ -16,5 +16,8 @@ namespace Biohazrd
 
             Accessibility = AccessModifier.Public;
         }
+
+        public override string ToString()
+            => $"Undefined Record {base.ToString()}";
     }
 }

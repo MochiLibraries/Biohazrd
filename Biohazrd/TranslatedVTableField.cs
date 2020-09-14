@@ -30,5 +30,8 @@ namespace Biohazrd
             Offset = 0;
             Name = DefaultName;
         }
+
+        public override string ToString()
+            => $"VTable {base.ToString()}";
     }
 }

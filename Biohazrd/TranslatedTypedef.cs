@@ -11,5 +11,8 @@ namespace Biohazrd
         {
             UnderlyingType = new ClangTypeReference(typedef.UnderlyingType);
         }
+
+        public override string ToString()
+            => $"Typedef {base.ToString()} -> {UnderlyingType}";
     }
 }

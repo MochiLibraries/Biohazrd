@@ -13,5 +13,8 @@ namespace Biohazrd
             Type = new ClangTypeReference(parameter.Type);
             ImplicitlyPassedByReference = parameter.Type.MustBePassedByReference();
         }
+
+        public override string ToString()
+            => $"Parameter {base.ToString()}";
     }
 }

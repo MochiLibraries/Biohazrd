@@ -46,5 +46,8 @@ namespace Biohazrd
 
             return null;
         }
+
+        public override string ToString()
+            => $"Enum Constant {base.ToString()} = {Value}";
     }
 }

@@ -79,5 +79,8 @@ namespace Biohazrd
             foreach (TranslatedVTableEntry entry in Entries)
             { yield return entry; }
         }
+
+        public override string ToString()
+            => $"VTable {base.ToString()}";
     }
 }

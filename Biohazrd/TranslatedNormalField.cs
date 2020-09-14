@@ -17,5 +17,8 @@ namespace Biohazrd
             Type = new ClangTypeReference(parsingContext, field->Type);
             IsBitField = field->IsBitField != 0;
         }
+
+        public override string ToString()
+            => base.ToString();
     }
 }

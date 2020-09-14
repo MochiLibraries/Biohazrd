@@ -9,5 +9,8 @@ namespace Biohazrd
         internal unsafe TranslatedUnimplementedField(TranslationUnitParser parsingContext, TranslatedFile file, PathogenRecordField* field)
             : base(parsingContext, file, field)
             => Kind = field->Kind;
+
+        public override string ToString()
+            => $"Unimplemented {base.ToString()}";
     }
 }

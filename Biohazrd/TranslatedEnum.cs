@@ -39,5 +39,8 @@ namespace Biohazrd
 
         public override IEnumerator<TranslatedDeclaration> GetEnumerator()
             => Values.GetEnumerator();
+
+        public override string ToString()
+            => $"Enum {base.ToString()}";
     }
 }

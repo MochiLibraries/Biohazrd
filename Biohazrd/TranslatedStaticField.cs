@@ -20,5 +20,8 @@ namespace Biohazrd
             if (variable.CursorParent is not RecordDecl)
             { Accessibility = AccessModifier.Public; }
         }
+
+        public override string ToString()
+            => $"Static Field {base.ToString()}";
     }
 }

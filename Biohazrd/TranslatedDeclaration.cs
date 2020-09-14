@@ -76,6 +76,7 @@ namespace Biohazrd
         // We need to do this to avoid infinite recursion in ToString in derived types.
         protected virtual bool PrintMembers(StringBuilder builder)
         {
+            Debug.Fail("Records which inherit from TranslatedDeclaration are expected to override ToString.");
             builder.Append(DefaultToString());
             return true;
         }
