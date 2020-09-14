@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 
 namespace ClangSharpTest2020
 {
@@ -200,7 +201,7 @@ namespace ClangSharpTest2020
             Console.WriteLine("==============================================================================");
             {
                 CSharpBuildHelper build = new CSharpBuildHelper();
-                foreach (string generatedFile in Directory.EnumerateFiles(".", "*.cs", SearchOption.AllDirectories))
+                foreach (string generatedFile in outputSession.FilesWritten.Where(s => s.EndsWith(".cs")))
                 { build.AddFile(generatedFile); }
 
                 int errorCount = 0;
@@ -223,8 +224,19 @@ namespace ClangSharpTest2020
                             break;
                     }
 
-                    WriteDiagnosticToConsole(diagnostic);
-                    cSharpDiagnosticsLog.WriteLine(diagnostic);
+                    string diagnosticString;
+
+                    if (!diagnostic.Location.IsInSource)
+                    { diagnosticString = diagnostic.ToString(); }
+                    else
+                    {
+                        FileLinePositionSpan span = diagnostic.Location.GetLineSpan();
+                        diagnosticString = $"{Path.GetFileName(span.Path)}({span.StartLinePosition.Line + 1},{span.StartLinePosition.Character + 1}): ";
+                        diagnosticString += $"{diagnostic.Severity.ToString().ToLowerInvariant()} {diagnostic.Id}: {diagnostic.GetMessage()}";
+                    }
+
+                    WriteDiagnosticToConsole(diagnostic.Severity, diagnosticString);
+                    cSharpDiagnosticsLog.WriteLine(diagnosticString);
                 }
 
                 string summaryLine = $"========== C# build {(errorCount > 0 ? "failed" : "succeeded")}: {errorCount} error(s), {warningCount} warning(s) ==========";
@@ -289,7 +301,7 @@ namespace ClangSharpTest2020
             { output.WriteLine($"{diagnostic.Severity}: {diagnostic.Message}"); }
         }
 
-        private static void WriteDiagnosticToConsole(Diagnostic diagnostic)
+        private static void WriteDiagnosticToConsole(DiagnosticSeverity severity, string message)
         {
             TextWriter output;
             ConsoleColor oldForegroundColor = Console.ForegroundColor;
@@ -297,7 +309,7 @@ namespace ClangSharpTest2020
 
             try
             {
-                switch (diagnostic.Severity)
+                switch (severity)
                 {
                     case DiagnosticSeverity.Hidden:
                         Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -317,7 +329,7 @@ namespace ClangSharpTest2020
                         break;
                 }
 
-                output.WriteLine(diagnostic);
+                output.WriteLine(message);
             }
             finally
             {
