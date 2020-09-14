@@ -126,14 +126,13 @@ namespace Biohazrd.CSharp
 
         protected override void VisitTypedef(VisitorContext context, TranslatedTypedef declaration)
         {
-#if DEBUG
+            Fatal(context, declaration, "Typedefs cannot be directly represented in C#.");
             Writer.Write("// ");
 
             if (context.ParentDeclaration is not null)
             { Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} "); }
 
             Writer.WriteLine($"typedef '{declaration.UnderlyingType}' '{declaration.Name}'");
-#endif
         }
 
         protected override void VisitUndefinedRecord(VisitorContext context, TranslatedUndefinedRecord declaration)
