@@ -13,21 +13,25 @@ namespace Biohazrd.CSharp
         private readonly TranslatedFile? FileFilter;
         private readonly TranslatedDeclaration? DeclarationFilter;
         private readonly CSharpCodeWriter Writer;
+        private readonly CSharpGenerationOptions Options;
 
         private readonly List<TranslationDiagnostic> Diagnostics = new();
 
-        private CSharpLibraryGenerator(OutputSession session, string filePath)
-            => Writer = session.Open<CSharpCodeWriter>(filePath);
+        private CSharpLibraryGenerator(CSharpGenerationOptions options, OutputSession session, string filePath)
+        {
+            Options = options;
+            Writer = session.Open<CSharpCodeWriter>(filePath);
+        }
 
-        private CSharpLibraryGenerator(OutputSession session, string filePath, TranslatedFile filter)
-            : this(session, filePath)
+        private CSharpLibraryGenerator(CSharpGenerationOptions options, OutputSession session, string filePath, TranslatedFile filter)
+            : this(options, session, filePath)
             => FileFilter = filter;
 
-        private CSharpLibraryGenerator(OutputSession session, string filePath, TranslatedDeclaration filter)
-            : this(session, filePath)
+        private CSharpLibraryGenerator(CSharpGenerationOptions options, OutputSession session, string filePath, TranslatedDeclaration filter)
+            : this(options, session, filePath)
             => DeclarationFilter = filter;
 
-        public static ImmutableArray<TranslationDiagnostic> Generate(OutputSession session, TranslatedLibrary library, LibraryTranslationMode mode)
+        public static ImmutableArray<TranslationDiagnostic> Generate(CSharpGenerationOptions options, OutputSession session, TranslatedLibrary library, LibraryTranslationMode mode)
         {
             ImmutableArray<TranslationDiagnostic>.Builder diagnosticsBuilder = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
 
@@ -46,7 +50,7 @@ namespace Biohazrd.CSharp
                     allNonNestedTypes.Visit(library);
 
                     foreach (TranslatedDeclaration nonNestedType in allNonNestedTypes.NonNestedTypes)
-                    { DoGenerate(new CSharpLibraryGenerator(session, $"{nonNestedType.Name}.cs", filter: nonNestedType)); }
+                    { DoGenerate(new CSharpLibraryGenerator(options, session, $"{nonNestedType.Name}.cs", filter: nonNestedType)); }
                 }
                 break;
                 case LibraryTranslationMode.OneFilePerInputFile:
@@ -64,14 +68,14 @@ namespace Biohazrd.CSharp
                         { continue; }
 
                         string fileName = Path.GetFileNameWithoutExtension(file.FilePath) + ".cs";
-                        DoGenerate(new CSharpLibraryGenerator(session, fileName, filter: file));
+                        DoGenerate(new CSharpLibraryGenerator(options, session, fileName, filter: file));
 
                     }
                 }
                 break;
                 case LibraryTranslationMode.OneFile:
                 {
-                    DoGenerate(new CSharpLibraryGenerator(session, "TranslatedLibrary.cs"));
+                    DoGenerate(new CSharpLibraryGenerator(options, session, "TranslatedLibrary.cs"));
                 }
                 break;
                 default:
@@ -91,20 +95,18 @@ namespace Biohazrd.CSharp
                 { return; }
             }
 
-#if DEBUG
             // Dump Clang information
-            if (declaration.Declaration is not null)
+            if (Options.DumpClangInfo && declaration.Declaration is not null)
             {
                 Writer.EnsureSeparation();
                 Writer.WriteLineLeftAdjusted($"#region {declaration.Declaration.CursorKindDetailed()} {declaration.Name} Dump");
 
                 using (Writer.Prefix("// "))
-                { ClangSharpInfoDumper.Dump(Writer, declaration.Declaration); }
+                { ClangSharpInfoDumper.Dump(Writer, declaration.Declaration, Options.DumpOptions); }
 
                 Writer.WriteLineLeftAdjusted("#endregion");
                 Writer.NoSeparationNeededBeforeNextLine();
             }
-#endif
 
             base.Visit(context, declaration);
         }
