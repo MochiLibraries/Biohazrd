@@ -1,4 +1,6 @@
 ﻿using Biohazrd.Transformation.Infrastructure;
+using System;
+using System.Threading;
 
 namespace Biohazrd.Transformation
 {
@@ -16,8 +18,17 @@ namespace Biohazrd.Transformation
         /// </remarks>
         protected virtual bool SupportsConcurrency => true;
 
+        private volatile TranslatedLibrary? _CurrentLibrary;
+
         public TranslatedLibrary Transform(TranslatedLibrary library)
         {
+            // Ensure this instance is not used from multiple threads
+            // This is to protect against invalid use with transformations which need to store state about the library being processed
+            if (Interlocked.CompareExchange(ref _CurrentLibrary, library, null) is not null)
+            { throw new InvalidOperationException("This instance is alreadyh being used from another thread to process a different library."); }
+
+            library = PreTransformLibrary(library);
+
             TransformationContext context = new(library);
             using ListTransformHelper newDeclarations = new(library.Declarations);
 
@@ -37,8 +48,20 @@ namespace Biohazrd.Transformation
                 };
             }
 
+            library = PostTransformLibrary(library);
+
+            // Release this instance from processing the library
+            _CurrentLibrary = null;
+
+            // Return the modified library
             return library;
         }
+
+        protected virtual TranslatedLibrary PreTransformLibrary(TranslatedLibrary library)
+            => library;
+
+        protected virtual TranslatedLibrary PostTransformLibrary(TranslatedLibrary library)
+            => library;
 
         protected TransformationResult TransformRecursively(TransformationContext context, TranslatedDeclaration declaration)
         {

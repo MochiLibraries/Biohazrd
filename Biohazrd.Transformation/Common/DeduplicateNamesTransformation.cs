@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Biohazrd.Transformation.Common
 {
@@ -40,8 +41,22 @@ namespace Biohazrd.Transformation.Common
             }
         }
 
-        public DeduplicateNamesTransformation(TranslatedLibrary library)
-            => new DuplicateNamesFinder(this, library).Visit(library);
+        protected override TranslatedLibrary PreTransformLibrary(TranslatedLibrary library)
+        {
+            Debug.Assert(NextSuffixNumber.Count == 0, "The suffix number dictionary should be empty.");
+            NextSuffixNumber.Clear();
+
+            // Find all the the names we will deduplicate
+            new DuplicateNamesFinder(this, library).Visit(library);
+
+            return library;
+        }
+
+        protected override TranslatedLibrary PostTransformLibrary(TranslatedLibrary library)
+        {
+            NextSuffixNumber.Clear();
+            return library;
+        }
 
         protected override TransformationResult TransformDeclaration(TransformationContext context, TranslatedDeclaration declaration)
         {

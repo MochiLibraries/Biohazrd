@@ -104,7 +104,7 @@ namespace ClangSharpTest2020
             library = new RemoveBadPhysXDeclarationsTransformation().Transform(library);
             library = new PhysXRemovePaddingFieldsTransformation().Transform(library);
             library = new PhysXEnumTransformation().Transform(library);
-            library = new PhysXFlagsEnumTransformation(library).Transform(library);
+            library = new PhysXFlagsEnumTransformation().Transform(library);
 
             library = new AddBaseVTableAliasTransformation().Transform(library);
             library = new ConstOverloadRenameTransformation().Transform(library);
@@ -114,7 +114,7 @@ namespace ClangSharpTest2020
             library = new TypeReductionTransformation().Transform(library);
             library = new CSharpBuiltinTypeTransformation().Transform(library);
             library = new KludgeUnknownClangTypesIntoBuiltinTypesTransformation(emitErrorOnFail: true).Transform(library);
-            library = new DeduplicateNamesTransformation(library).Transform(library);
+            library = new DeduplicateNamesTransformation().Transform(library);
 
             // Perform validation
             Console.WriteLine("==============================================================================");

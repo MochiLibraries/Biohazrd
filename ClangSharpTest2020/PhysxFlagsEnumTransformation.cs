@@ -1,6 +1,7 @@
 ﻿using Biohazrd;
 using Biohazrd.Transformation;
 using ClangSharp;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using ClangType = ClangSharp.Type;
@@ -14,13 +15,21 @@ namespace ClangSharpTest2020
         // It should be relatively easy to adapt this type to support concurrency, it's just a matter of doing it.
         protected override bool SupportsConcurrency => false;
 
-        private HashSet<TranslatedTypedef> FlagsTypedefs = new();
-        private Dictionary<EnumDecl, (TranslatedTypedef FlagsTypedef, ClangType UnderlyingType)> FlagsEnums = new();
-        private HashSet<ClangType> FlagsCanonicalTypes = new();
+        private readonly HashSet<TranslatedTypedef> FlagsTypedefs = new();
+        private readonly Dictionary<EnumDecl, (TranslatedTypedef FlagsTypedef, ClangType UnderlyingType)> FlagsEnums = new();
+        private readonly HashSet<ClangType> FlagsCanonicalTypes = new();
 
         //TODO: This transformation has a heavy reliance on Clang stuff. Ideally it should be able to work with what Biohazrd provides alone.
-        public PhysXFlagsEnumTransformation(TranslatedLibrary library)
+        protected override TranslatedLibrary PreTransformLibrary(TranslatedLibrary library)
         {
+            // These should generally be empty
+            Debug.Assert(FlagsTypedefs.Count == 0, "The state of this transformaiton should be empty at this point.");
+            Debug.Assert(FlagsEnums.Count == 0, "The state of this transformaiton should be empty at this point.");
+            Debug.Assert(FlagsCanonicalTypes.Count == 0, "The state of this transformaiton should be empty at this point.");
+            FlagsTypedefs.Clear();
+            FlagsEnums.Clear();
+            FlagsCanonicalTypes.Clear();
+
             // Run an initial pass through the library to identify PxFlags enums
             foreach (TranslatedDeclaration declaration in library.EnumerateRecursively())
             {
@@ -63,6 +72,17 @@ namespace ClangSharpTest2020
                 FlagsEnums.Add(enumDecl, (typedef, storageType));
                 FlagsCanonicalTypes.Add(templateSpecialization.CanonicalType); //TODO: Is this the same for all PxFlags?
             }
+
+            return library;
+        }
+
+        protected override TranslatedLibrary PostTransformLibrary(TranslatedLibrary library)
+        {
+            FlagsTypedefs.Clear();
+            FlagsEnums.Clear();
+            FlagsCanonicalTypes.Clear();
+
+            return library;
         }
 
         protected override TransformationResult TransformTypedef(TransformationContext context, TranslatedTypedef declaration)
