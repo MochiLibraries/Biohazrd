@@ -15,7 +15,7 @@ namespace ClangSharpTest2020
         // It should be relatively easy to adapt this type to support concurrency, it's just a matter of doing it.
         protected override bool SupportsConcurrency => false;
 
-        private readonly HashSet<TranslatedTypedef> FlagsTypedefs = new();
+        private readonly HashSet<TranslatedTypedef> FlagsTypedefs = new(ReferenceEqualityComparer.Instance);
         private readonly Dictionary<EnumDecl, (TranslatedTypedef FlagsTypedef, ClangType UnderlyingType)> FlagsEnums = new();
         private readonly HashSet<ClangType> FlagsCanonicalTypes = new();
 
