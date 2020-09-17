@@ -44,7 +44,12 @@ namespace Biohazrd.CSharp
         }
 
         protected override TransformationResult TransformUnknownDeclarationType(TransformationContext context, Biohazrd.TranslatedDeclaration declaration)
-            => base.TransformUnknownDeclarationType(context, declaration.WithError($"C# translation does not support '{declaration.GetType().FullName}'"));
+        {
+            if (declaration is not SynthesizedLooseDeclarationsType)
+            { declaration = declaration.WithError($"C# translation does not support '{declaration.GetType().FullName}'"); }
+
+            return base.TransformUnknownDeclarationType(context, declaration);
+        }
 
         protected override TransformationResult TransformEnum(TransformationContext context, TranslatedEnum declaration)
         {

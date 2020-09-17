@@ -115,6 +115,7 @@ namespace ClangSharpTest2020
             library = new CSharpBuiltinTypeTransformation().Transform(library);
             library = new KludgeUnknownClangTypesIntoBuiltinTypesTransformation(emitErrorOnFail: true).Transform(library);
             library = new DeduplicateNamesTransformation().Transform(library);
+            library = new MoveLooseDeclarationsIntoTypesTransformation().Transform(library); //TODO: Ideally this happens sooner, but it can interfere with type transformations currently.
 
             // Perform validation
             Console.WriteLine("==============================================================================");

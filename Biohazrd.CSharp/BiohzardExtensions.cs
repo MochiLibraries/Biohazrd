@@ -1,5 +1,7 @@
 ﻿using Biohazrd.Transformation;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Biohazrd.CSharp
 {
@@ -25,8 +27,14 @@ namespace Biohazrd.CSharp
         public static bool IsAllowedInNamespaceScope(this AccessModifier modifier)
             => modifier == AccessModifier.Internal || modifier == AccessModifier.Public;
 
+        private static bool IsValidFieldOrMethodParent(this IEnumerable<TranslatedDeclaration> declaration)
+            => declaration is TranslatedRecord or SynthesizedLooseDeclarationsType;
+
         public static bool IsValidFieldOrMethodContext(this TransformationContext context)
-            => context.Parent is TranslatedRecord;
+            => context.Parent.IsValidFieldOrMethodParent();
+
+        public static bool IsValidFieldOrMethodContext(this VisitorContext context)
+            => context.Parent.IsValidFieldOrMethodParent();
 
         // On the fence about this being built-in, so it's an extension method for now
         internal static TDeclaration WithError<TDeclaration>(this TDeclaration declaration, string errorMessage)
