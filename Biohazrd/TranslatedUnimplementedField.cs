@@ -2,10 +2,15 @@
 
 namespace Biohazrd
 {
-    public sealed class TranslatedUnimplementedField : TranslatedField
+    public sealed record TranslatedUnimplementedField : TranslatedField
     {
-        internal unsafe TranslatedUnimplementedField(TranslatedRecord record, PathogenRecordField* field)
-            : base(record, field)
-            => File.Diagnostic(Severity.Warning, Context, $"{field->Kind} fields may not be translated correctly.");
+        public PathogenRecordFieldKind Kind { get; }
+
+        internal unsafe TranslatedUnimplementedField(TranslationUnitParser parsingContext, TranslatedFile file, PathogenRecordField* field)
+            : base(parsingContext, file, field)
+            => Kind = field->Kind;
+
+        public override string ToString()
+            => $"Unimplemented {base.ToString()}";
     }
 }

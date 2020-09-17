@@ -1,48 +1,27 @@
 ﻿using ClangSharp;
-using ClangSharp.Interop;
 
 namespace Biohazrd
 {
     /// <summary>A translated static field or global variable.</summary>
-    public sealed class TranslatedStaticField : TranslatedDeclaration
+    public sealed record TranslatedStaticField : TranslatedDeclaration
     {
-        private readonly VarDecl VariableDeclaration;
-        public override string DefaultName => VariableDeclaration.Name;
-        public override bool CanBeRoot => false;
+        public TypeReference Type { get; init; }
 
-        internal TranslatedStaticField(IDeclarationContainer parent, VarDecl variableDeclaration)
-            : base(parent)
+        public string DllFileName { get; init; } = "TODO.dll";
+        public string MangledName { get; init; }
+
+        internal TranslatedStaticField(TranslatedFile file, VarDecl variable)
+            : base(file, variable)
         {
-            VariableDeclaration = variableDeclaration;
-            Declaration = VariableDeclaration;
+            Type = new ClangTypeReference(variable.Type);
+            MangledName = variable.Handle.Mangling.ToString();
 
-            if (!(VariableDeclaration.CursorParent is RecordDecl) || VariableDeclaration.Access == CX_CXXAccessSpecifier.CX_CXXPublic)
+            // Static variables outside of records should always be public.
+            if (variable.CursorParent is not RecordDecl)
             { Accessibility = AccessModifier.Public; }
-            else
-            { Accessibility = AccessModifier.Private; }
-
-            File.Diagnostic(Severity.Note, VariableDeclaration, "The translation of static fields/globals is slightly lazy. Consider improving.");
         }
 
-        private void TranslateType(CodeWriter writer)
-        {
-            File.WriteType(writer, VariableDeclaration.Type, VariableDeclaration, TypeTranslationContext.ForField);
-            writer.Write("*");
-        }
-
-        protected override void TranslateImplementation(CodeWriter writer)
-        {
-            writer.Using("System.Runtime.InteropServices"); // For NativeLibrary
-            writer.EnsureSeparation();
-
-            writer.Write($"{Accessibility.ToCSharpKeyword()} static readonly ");
-            TranslateType(writer);
-            writer.Write(" ");
-            writer.WriteIdentifier(TranslatedName);
-            writer.Write(" = (");
-            TranslateType(writer);
-            //TODO: This leaks handles to the native library.
-            writer.WriteLine($")NativeLibrary.GetExport(NativeLibrary.Load(\"TODO.dll\"), \"{CodeWriter.SanitizeStringLiteral(VariableDeclaration.Handle.Mangling.ToString())}\");");
-        }
+        public override string ToString()
+            => $"Static Field {base.ToString()}";
     }
 }

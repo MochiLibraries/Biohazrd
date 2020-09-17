@@ -1,4 +1,4 @@
-# Biohazrd (🚨 Original ClangSharpTest2020 prototype 🚨)
+# Biohazrd
 
 [![MIT Licensed](https://img.shields.io/github/license/infectedlibraries/clangsharp.pathogen?style=flat-square)](LICENSE.txt)
 [![CI Status](https://img.shields.io/github/workflow/status/infectedlibraries/clangsharp.pathogen/ClangSharp.Pathogen?style=flat-square)](https://github.com/InfectedLibraries/ClangSharp.Pathogen/actions?query=workflow%3AClangSharp.Pathogen+branch%3Amain)
@@ -13,3 +13,15 @@ Biohazrd is still under heavy development, documentation and API stability are n
 This project is licensed under the MIT License. [See the license file for details](LICENSE.txt).
 
 Additionally, this project has some third-party dependencies. [See the third-party notice listing for details](THIRD-PARTY-NOTICES.md).
+
+## Quick Overview
+
+For the brave, here's a quick overview of the individual components of this repository:
+
+| Project | Description |
+|---------|-------------|
+| `Biohazrd` | The core of Biohazrd. This is the code is primarily responsible for parsing the Cursor tree of libclang` and translating it into a simplified model that's easier to work with.
+| `Biohazrd.Transformation` | Infrastructure for transforming the immutable object model output by the core. (As well as a [some common transformations you might need](Biohazrd.Transformation/Common/))
+| `Biohazrd.OutputGeneration` | Infrastructure for emitting code based on the Biohazrd object model.
+| `Biohazrd.CSharp` | Transformations, output generation, and other infrastructure for supporting emitting a C# interop layer.
+| `ClangSharpTest2020` | An binding generator for [NVIDIA PhysX](https://github.com/NVIDIAGameWorks/PhysX) (not suitable for use yet -- still has hard-coded paths specific to my machine.)

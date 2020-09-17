@@ -1,44 +1,35 @@
 ﻿using Biohazrd;
+using Biohazrd.Transformation;
 using ClangSharp;
+using ClangSharp.Interop;
 
 namespace ClangSharpTest2020
 {
-    public sealed class PhysXRemovePaddingFieldsTransformation : TranslationTransformation
+    public sealed class PhysXRemovePaddingFieldsTransformation : TransformationBase
     {
-        private readonly TranslatedField TargetField;
-
-        private PhysXRemovePaddingFieldsTransformation(TranslatedField targetField)
-            => TargetField = targetField;
-
-        public override void Apply()
-            => TargetField.Parent = null;
-
-        public override string ToString()
-            => $"PhysX padding field {TargetField}";
-
-        public sealed class Factory : TranslationTransformationFactory
+        protected override TransformationResult TransformNormalField(TransformationContext context, TranslatedNormalField declaration)
         {
-            protected override TranslationTransformation Create(TranslatedDeclaration declaration)
+            //TODO: Ideally this should not need to touch Clang stuff so much
+            //TODO: Can the new Desugar function added to unreleased versions of ClangSharp help here?
+            // Look for fields of type PxPadding and delete them (somewhat involved since the information we need isn't exposed on ClangSharp as cleanly as we'd like.)
+            return declaration.Declaration switch
             {
-                // Look for fields
-                if (!(declaration is TranslatedField field) || !(field.Declaration is FieldDecl clangField))
-                { return null; }
-
-                // Check if the field's type is PxPadding
-                if (!(clangField.Type is TemplateSpecializationType templateSpecialization))
-                { return null; }
-
-                // Get the declaration
-                if (!(FindCursor(templateSpecialization.Handle.Declaration) is ClassTemplateSpecializationDecl templateSpecializationDeclaration))
-                { return null; }
-
-                // Make sure this declaration is for PxPadding
-                if (templateSpecializationDeclaration.Name != "PxPadding")
-                { return null; }
-
-                // Create the transformation
-                return new PhysXRemovePaddingFieldsTransformation(field);
-            }
+                FieldDecl
+                {
+                    Type: TemplateSpecializationType
+                    {
+                        Handle:
+                        {
+                            Declaration:
+                            {
+                                IsNull: false,
+                                DeclKind: CX_DeclKind.CX_DeclKind_ClassTemplateSpecialization,
+                            } fieldTypeDeclaration
+                        }
+                    }
+                } => fieldTypeDeclaration.Spelling.ToString() == "PxPadding" ? null : declaration,
+                _ => declaration
+            };
         }
     }
 }

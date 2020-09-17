@@ -20,7 +20,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Biohazrd.CSharp\Biohazrd.CSharp.csproj" />
     <ProjectReference Include="..\Biohazrd\Biohazrd.csproj" />
+    <ProjectReference Include="..\Biohazrd.OutputGeneration\Biohazrd.OutputGeneration.csproj" />
+    <ProjectReference Include="..\Biohazrd.Transformation\Biohazrd.Transformation.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -38,7 +38,7 @@ namespace ClangSharpTest2020
         private CSharpCompilation CompileImplementation(string filePath)
         {
             // We're using the .NET 5 preview since we're also using the pre-release compiler meant to be paired with it since we're using the unreleased C# 9 function pointers feature.
-            const string referenceAssemblyRoot = @"C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\5.0.0-preview.7.20364.11\ref\net5.0\";
+            const string referenceAssemblyRoot = @"C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\5.0.0-rc.1.20451.14\ref\net5.0\";
             static MetadataReference GetSystemReference(string assemblyFileName)
                 => MetadataReference.CreateFromFile(Path.Combine(referenceAssemblyRoot, assemblyFileName + ".dll"));
 

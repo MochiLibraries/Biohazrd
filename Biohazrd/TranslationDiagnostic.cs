@@ -21,7 +21,7 @@ namespace Biohazrd
             Message = message;
         }
 
-        private TranslationDiagnostic(Severity severity, string message)
+        public TranslationDiagnostic(Severity severity, string message)
             : this(SourceLocation.Null, severity, message)
         { }
 
@@ -41,5 +41,8 @@ namespace Biohazrd
             IsFromClang = true;
             Message = clangDiagnostic.Format(ClangFormatOptions).ToString();
         }
+
+        public override string ToString()
+            => $"[{Severity}] {Message}";
     }
 }
