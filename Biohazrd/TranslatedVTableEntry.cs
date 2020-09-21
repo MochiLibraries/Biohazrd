@@ -1,6 +1,5 @@
 ﻿using ClangSharp;
 using ClangSharp.Pathogen;
-using System.Collections.Immutable;
 
 namespace Biohazrd
 {
