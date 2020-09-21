@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using Biohazrd.Transformation;
+using Biohazrd.Transformation.Infrastructure;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Biohazrd.CSharp
 {
-    public sealed record SynthesizedLooseDeclarationsType : TranslatedDeclaration
+    public sealed record SynthesizedLooseDeclarationsType : TranslatedDeclaration, ICustomTranslatedDeclaration
     {
         public ImmutableList<TranslatedDeclaration> Members { get; init; } = ImmutableList<TranslatedDeclaration>.Empty;
 
@@ -16,5 +18,27 @@ namespace Biohazrd.CSharp
 
         public override string ToString()
             => $"Synthesized Type {base.ToString()}";
+
+        TransformationResult ICustomTranslatedDeclaration.TransformChildren(ITransformation transformation, TransformationContext context)
+        {
+            // Transform members
+            ListTransformHelper newMembers = new(Members);
+            foreach (TranslatedDeclaration member in Members)
+            { newMembers.Add(transformation.TransformRecursively(context, member)); }
+
+            // If this type changes, mutate it
+            if (newMembers.WasChanged)
+            {
+                return this with
+                {
+                    Members = newMembers.ToImmutable()
+                };
+            }
+            else
+            { return this; }
+        }
+
+        TransformationResult ICustomTranslatedDeclaration.TransformTypeChildren(ITypeTransformation transformation, TransformationContext context)
+            => this;
     }
 }

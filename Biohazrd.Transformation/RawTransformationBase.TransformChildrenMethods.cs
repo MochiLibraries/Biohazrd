@@ -3,7 +3,7 @@ using System;
 
 namespace Biohazrd.Transformation
 {
-    partial class TransformationBase
+    partial class RawTransformationBase
     {
         private TransformationResult TransformRecordChildren(TransformationContext context, TranslatedRecord declaration)
         {

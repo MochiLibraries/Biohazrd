@@ -2,7 +2,7 @@
 
 namespace Biohazrd.Transformation
 {
-    partial class TypeTransformationBase
+    partial class RawTypeTransformationBase
     {
         private TypeTransformationResult TransformPointerTypeReferenceChildren(TypeTransformationContext context, PointerTypeReference type)
         {

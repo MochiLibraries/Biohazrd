@@ -1,6 +1,9 @@
-﻿namespace Biohazrd.CSharp
+﻿using Biohazrd.Transformation;
+using Biohazrd.Transformation.Infrastructure;
+
+namespace Biohazrd.CSharp
 {
-    public sealed record CSharpBuiltinTypeReference : TypeReference
+    public sealed record CSharpBuiltinTypeReference : TypeReference, ICustomTypeReference
     {
         public CSharpBuiltinType Type { get; }
 
@@ -9,5 +12,8 @@
 
         public override string ToString()
             => Type.ToString();
+
+        TypeTransformationResult ICustomTypeReference.TransformChildren(ITypeTransformation transformation, TypeTransformationContext context)
+            => this;
     }
 }

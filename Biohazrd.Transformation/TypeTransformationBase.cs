@@ -1,43 +1,8 @@
-﻿using System.Collections.Immutable;
-
-namespace Biohazrd.Transformation
+﻿namespace Biohazrd.Transformation
 {
-    public partial class TypeTransformationBase : TransformationBase
+    public abstract class TypeTransformationBase : RawTypeTransformationBase
     {
-        /// <summary>If true, a type transformation will run more than once until the transformation fails to transform the type reference.</summary>
-        /// <remarks>Persistent transformation only occurs when the actual type reference changes. Persistent transformation does not occur if only diagnostics are added.</remarks>
-        protected virtual bool PersistentTypeTransformation => true;
-
-        protected TypeTransformationResult TransformTypeRecursively(TypeTransformationContext context, TypeReference type)
-        {
-            // Transform this type
-            TypeTransformationResult result = TransformType(context, type);
-
-            // Persistently transform if applicable
-            if (PersistentTypeTransformation)
-            {
-                TypeReference previousResult = type;
-
-                while (result.TypeReference != previousResult)
-                {
-                    previousResult = result.TypeReference;
-                    ImmutableArray<TranslationDiagnostic> previousDiagnostics = result.Diagnostics;
-
-                    result = TransformType(context, previousResult);
-
-                    // Preserve diagnostics emitted during the previous iteration
-                    result = result.AddDiagnostics(previousDiagnostics);
-                }
-            }
-
-            // Transform this type's children
-            TypeTransformationResult recursiveResult = TransformTypeChildren(context, result.TypeReference);
-
-            // Append diagnostics from the first transformation if there are any and return the result
-            return recursiveResult.AddDiagnostics(result.Diagnostics);
-        }
-
-        protected virtual TypeTransformationResult TransformType(TypeTransformationContext context, TypeReference type)
+        protected override TypeTransformationResult TransformType(TypeTransformationContext context, TypeReference type)
             => type switch
             {
                 ClangTypeReference clangType => TransformClangTypeReference(context, clangType),
@@ -49,15 +14,25 @@ namespace Biohazrd.Transformation
                 TypeReference => TransformUnknownTypeReference(context, type)
             };
 
-        protected virtual TypeTransformationResult TransformTypeChildren(TypeTransformationContext context, TypeReference type)
-            => type switch
-            {
-                FunctionPointerTypeReference functionPointer => TransformFunctionPointerTypeReferenceChildren(context.Add(type), functionPointer),
-                PointerTypeReference pointerType => TransformPointerTypeReferenceChildren(context.Add(type), pointerType),
-                TypeReference => type
-            };
+        protected virtual TypeTransformationResult TransformTypeReference(TypeTransformationContext context, TypeReference type)
+            => type;
 
         protected virtual TypeTransformationResult TransformUnknownTypeReference(TypeTransformationContext context, TypeReference type)
+            => TransformTypeReference(context, type);
+
+        protected virtual TypeTransformationResult TransformClangTypeReference(TypeTransformationContext context, ClangTypeReference type)
+            => TransformTypeReference(context, type);
+
+        protected virtual TypeTransformationResult TransformFunctionPointerTypeReference(TypeTransformationContext context, FunctionPointerTypeReference type)
+            => TransformTypeReference(context, type);
+
+        protected virtual TypeTransformationResult TransformPointerTypeReference(TypeTransformationContext context, PointerTypeReference type)
+            => TransformTypeReference(context, type);
+
+        protected virtual TypeTransformationResult TransformTranslatedTypeReference(TypeTransformationContext context, TranslatedTypeReference type)
+            => TransformTypeReference(context, type);
+
+        protected virtual TypeTransformationResult TransformVoidTypeReference(TypeTransformationContext context, VoidTypeReference type)
             => TransformTypeReference(context, type);
     }
 }
