@@ -112,6 +112,7 @@ namespace ClangSharpTest2020
 
             library = new RemoveRemainingTypedefsTransformation().Transform(library);
             library = new TypeReductionTransformation().Transform(library);
+            library = new LiftAnonymousUnionFieldsTransformation().Transform(library);
             library = new CSharpBuiltinTypeTransformation().Transform(library);
             library = new KludgeUnknownClangTypesIntoBuiltinTypesTransformation(emitErrorOnFail: true).Transform(library);
             library = new DeduplicateNamesTransformation().Transform(library);
