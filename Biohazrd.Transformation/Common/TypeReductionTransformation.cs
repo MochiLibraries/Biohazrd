@@ -29,8 +29,8 @@ namespace Biohazrd.Transformation.Common
                 // Otherwise we eliminate the typedef
                 case TypedefType typedefType:
                 {
-                    if (context.Library.TryFindTranslation(typedefType.Decl) is not null)
-                    { return new TranslatedTypeReference(typedefType.Decl); }
+                    if (context.Library.TryFindTranslation(typedefType.Decl) is TranslatedDeclaration declaration)
+                    { return TranslatedTypeReference.Create(declaration); }
                     else
                     { return new ClangTypeReference(typedefType.CanonicalType); }
                 }
@@ -71,11 +71,11 @@ namespace Biohazrd.Transformation.Common
                 }
                 case EnumType enumType:
                 {
-                    return new TranslatedTypeReference(enumType.Decl);
+                    return TranslatedTypeReference.Create(enumType.Decl);
                 }
                 case RecordType recordType:
                 {
-                    return new TranslatedTypeReference(recordType.Decl);
+                    return TranslatedTypeReference.Create(recordType.Decl);
                 }
                 // Don't know how to reduce this type
                 default:

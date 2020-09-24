@@ -64,7 +64,7 @@ namespace Biohazrd
                     TypeReference thisPointerType = VoidTypeReference.PointerInstance;
 
                     if (methodDeclaration.Parent is RecordDecl recordDeclaration)
-                    { thisPointerType = new PointerTypeReference(new TranslatedTypeReference(recordDeclaration)); }
+                    { thisPointerType = new PointerTypeReference(TranslatedTypeReference.Create(recordDeclaration)); }
                     else
                     { Diagnostics = Diagnostics.Add(Severity.Warning, $"Could not figure out this pointer type for {methodDeclaration}."); }
 
