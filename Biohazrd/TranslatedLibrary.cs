@@ -40,8 +40,8 @@ namespace Biohazrd
 
         //TODO: Thread safety
         private WeakReference<TranslatedLibrary>? DeclarationLookupCacheLibrary = null;
-        private Dictionary<Decl, TranslatedDeclaration?>? DeclarationLookupCache = null;
-        private Dictionary<Decl, VisitorContext>? DeclarationContextLookupCache = null;
+        private Dictionary<Decl, (TranslatedDeclaration?, VisitorContext)> ClangDeclarationLookupCache = new();
+        private Dictionary<DeclarationId, (TranslatedDeclaration?, VisitorContext)> DeclarationIdLookupCache = new();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void InvalidateCacheIfStale()
@@ -51,81 +51,93 @@ namespace Biohazrd
             if (DeclarationLookupCacheLibrary is null || !DeclarationLookupCacheLibrary.TryGetTarget(out TranslatedLibrary? cacheLibrary) || !ReferenceEquals(cacheLibrary, this))
             {
                 DeclarationLookupCacheLibrary = new WeakReference<TranslatedLibrary>(this);
-                DeclarationLookupCache = null;
-                DeclarationContextLookupCache = null;
+                ClangDeclarationLookupCache.Clear();
+                DeclarationIdLookupCache.Clear();
             }
         }
 
         public TranslatedDeclaration? TryFindTranslation(Decl declaration)
-        {
-            // Invalidate the cache if necessary
-            InvalidateCacheIfStale();
-
-            // Create a new cache if there is none
-            if (DeclarationLookupCache is null)
-            { DeclarationLookupCache = new Dictionary<Decl, TranslatedDeclaration?>(); }
-
-            // Search for the declaration
-            TranslatedDeclaration? result = null;
-
-            if (DeclarationLookupCache.TryGetValue(declaration, out result))
-            { return result; }
-
-            foreach (TranslatedDeclaration child in this.EnumerateRecursively())
-            {
-                if (child.IsTranslationOf(declaration))
-                {
-                    result = child;
-                    break;
-                }
-            }
-
-            // Cache the result and return it
-            DeclarationLookupCache.Add(declaration, result);
-            return result;
-        }
+            // The intent of this overload is for it to be used by consumers which don't need the VisitorContext to avoid the extra allocations that come with it.
+            // However, it was determined the savings were pretty minor here so this overload is convienence-only now for the sake of simplicity.
+            // https://github.com/InfectedLibraries/Biohazrd/issues/60#issuecomment-698585488
+            => TryFindTranslation(declaration, out _);
 
         public TranslatedDeclaration? TryFindTranslation(Decl declaration, out VisitorContext context)
         {
             // Invalidate the cache if necessary
             InvalidateCacheIfStale();
 
-            // Create a new cache if there is none
-            if (DeclarationLookupCache is null)
-            { DeclarationLookupCache = new Dictionary<Decl, TranslatedDeclaration?>(); }
-
-            if (DeclarationContextLookupCache is null)
-            { DeclarationContextLookupCache = new Dictionary<Decl, VisitorContext>(); }
-
             // Search for the declaration
-            TranslatedDeclaration? result = null;
-            VisitorContext resultContext = default;
+            (TranslatedDeclaration? Result, VisitorContext Context) resultWithContext = default;
 
-            if (DeclarationLookupCache.TryGetValue(declaration, out result) && DeclarationContextLookupCache.TryGetValue(declaration, out context))
-            { return result; }
+            if (ClangDeclarationLookupCache.TryGetValue(declaration, out resultWithContext))
+            {
+                context = resultWithContext.Context;
+                return resultWithContext.Result;
+            }
 
             foreach ((VisitorContext childContext, TranslatedDeclaration child) in this.EnumerateRecursivelyWithContext())
             {
                 if (child.IsTranslationOf(declaration))
                 {
-                    resultContext = childContext;
-                    result = child;
+                    resultWithContext = (child, childContext);
                     break;
                 }
             }
 
             // If there is no result, make the context valid
-            if (resultContext.IsDefault)
+            if (resultWithContext.Context.IsDefault)
             {
-                Debug.Assert(result is null, "There must be context for a non-null result!");
-                resultContext = new VisitorContext(this);
+                Debug.Assert(resultWithContext.Result is null, "There must be context for a non-null result!");
+                resultWithContext.Context = new VisitorContext(this);
             }
 
             // Cache the results and return them
-            DeclarationLookupCache[declaration] = result;
-            DeclarationContextLookupCache[declaration] = resultContext;
-            context = resultContext;
-            return result;
+            ClangDeclarationLookupCache.Add(declaration, resultWithContext);
+            context = resultWithContext.Context;
+            return resultWithContext.Result;
+        }
+
+        public TranslatedDeclaration? TryFindTranslation(DeclarationId id)
+            // The intent of this overload is for it to be used by consumers which don't need the VisitorContext to avoid the extra allocations that come with it.
+            // However, it was determined the savings were pretty minor here so this overload is convienence-only now for the sake of simplicity.
+            // https://github.com/InfectedLibraries/Biohazrd/issues/60#issuecomment-698585488
+            => TryFindTranslation(id, out _);
+
+        public TranslatedDeclaration? TryFindTranslation(DeclarationId id, out VisitorContext context)
+        {
+            // Invalidate the cache if necessary
+            InvalidateCacheIfStale();
+
+            // Search for the declaration
+            (TranslatedDeclaration? Result, VisitorContext Context) resultWithContext = default;
+
+            if (DeclarationIdLookupCache.TryGetValue(id, out resultWithContext))
+            {
+                context = resultWithContext.Context;
+                return resultWithContext.Result;
+            }
+
+            foreach ((VisitorContext childContext, TranslatedDeclaration child) in this.EnumerateRecursivelyWithContext())
+            {
+                if (child.Id == id)
+                {
+                    resultWithContext = (child, childContext);
+                    break;
+                }
+            }
+
+            // If there is no result, make the context valid
+            if (resultWithContext.Context.IsDefault)
+            {
+                Debug.Assert(resultWithContext.Result is null, "There must be context for a non-null result!");
+                resultWithContext.Context = new VisitorContext(this);
+            }
+
+            // Cache the results and return them
+            DeclarationIdLookupCache.Add(id, resultWithContext);
+            context = resultWithContext.Context;
+            return resultWithContext.Result;
         }
 
         /// <summary>Finds the ClangSharp <see cref="Cursor"/> for the given <see cref="CXCursor"/> handle.</summary>

@@ -1,5 +1,4 @@
 ﻿using ClangSharp;
-using System;
 
 namespace Biohazrd
 {
@@ -28,13 +27,19 @@ namespace Biohazrd
         public static TranslatedTypeReference Create(Decl declaration)
             => new ClangDeclTranslatedTypeReference(declaration);
 
+        /// <summary>Creates a type reference which resolves to a <see cref="TranslatedDeclaration"/> corresponding to the specified <see cref="DeclarationId"/>.</summary>
+        public static TranslatedTypeReference Create(DeclarationId declarationId)
+            => new DeclarationIdTranslatedTypeReference(declarationId);
+
         /// <summary>Creates a type reference which resolve to a <see cref="TranslatedDeclaration"/> or a transformed version of it.</summary>
         public static TranslatedTypeReference Create(TranslatedDeclaration declaration)
         {
-            if (declaration.Declaration is null)
-            { throw new ArgumentException("Type references to synthesized declarations are not yet supported.", nameof(declaration)); }
-
-            return new ClangDeclTranslatedTypeReference(declaration.Declaration);
+            // If the declaration has a Clang declaration, use that for the lookup since it'll follow the declaration getting absorbed into another as a secondary declaration.
+            // (It's also friendlier for debugging.)
+            if (declaration.Declaration is not null)
+            { return new ClangDeclTranslatedTypeReference(declaration.Declaration); }
+            else
+            { return new DeclarationIdTranslatedTypeReference(declaration.Id); }
         }
     }
 }

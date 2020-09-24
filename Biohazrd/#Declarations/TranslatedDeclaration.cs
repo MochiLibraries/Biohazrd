@@ -12,6 +12,7 @@ namespace Biohazrd
     public abstract record TranslatedDeclaration : IEquatable<TranslatedDeclaration>, IEnumerable<TranslatedDeclaration>
     {
         public TranslatedFile File { get; }
+        public DeclarationId Id { get; }
 
         public TranslatedDeclaration Original { get; }
         public bool IsOriginal => ReferenceEquals(Original, this);
@@ -50,6 +51,7 @@ namespace Biohazrd
         protected TranslatedDeclaration(TranslatedFile file, Decl? declaration = null)
         {
             File = file;
+            Id = DeclarationId.NewId();
             Original = this;
             Declaration = declaration;
 
