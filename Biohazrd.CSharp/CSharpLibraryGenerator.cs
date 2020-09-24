@@ -60,16 +60,15 @@ namespace Biohazrd.CSharp
                     foreach (TranslatedDeclaration declaration in library.EnumerateRecursively())
                     { filesWithDeclarations.Add(declaration.File); }
 
-                    // Generate an output file for every input file
-                    foreach (TranslatedFile file in library.Files)
+                    // Generate an output file for every input file that has declarations
+                    foreach (TranslatedFile file in filesWithDeclarations)
                     {
-                        // Skip files without any declarations
-                        if (!filesWithDeclarations.Contains(file))
-                        { continue; }
-
                         string fileName = Path.GetFileNameWithoutExtension(file.FilePath) + ".cs";
-                        DoGenerate(new CSharpLibraryGenerator(options, session, fileName, filter: file));
 
+                        if (file == TranslatedFile.Synthesized)
+                        { fileName = "SynthesizedDeclarations.cs"; }
+
+                        DoGenerate(new CSharpLibraryGenerator(options, session, fileName, filter: file));
                     }
                 }
                 break;

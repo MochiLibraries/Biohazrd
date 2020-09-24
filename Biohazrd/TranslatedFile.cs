@@ -23,6 +23,9 @@ namespace Biohazrd
         /// </remarks>
         internal IntPtr Handle { get; }
 
+        /// <summary>A dummy translated file which represents synthesized declarations that don't directly correspond to a translated file.</summary>
+        public static readonly TranslatedFile Synthesized = new TranslatedFile("<>Synthesized", new IntPtr(-1));
+
         internal TranslatedFile(string filePath, IntPtr handle)
         {
             FilePath = filePath;
