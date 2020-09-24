@@ -137,6 +137,7 @@ namespace ClangSharpTest2020
             Console.WriteLine("Performing translation...");
             Console.WriteLine("==============================================================================");
             Stopwatch stopwatch = new();
+            long totalBytesAllocatedStart = GC.GetTotalAllocatedBytes(true);
             stopwatch.Start();
             ImmutableArray<TranslationDiagnostic> generationDiagnostics = CSharpLibraryGenerator.Generate
             (
@@ -200,6 +201,8 @@ namespace ClangSharpTest2020
             // Close the output session to unlock all of the output files so they can be read for building
             outputSession.Dispose();
             stopwatch.Stop();
+            long totalBytesAllocatedEnd = GC.GetTotalAllocatedBytes(true);
+            long bytesAllocatedAtEnd = GC.GetTotalMemory(true);
 
             // Build csproj
             using StreamWriter cSharpDiagnosticsLog = new(Path.Combine(outputDirectory, "Diagnostics_Roslyn.log"));
@@ -252,6 +255,13 @@ namespace ClangSharpTest2020
 
                 Console.WriteLine($"Library resolve hits: {TranslatedLibrary.CacheHitCount}");
                 Console.WriteLine($"Type reference resolve hits: {TranslatedTypeReference.CacheHits}");
+                long totalBytesAllocated = totalBytesAllocatedEnd - totalBytesAllocatedStart;
+                long bytesCollected = totalBytesAllocated - bytesAllocatedAtEnd;
+                Console.WriteLine($"{totalBytesAllocated / 1024L / 1024L} MB allocated");
+                Console.WriteLine($"{bytesAllocatedAtEnd / 1024L / 1024L} MB still allocated ({bytesCollected / 1024L / 1024L} MB collected)");
+
+                Console.WriteLine($"{totalBytesAllocated} B allocated");
+                Console.WriteLine($"{bytesAllocatedAtEnd} B still allocated ({bytesCollected} B collected)");
                 Console.WriteLine($"Completed in {stopwatch.Elapsed.TotalSeconds} seconds");
             }
         }

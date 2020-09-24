@@ -1,4 +1,5 @@
 ﻿//#define ENABLE_CACHING
+//#define ENABLE_CONTEXT_SPECIFIC_OVERLOAD
 using ClangSharp;
 using ClangSharp.Interop;
 using System;
@@ -65,6 +66,7 @@ namespace Biohazrd
         public static long CacheHitCount = 0;
 
         public TranslatedDeclaration? TryFindTranslation(Decl declaration)
+#if ENABLE_CONTEXT_SPECIFIC_OVERLOAD
         {
             // Invalidate the cache if necessary
             InvalidateCacheIfStale();
@@ -101,6 +103,9 @@ namespace Biohazrd
 #endif
             return result;
         }
+#else
+            => TryFindTranslation(declaration, out _);
+#endif
 
         public TranslatedDeclaration? TryFindTranslation(Decl declaration, out VisitorContext context)
         {
