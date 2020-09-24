@@ -1,7 +1,9 @@
-﻿using ClangSharp;
+﻿//#define ENABLE_CACHING
+using ClangSharp;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 
 namespace Biohazrd
 {
@@ -21,6 +23,8 @@ namespace Biohazrd
         private TranslatedDeclaration? CachedDeclaration;
         private VisitorContext CachedContext;
 
+        public static long CacheHits = 0;
+
         /// <summary>Tries to resolve this type reference from the specified library.</summary>
         /// <returns>A <see cref="TranslatedDeclaration"/> if the resolution succeeded, <c>null</c> otherwise.</returns>
         /// <remarks>A <see cref="TranslatedTypeReference"/> is generally only valid for the specific library it is associated with (or a transformed variant of it.)</remarks>
@@ -29,12 +33,23 @@ namespace Biohazrd
             if (library is null)
             { throw new ArgumentNullException(nameof(library)); }
 
+#if ENABLE_CACHING
             if (ReferenceEquals(library, CachedLibrary))
-            { return CachedDeclaration; }
+#else
+            if (ReferenceEquals(library, CachedLibrary) && Key is TranslatedDeclaration)
+#endif
+            {
+                Interlocked.Increment(ref CacheHits);
+                return CachedDeclaration;
+            }
 
+#if ENABLE_CACHING
             CachedLibrary = library;
             CachedDeclaration = null;
             return CachedDeclaration = Key switch
+#else
+            return Key switch
+#endif
             {
                 Decl decl => library.TryFindTranslation(decl),
                 LookupFunction lookupFunction => lookupFunction(library, out CachedContext),
@@ -52,15 +67,22 @@ namespace Biohazrd
             if (library is null)
             { throw new ArgumentNullException(nameof(library)); }
 
-            if (ReferenceEquals(library, CachedLibrary) && !CachedContext.IsDefault)
+#if ENABLE_CACHING
+            if (ReferenceEquals(library, CachedLibrary))
+#else
+            if (ReferenceEquals(library, CachedLibrary) && Key is TranslatedDeclaration)
+#endif
             {
+                Interlocked.Increment(ref CacheHits);
                 context = CachedContext;
                 return CachedDeclaration;
             }
 
+#if ENABLE_CACHING
             CachedLibrary = library;
             CachedDeclaration = null;
             CachedContext = default;
+#endif
 
             TranslatedDeclaration? ret = Key switch
             {
@@ -70,8 +92,12 @@ namespace Biohazrd
                 _ => throw new InvalidOperationException("The type reference is in an invalid state.")
             };
 
+#if ENABLE_CACHING
             CachedContext = context;
             return CachedDeclaration = ret;
+#else
+            return ret;
+#endif
         }
 
         public override string ToString()

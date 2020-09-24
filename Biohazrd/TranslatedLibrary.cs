@@ -1,4 +1,5 @@
-﻿using ClangSharp;
+﻿//#define ENABLE_CACHING
+using ClangSharp;
 using ClangSharp.Interop;
 using System;
 using System.Collections;
@@ -6,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using ClangType = ClangSharp.Type;
 
 namespace Biohazrd
@@ -39,13 +41,16 @@ namespace Biohazrd
             => GetEnumerator();
 
         //TODO: Thread safety
+#if ENABLE_CACHING
         private WeakReference<TranslatedLibrary>? DeclarationLookupCacheLibrary = null;
         private Dictionary<Decl, TranslatedDeclaration?>? DeclarationLookupCache = null;
         private Dictionary<Decl, VisitorContext>? DeclarationContextLookupCache = null;
+#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void InvalidateCacheIfStale()
         {
+#if ENABLE_CACHING
             // Check if this library is the same one the cache corresponds to
             // (Ideally we just don't bring over the cache when this object is cloned, but records don't currently allow this.)
             if (DeclarationLookupCacheLibrary is null || !DeclarationLookupCacheLibrary.TryGetTarget(out TranslatedLibrary? cacheLibrary) || !ReferenceEquals(cacheLibrary, this))
@@ -54,22 +59,32 @@ namespace Biohazrd
                 DeclarationLookupCache = null;
                 DeclarationContextLookupCache = null;
             }
+#endif
         }
+
+        public static long CacheHitCount = 0;
 
         public TranslatedDeclaration? TryFindTranslation(Decl declaration)
         {
             // Invalidate the cache if necessary
             InvalidateCacheIfStale();
 
+#if ENABLE_CACHING
             // Create a new cache if there is none
             if (DeclarationLookupCache is null)
             { DeclarationLookupCache = new Dictionary<Decl, TranslatedDeclaration?>(); }
+#endif
 
             // Search for the declaration
             TranslatedDeclaration? result = null;
 
+#if ENABLE_CACHING
             if (DeclarationLookupCache.TryGetValue(declaration, out result))
-            { return result; }
+            {
+                Interlocked.Increment(ref CacheHitCount);
+                return result;
+            }
+#endif
 
             foreach (TranslatedDeclaration child in this.EnumerateRecursively())
             {
@@ -81,7 +96,9 @@ namespace Biohazrd
             }
 
             // Cache the result and return it
+#if ENABLE_CACHING
             DeclarationLookupCache.Add(declaration, result);
+#endif
             return result;
         }
 
@@ -91,18 +108,25 @@ namespace Biohazrd
             InvalidateCacheIfStale();
 
             // Create a new cache if there is none
+#if ENABLE_CACHING
             if (DeclarationLookupCache is null)
             { DeclarationLookupCache = new Dictionary<Decl, TranslatedDeclaration?>(); }
 
             if (DeclarationContextLookupCache is null)
             { DeclarationContextLookupCache = new Dictionary<Decl, VisitorContext>(); }
+#endif
 
             // Search for the declaration
             TranslatedDeclaration? result = null;
             VisitorContext resultContext = default;
 
+#if ENABLE_CACHING
             if (DeclarationLookupCache.TryGetValue(declaration, out result) && DeclarationContextLookupCache.TryGetValue(declaration, out context))
-            { return result; }
+            {
+                Interlocked.Increment(ref CacheHitCount);
+                return result;
+            }
+#endif
 
             foreach ((VisitorContext childContext, TranslatedDeclaration child) in this.EnumerateRecursivelyWithContext())
             {
@@ -122,8 +146,10 @@ namespace Biohazrd
             }
 
             // Cache the results and return them
+#if ENABLE_CACHING
             DeclarationLookupCache[declaration] = result;
             DeclarationContextLookupCache[declaration] = resultContext;
+#endif
             context = resultContext;
             return result;
         }

@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -135,6 +136,8 @@ namespace ClangSharpTest2020
             Console.WriteLine("==============================================================================");
             Console.WriteLine("Performing translation...");
             Console.WriteLine("==============================================================================");
+            Stopwatch stopwatch = new();
+            stopwatch.Start();
             ImmutableArray<TranslationDiagnostic> generationDiagnostics = CSharpLibraryGenerator.Generate
             (
                 CSharpGenerationOptions.Default,
@@ -196,6 +199,7 @@ namespace ClangSharpTest2020
 
             // Close the output session to unlock all of the output files so they can be read for building
             outputSession.Dispose();
+            stopwatch.Stop();
 
             // Build csproj
             using StreamWriter cSharpDiagnosticsLog = new(Path.Combine(outputDirectory, "Diagnostics_Roslyn.log"));
@@ -245,6 +249,10 @@ namespace ClangSharpTest2020
                 string summaryLine = $"========== C# build {(errorCount > 0 ? "failed" : "succeeded")}: {errorCount} error(s), {warningCount} warning(s) ==========";
                 Console.WriteLine(summaryLine);
                 cSharpDiagnosticsLog.WriteLine(summaryLine);
+
+                Console.WriteLine($"Library resolve hits: {TranslatedLibrary.CacheHitCount}");
+                Console.WriteLine($"Type reference resolve hits: {TranslatedTypeReference.CacheHits}");
+                Console.WriteLine($"Completed in {stopwatch.Elapsed.TotalSeconds} seconds");
             }
         }
 
