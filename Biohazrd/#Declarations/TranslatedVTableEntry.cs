@@ -29,7 +29,7 @@ namespace Biohazrd
                 IsFunctionPointer = true;
                 Cursor methodDeclarationCursor = parsingContext.FindCursor(info.MethodDeclaration);
 
-                if (methodDeclarationCursor is CXXMethodDecl { Type: FunctionProtoType functionType }  methodDeclaration)
+                if (methodDeclarationCursor is CXXMethodDecl { Type: FunctionProtoType functionType } methodDeclaration)
                 {
                     MethodDeclaration = methodDeclaration;
 
@@ -79,8 +79,6 @@ namespace Biohazrd
                 { Diagnostics = Diagnostics.Add(Severity.Warning, $"VTable function point did not resolve to a C++ method declaration."); }
             }
         }
-
-
 
         public override string ToString()
             => $"VTable {Info.Kind} {base.ToString()}";

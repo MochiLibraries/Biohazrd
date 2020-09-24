@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 class AnonymousEnum
 {
@@ -12,7 +12,6 @@ public:
 
     int FieldAfterEnum;
 };
-
 
 class AnonymousEnumWithField
 {
