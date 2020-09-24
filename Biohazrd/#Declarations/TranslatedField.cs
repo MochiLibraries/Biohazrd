@@ -8,8 +8,13 @@ namespace Biohazrd
         public long Offset { get; init; }
 
         /// <summary>Constructs a field for a synthesized field.</summary>
-        private protected TranslatedField(TranslatedFile file)
+        protected TranslatedField(TranslatedFile file)
             : base(file)
+        { }
+
+        /// <summary>Constructs a field which replaces another declaration.</summary>
+        protected TranslatedField(TranslatedDeclaration replacedDeclaration)
+            : base(replacedDeclaration)
         { }
 
         private protected unsafe TranslatedField(TranslationUnitParser parsingContext, TranslatedFile file, PathogenRecordField* field)
@@ -17,7 +22,6 @@ namespace Biohazrd
         {
             Offset = field->Offset;
             Name = field->Name.ToString();
-            Accessibility = AccessModifier.Internal;
         }
 
         private static unsafe Decl? TryGetDecl(TranslationUnitParser parsingContext, PathogenRecordField* field)

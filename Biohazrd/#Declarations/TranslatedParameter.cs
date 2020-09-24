@@ -7,7 +7,7 @@ namespace Biohazrd
         public TypeReference Type { get; init; }
         public bool ImplicitlyPassedByReference { get; init; }
 
-        public TranslatedParameter(TranslatedFile file, ParmVarDecl parameter)
+        internal TranslatedParameter(TranslatedFile file, ParmVarDecl parameter)
             : base(file, parameter)
         {
             Type = new ClangTypeReference(parameter.Type);

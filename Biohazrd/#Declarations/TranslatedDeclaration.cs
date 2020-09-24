@@ -62,6 +62,18 @@ namespace Biohazrd
             { Accessibility = Declaration.Access.ToTranslationAccessModifier(); }
         }
 
+        protected TranslatedDeclaration(TranslatedDeclaration replacedDeclaration)
+        {
+            File = replacedDeclaration.File;
+            Id = replacedDeclaration.Id;
+            Original = replacedDeclaration.Original;
+            Declaration = replacedDeclaration.Declaration;
+            SecondaryDeclarations = replacedDeclaration.SecondaryDeclarations;
+            Name = replacedDeclaration.Name;
+            Accessibility = replacedDeclaration.Accessibility;
+            Diagnostics = replacedDeclaration.Diagnostics;
+        }
+
         internal bool IsTranslationOf(Decl declaration)
         {
             if (declaration == Declaration)
