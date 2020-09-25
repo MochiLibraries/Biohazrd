@@ -111,7 +111,16 @@ namespace ClangSharpTest2020
             library = new MakeEvereythingPublicTransformation().Transform(library);
 
             library = new RemoveRemainingTypedefsTransformation().Transform(library);
-            library = new TypeReductionTransformation().Transform(library);
+
+            CSharpTypeReductionTransformation typeReductionTransformation = new();
+            int iterations = 0;
+            do
+            {
+                library = typeReductionTransformation.Transform(library);
+                iterations++;
+            } while (typeReductionTransformation.ConstantArrayTypesCreated > 0);
+            Console.WriteLine($"Finished reducing types in {iterations} iterations.");
+
             library = new LiftAnonymousUnionFieldsTransformation().Transform(library);
             library = new CSharpBuiltinTypeTransformation().Transform(library);
             library = new KludgeUnknownClangTypesIntoBuiltinTypesTransformation(emitErrorOnFail: true).Transform(library);

@@ -6,6 +6,9 @@
         {
             switch (declaration)
             {
+                case ConstantArrayTypeDeclaration constantArrayTypeDeclaration:
+                    VisitConstantArrayTypeDeclaration(context, constantArrayTypeDeclaration);
+                    return;
                 case SynthesizedLooseDeclarationsType synthesizedLooseDeclarationsType:
                     VisitSynthesizedLooseDeclarationsType(context, synthesizedLooseDeclarationsType);
                     return;
@@ -14,6 +17,9 @@
                     return;
             }
         }
+
+        protected virtual void VisitConstantArrayTypeDeclaration(VisitorContext context, ConstantArrayTypeDeclaration declaration)
+            => VisitDeclaration(context, declaration);
 
         protected virtual void VisitSynthesizedLooseDeclarationsType(VisitorContext context, SynthesizedLooseDeclarationsType declaration)
             => VisitDeclaration(context, declaration);
