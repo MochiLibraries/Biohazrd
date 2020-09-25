@@ -43,6 +43,15 @@ namespace Biohazrd.OutputGeneration
             { IndentLevel = oldIndentLevel; }
         }
 
+        public void WriteLineIndented(string value)
+        {
+            if (!OnNewLine)
+            { throw new InvalidOperationException("Cannot write an indented line when the current line already contains text."); }
+
+            using (Indent())
+            { WriteLine(value); }
+        }
+
         public void NoSeparationNeededBeforeNextLine()
             => NoSeparationNeeded = true;
 
