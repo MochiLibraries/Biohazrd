@@ -8,7 +8,7 @@ using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp
 {
-    public sealed partial class CSharpLibraryGenerator : DeclarationVisitor
+    public sealed partial class CSharpLibraryGenerator : CSharpDeclarationVisitor
     {
         private readonly TranslatedFile? FileFilter;
         private readonly TranslatedDeclaration? DeclarationFilter;
@@ -148,12 +148,7 @@ namespace Biohazrd.CSharp
             => Fatal(context, declaration, $"{declaration.Declaration.CursorKindDetailed()} Clang declarations are not supported.");
 
         protected override void VisitUnknownDeclarationType(VisitorContext context, TranslatedDeclaration declaration)
-        {
-            if (declaration is SynthesizedLooseDeclarationsType synthesized)
-            { VisitSynthesizedLooseDeclarationsType(context, synthesized); }
-            else
-            { Fatal(context, declaration, $"Declarations of this type are not supported by the C# output generator."); }
-        }
+            => Fatal(context, declaration, $"Declarations of this type are not supported by the C# output generator.");
 
         private void Fatal(VisitorContext context, TranslatedDeclaration declaration, string? reason, string? extraDescription)
         {

@@ -84,7 +84,7 @@ namespace Biohazrd.CSharp
         protected override void VisitVTableEntry(VisitorContext context, TranslatedVTableEntry declaration)
             => FatalContext(context, declaration, declaration.MethodDeclaration is not null ? $"({declaration.Info.Kind} to {declaration.MethodDeclaration})" : $"({declaration.Info.Kind})");
 
-        private void VisitSynthesizedLooseDeclarationsType(VisitorContext context, SynthesizedLooseDeclarationsType declaration)
+        protected override void VisitSynthesizedLooseDeclarationsType(VisitorContext context, SynthesizedLooseDeclarationsType declaration)
         {
             Writer.EnsureSeparation();
             Writer.WriteLine($"{declaration.Accessibility.ToCSharpKeyword()} unsafe static partial class {SanitizeIdentifier(declaration.Name)}");

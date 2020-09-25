@@ -4,7 +4,7 @@ using System.Linq;
 namespace Biohazrd.CSharp
 {
     //TODO: Some of these verifications are not specific to C#, it might be a good idea to pull them out into their own thing.
-    public sealed class CSharpTranslationVerifier : TransformationBase
+    public sealed class CSharpTranslationVerifier : CSharpTransformationBase
     {
         protected override TransformationResult TransformDeclaration(TransformationContext context, Biohazrd.TranslatedDeclaration declaration)
         {
@@ -44,12 +44,7 @@ namespace Biohazrd.CSharp
         }
 
         protected override TransformationResult TransformUnknownDeclarationType(TransformationContext context, Biohazrd.TranslatedDeclaration declaration)
-        {
-            if (declaration is not SynthesizedLooseDeclarationsType)
-            { declaration = declaration.WithError($"C# translation does not support '{declaration.GetType().FullName}'"); }
-
-            return base.TransformUnknownDeclarationType(context, declaration);
-        }
+            => base.TransformUnknownDeclarationType(context, declaration);
 
         protected override TransformationResult TransformEnum(TransformationContext context, TranslatedEnum declaration)
         {
