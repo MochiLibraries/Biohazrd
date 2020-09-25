@@ -1,5 +1,6 @@
 ﻿using ClangSharp.Pathogen;
 using System.Runtime.InteropServices;
+using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp
 {
@@ -12,21 +13,23 @@ namespace Biohazrd.CSharp
         }
 
         private void WriteType(VisitorContext context, TranslatedDeclaration declaration, TypeReference type)
+            => Writer.Write(GetTypeAsString(context, declaration, type));
+
+        /// <summary>Gets the specified type reference as a string which can be written directly to <see cref="Writer"/></summary>
+        /// <remarks>
+        /// When the type cannot be written, an error will be written to <see cref="Writer"/> using <see cref="Fatal"/>.
+        /// As such, you should call this method at a time when it will make sense for that error to appear.
+        /// </remarks>
+        private string GetTypeAsString(VisitorContext context, TranslatedDeclaration declaration, TypeReference type)
         {
             switch (type)
             {
                 case VoidTypeReference voidType:
-                    Writer.Write("void");
-                    return;
+                    return "void";
                 case CSharpBuiltinTypeReference cSharpBuiltin:
-                    Writer.Write(cSharpBuiltin.Type.CSharpKeyword);
-                    return;
+                    return cSharpBuiltin.Type.CSharpKeyword;
                 case PointerTypeReference pointer:
-                {
-                    WriteType(context, declaration, pointer.Inner);
-                    Writer.Write('*');
-                }
-                return;
+                    return $"{GetTypeAsString(context, declaration, pointer.Inner)}*";
                 case TranslatedTypeReference translatedType:
                 {
                     VisitorContext referencedContext;
@@ -34,16 +37,17 @@ namespace Biohazrd.CSharp
 
                     if (referenced is null)
                     {
-                        Writer.Write("int");
                         Fatal(context, declaration, $"Failed to resolve {translatedType} during emit time.");
+                        return "int";
                     }
                     // If the reference is to an enum translated as loose constants, we write out the underlying type instead
                     else if (referenced is TranslatedEnum { TranslateAsLooseConstants: true } referencedEnum)
                     {
-                        WriteType(context, declaration, referencedEnum.UnderlyingType);
+                        return GetTypeAsString(context, declaration, referencedEnum.UnderlyingType);
                     }
                     else
                     {
+                        string result = "";
                         int i = 0;
                         bool canSkipCommonParents = true;
                         foreach (TranslatedDeclaration parentDeclaration in referencedContext.Parents)
@@ -61,14 +65,14 @@ namespace Biohazrd.CSharp
                             if (parentDeclaration is TranslatedEnum { TranslateAsLooseConstants: true })
                             { continue; }
 
-                            Writer.WriteIdentifier(parentDeclaration.Name);
-                            Writer.Write('.');
+                            result += SanitizeIdentifier(parentDeclaration.Name);
+                            result += '.';
                         }
 
-                        Writer.WriteIdentifier(referenced.Name);
+                        result += SanitizeIdentifier(referenced.Name);
+                        return result;
                     }
                 }
-                return;
                 case FunctionPointerTypeReference functionPointer:
                 {
                     //TODO: Rework the calling convention to match the final C#9 syntax
@@ -78,11 +82,11 @@ namespace Biohazrd.CSharp
                     if (errorMessage is not null)
                     {
                         Fatal(context, declaration, errorMessage);
-                        Writer.Write("void*");
+                        return "void*";
                     }
                     else
                     {
-                        Writer.Write($"delegate* {callingConvention.ToString().ToLowerInvariant()}<");
+                        string functionPointerResult = $"delegate* {callingConvention.ToString().ToLowerInvariant()}<";
 
                         // This is a workaround for the fact that VTable function pointers have been modified to add the implicit this and retbuf parameters
                         // The retbuf parameter is expected to be translated as a C# out parameter, but we have no way to express this in FunctionPointerTypeReference.
@@ -94,24 +98,23 @@ namespace Biohazrd.CSharp
                         foreach (TypeReference parameterType in functionPointer.ParameterTypes)
                         {
                             if (__HACK__emitSecondParameterAsOut && i == 1)
-                            { Writer.Write("out "); }
+                            { functionPointerResult += "out "; }
 
-                            WriteType(context, declaration, parameterType);
-                            Writer.Write(", ");
+                            functionPointerResult += GetTypeAsString(context, declaration, parameterType);
+                            functionPointerResult += ", ";
                             i++;
                         }
 
-                        WriteType(context, declaration, functionPointer.ReturnType);
+                        functionPointerResult += GetTypeAsString(context, declaration, functionPointer.ReturnType);
 
-                        Writer.Write('>');
+                        functionPointerResult += '>';
+                        return functionPointerResult;
                     }
                 }
-                return;
                 default:
                     //TODO: It'd be nice if this was some sort of marker type to indicate its unusability.
-                    Writer.Write("int");
                     Fatal(context, declaration, $"{type.GetType().Name} is not supported by the C# output generator.");
-                    return;
+                    return "int";
             }
         }
     }
