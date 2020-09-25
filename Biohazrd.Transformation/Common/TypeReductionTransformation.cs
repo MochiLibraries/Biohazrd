@@ -3,7 +3,7 @@ using ClangSharp.Interop;
 
 namespace Biohazrd.Transformation.Common
 {
-    public sealed class TypeReductionTransformation : TypeTransformationBase
+    public class TypeReductionTransformation : TypeTransformationBase
     {
         protected override TypeTransformationResult TransformClangTypeReference(TypeTransformationContext context, ClangTypeReference type)
         {
