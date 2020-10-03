@@ -68,7 +68,6 @@ namespace Biohazrd
                 { indexFileCodeTextBuilder.AppendLine($"#include \"{filePath}\""); }
 
                 indexCodeText = indexFileCodeTextBuilder.ToString();
-                //indexFileCodeTextBytes = Encoding.UTF8.GetBytes(indexFileCodeTextBuilder.ToString());
             }
 
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------

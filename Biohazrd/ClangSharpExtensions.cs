@@ -51,7 +51,7 @@ namespace Biohazrd
             => accessSpecifier switch
             {
                 CX_CXXAccessSpecifier.CX_CXXPublic => AccessModifier.Public,
-                CX_CXXAccessSpecifier.CX_CXXProtected => AccessModifier.Private, //Protected is not really supported for translation.
+                CX_CXXAccessSpecifier.CX_CXXProtected => AccessModifier.Private, // Protected is not really supported for translation.
                 CX_CXXAccessSpecifier.CX_CXXPrivate => AccessModifier.Private,
                 _ => AccessModifier.Public // The access specifier is invalid for declarations which aren't members of a record, so they are translated as public.
             };
