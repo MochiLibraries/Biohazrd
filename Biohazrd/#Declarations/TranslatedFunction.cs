@@ -80,7 +80,7 @@ namespace Biohazrd
             // Handle conversion operator overloads
             if (function is CXXConversionDecl)
             {
-                Name = "____ConversionOperator";
+                Name = $"____ConversionOperator_{function.ReturnType}";
                 IsOperatorOverload = true;
             }
 
