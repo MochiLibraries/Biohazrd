@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace Biohazrd.OutputGeneration
@@ -174,6 +175,49 @@ namespace Biohazrd.OutputGeneration
         public string CopyFile(string sourceFilePath)
             => CopyFile(sourceFilePath, Path.GetFileName(sourceFilePath));
 
+        private void ProcessAndUpdateFileLog()
+        {
+            CheckDisposed();
+            string fileLogPath = Path.Combine(BaseOutputDirectory, "FilesWritten.txt");
+
+            // Delete any files from previous output session that weren't written in this one
+            if (File.Exists(fileLogPath))
+            {
+                using (StreamReader fileLog = new(fileLogPath))
+                {
+                    while (true)
+                    {
+                        string? filePath = fileLog.ReadLine();
+
+                        if (filePath is null)
+                        { break; }
+
+                        filePath = Path.Combine(BaseOutputDirectory, filePath);
+
+                        if (!Writers.ContainsKey(filePath))
+                        { File.Delete(filePath); }
+                    }
+                }
+            }
+
+            // Write out a listing of all files written
+            using (StreamWriter fileLog = new(fileLogPath))
+            {
+                foreach (string writtenFilePath in FilesWritten.OrderBy(f => f))
+                {
+                    // If the path is outside of the output directory, don't log it
+                    if (!writtenFilePath.StartsWith(BaseOutputDirectory))
+                    { continue; }
+
+                    // Make the path relative to the output directory
+                    string relativePath = Path.GetRelativePath(BaseOutputDirectory, writtenFilePath);
+
+                    // Add the file to the log
+                    fileLog.WriteLine(relativePath);
+                }
+            }
+        }
+
         private bool IsDisposed = false;
         private void CheckDisposed()
         {
@@ -183,6 +227,12 @@ namespace Biohazrd.OutputGeneration
 
         public void Dispose()
         {
+            if (IsDisposed)
+            { return; }
+
+            ProcessAndUpdateFileLog();
+
+            // Dispose of all disposable writers
             foreach (object writer in Writers.Values)
             {
                 if (writer is IDisposable disposable)
