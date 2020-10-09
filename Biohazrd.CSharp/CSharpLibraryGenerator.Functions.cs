@@ -172,7 +172,7 @@ namespace Biohazrd.CSharp
 
                         Writer.Write($"{methodAccess}(");
                         EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments);
-                        Writer.Write(");");
+                        Writer.WriteLine(");");
 
                         Writer.WriteLine($"return {SanitizeIdentifier(emitContext.ReturnBufferParameterName)};");
                     }
