@@ -75,7 +75,6 @@ namespace Biohazrd.CSharp
                 }
                 case FunctionPointerTypeReference functionPointer:
                 {
-                    //TODO: Rework the calling convention to match the final C#9 syntax
                     string errorMessage;
                     CallingConvention callingConvention = functionPointer.CallingConvention.ToDotNetCallingConvention(out errorMessage);
 
@@ -86,7 +85,22 @@ namespace Biohazrd.CSharp
                     }
                     else
                     {
-                        string functionPointerResult = $"delegate* {callingConvention.ToString().ToLowerInvariant()}<";
+                        string? callingConventionString = callingConvention switch
+                        {
+                            CallingConvention.Cdecl => "unmanaged[Cdecl]",
+                            CallingConvention.StdCall => "unmanaged[Stdcall]",
+                            CallingConvention.ThisCall => "unmanaged[Thiscall]",
+                            CallingConvention.FastCall => "unmanaged[Fastcall]",
+                            _ => null
+                        };
+
+                        if (callingConventionString is null)
+                        {
+                            Fatal(context, declaration, $"The {callingConvention} convention is not supported.");
+                            return "void*";
+                        }
+
+                        string functionPointerResult = $"delegate* {callingConventionString}<";
 
                         // This is a workaround for the fact that VTable function pointers have been modified to add the implicit this and retbuf parameters
                         // The retbuf parameter is expected to be translated as a C# out parameter, but we have no way to express this in FunctionPointerTypeReference.
