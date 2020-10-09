@@ -61,6 +61,7 @@ namespace Biohazrd.Transformation
         protected virtual TypeTransformationResult TransformTypeChildren(TypeTransformationContext context, TypeReference type)
             => type switch
             {
+                ICustomTypeReference customTypeReference => customTypeReference.TransformChildren(this, context.Add(type)),
                 FunctionPointerTypeReference functionPointer => TransformFunctionPointerTypeReferenceChildren(context.Add(type), functionPointer),
                 PointerTypeReference pointerType => TransformPointerTypeReferenceChildren(context.Add(type), pointerType),
                 TypeReference => type
