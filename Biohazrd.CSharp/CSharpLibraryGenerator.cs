@@ -152,7 +152,7 @@ namespace Biohazrd.CSharp
 
         private void Fatal(VisitorContext context, TranslatedDeclaration declaration, string? reason, string? extraDescription)
         {
-            Writer.Write($"/* Failed top emit {declaration.GetType().Name} {declaration.Name}");
+            Writer.Write($"/* Failed to emit {declaration.GetType().Name} {declaration.Name}");
 
             if (extraDescription is not null)
             { Writer.Write($" {extraDescription}"); }
