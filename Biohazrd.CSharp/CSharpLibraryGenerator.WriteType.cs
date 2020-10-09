@@ -1,4 +1,5 @@
-﻿using ClangSharp.Pathogen;
+﻿using Biohazrd.CSharp.Infrastructure;
+using ClangSharp.Pathogen;
 using System.Runtime.InteropServices;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
@@ -125,6 +126,8 @@ namespace Biohazrd.CSharp
                         return functionPointerResult;
                     }
                 }
+                case ICustomCSharpTypeReference customCSharpTypeReference:
+                    return customCSharpTypeReference.GetTypeAsString(this, context, declaration);
                 default:
                     //TODO: It'd be nice if this was some sort of marker type to indicate its unusability.
                     Fatal(context, declaration, $"{type.GetType().Name} is not supported by the C# output generator.");
