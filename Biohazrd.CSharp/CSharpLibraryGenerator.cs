@@ -46,11 +46,19 @@ namespace Biohazrd.CSharp
             {
                 case LibraryTranslationMode.OneFilePerType:
                 {
-                    FindAllNonNestedTypeDeclarationsVisitor allNonNestedTypes = new();
-                    allNonNestedTypes.Visit(library);
+                    foreach (TranslatedDeclaration declaration in library.Declarations)
+                    {
+                        //HACK: These are handled below
+                        if (declaration.File == TranslatedFile.Synthesized)
+                        { continue; }
 
-                    foreach (TranslatedDeclaration nonNestedType in allNonNestedTypes.NonNestedTypes)
-                    { DoGenerate(new CSharpLibraryGenerator(options, session, $"{nonNestedType.Name}.cs", filter: nonNestedType)); }
+                        DoGenerate(new CSharpLibraryGenerator(options, session, $"{SanitizeIdentifier(declaration.Name)}.cs", filter: declaration));
+                    }
+
+                    //HACK: Manually emit synthesized types
+                    // Really the FindAllNonNestedTypeDeclarationsVisitor is a bit too naive about what constitutes as a "Type"
+                    // We should probably just loop over library.Declarations, but right now constant arrays expect to all be emitted by the same generator.
+                    DoGenerate(new CSharpLibraryGenerator(options, session, "SynthesizedDeclarations.cs", filter: TranslatedFile.Synthesized));
                 }
                 break;
                 case LibraryTranslationMode.OneFilePerInputFile:
