@@ -201,7 +201,7 @@ namespace Biohazrd.CSharp
                     else
                     { Writer.Write("value"); }
 
-                    Writer.WriteLine($" & 0X{bitMask:X}U) << {bitOffset};");
+                    Writer.WriteLine($" & 0x{bitMask:X}U) << {bitOffset};");
 
                     // uint otherBits = backingField & inverseShiftedMask;
                     Writer.WriteLine($"{intermediateBackingTypeString} otherBits = {backingFieldName} & 0x{inverseShiftedMask:X}U;");
