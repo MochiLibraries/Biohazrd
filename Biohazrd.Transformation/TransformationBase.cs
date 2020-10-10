@@ -8,6 +8,7 @@
                 // Fields
                 TranslatedVTableField vTableFieldDeclaration => TransformVTableField(context, vTableFieldDeclaration),
                 TranslatedUnimplementedField unimplementedFieldDeclaration => TransformUnimplementedField(context, unimplementedFieldDeclaration),
+                TranslatedBitField bitFieldDeclaration => TransformBitField(context, bitFieldDeclaration),
                 TranslatedNormalField normalFieldDeclaration => TransformNormalField(context, normalFieldDeclaration),
                 TranslatedBaseField baseFieldDeclaration => TransformBaseField(context, baseFieldDeclaration),
                 TranslatedField fieldDeclaration => TransformField(context, fieldDeclaration),
@@ -62,6 +63,8 @@
             => TransformField(context, declaration);
         protected virtual TransformationResult TransformNormalField(TransformationContext context, TranslatedNormalField declaration)
             => TransformField(context, declaration);
+        protected virtual TransformationResult TransformBitField(TransformationContext context, TranslatedBitField declaration)
+            => TransformNormalField(context, declaration);
         protected virtual TransformationResult TransformUnimplementedField(TransformationContext context, TranslatedUnimplementedField declaration)
             => TransformField(context, declaration);
         protected virtual TransformationResult TransformVTableField(TransformationContext context, TranslatedVTableField declaration)

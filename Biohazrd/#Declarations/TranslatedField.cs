@@ -35,7 +35,8 @@ namespace Biohazrd
         internal static unsafe TranslatedField Create(TranslationUnitParser parsingContext, TranslatedFile file, PathogenRecordField* field)
             => field->Kind switch
             {
-                PathogenRecordFieldKind.Normal => new TranslatedNormalField(parsingContext, file, field),
+                PathogenRecordFieldKind.Normal
+                    => field->IsBitField == 0 ? new TranslatedNormalField(parsingContext, file, field) : new TranslatedBitField(parsingContext, file, field),
                 PathogenRecordFieldKind.NonVirtualBase => new TranslatedBaseField(parsingContext, file, field),
                 PathogenRecordFieldKind.VTablePtr => new TranslatedVTableField(parsingContext, file, field),
                 _ => new TranslatedUnimplementedField(parsingContext, file, field)

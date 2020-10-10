@@ -47,6 +47,8 @@
             => VisitField(context, declaration);
         protected virtual void VisitNormalField(VisitorContext context, TranslatedNormalField declaration)
             => VisitField(context, declaration);
+        protected virtual void VisitBitField(VisitorContext context, TranslatedBitField declaration)
+            => VisitNormalField(context, declaration);
         protected virtual void VisitUnimplementedField(VisitorContext context, TranslatedUnimplementedField declaration)
             => VisitField(context, declaration);
         protected virtual void VisitVTableField(VisitorContext context, TranslatedVTableField declaration)

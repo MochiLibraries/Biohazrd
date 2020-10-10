@@ -22,6 +22,9 @@
                 case TranslatedUnimplementedField unimplementedFieldDeclaration:
                     VisitUnimplementedField(context, unimplementedFieldDeclaration);
                     break;
+                case TranslatedBitField bitFieldDeclaration:
+                    VisitBitField(context, bitFieldDeclaration);
+                    break;
                 case TranslatedNormalField normalFieldDeclaration:
                     VisitNormalField(context, normalFieldDeclaration);
                     break;
