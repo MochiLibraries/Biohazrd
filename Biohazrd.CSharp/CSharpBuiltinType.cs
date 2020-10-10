@@ -27,6 +27,8 @@ namespace Biohazrd.CSharp
             init => _MinValue = value;
         }
 
+        public ulong FullBitMask => SizeOf == 8 ? ulong.MaxValue : (1UL << (8 * SizeOf)) - 1UL;
+
         internal CSharpBuiltinTypeReference Reference { get; }
 
         private CSharpBuiltinType(int sizeOf, string cSharpKeyword, string fullyQualifiedDotNetName)

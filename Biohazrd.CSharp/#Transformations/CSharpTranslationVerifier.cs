@@ -106,6 +106,23 @@ namespace Biohazrd.CSharp
             return base.TransformRecord(context, declaration);
         }
 
+        protected override TransformationResult TransformBitField(TransformationContext context, TranslatedBitField declaration)
+        {
+            switch (declaration.Type)
+            {
+                // Integral C# built-in types are allowed
+                case CSharpBuiltinTypeReference { Type: { IsIntegral: true } }:
+                    return base.TransformBitField(context, declaration);
+                // Integral enums are allowed
+                case TranslatedTypeReference typeReference:
+                    if (typeReference.TryResolve(context.Library) is TranslatedEnum { UnderlyingType: CSharpBuiltinTypeReference { Type: { IsIntegral: true } } })
+                    { return base.TransformBitField(context, declaration); }
+                    break;
+            }
+
+            return declaration.WithError($"Bit fields must by typed by an integral C# built-in type or an enum with an integral underlying type. {declaration.Type} is neither.");
+        }
+
         protected override TransformationResult TransformStaticField(TransformationContext context, TranslatedStaticField declaration)
         {
             //TODO: Verify type is compatible
