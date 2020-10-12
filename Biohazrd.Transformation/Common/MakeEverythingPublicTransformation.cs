@@ -1,6 +1,6 @@
 ﻿namespace Biohazrd.Transformation.Common
 {
-    public sealed class MakeEvereythingPublicTransformation : TransformationBase
+    public sealed class MakeEverythingPublicTransformation : TransformationBase
     {
         protected override TransformationResult TransformDeclaration(TransformationContext context, TranslatedDeclaration declaration)
         {
