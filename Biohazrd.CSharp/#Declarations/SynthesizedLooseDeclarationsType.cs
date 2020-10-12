@@ -11,7 +11,7 @@ namespace Biohazrd.CSharp
 
         public SynthesizedLooseDeclarationsType(TranslatedFile file)
             : base(file)
-        { }
+            => Accessibility = AccessModifier.Public;
 
         public override IEnumerator<TranslatedDeclaration> GetEnumerator()
             => Members.GetEnumerator();
