@@ -1,4 +1,5 @@
-﻿using ClangSharp;
+﻿using Biohazrd.Expressions;
+using ClangSharp;
 
 namespace Biohazrd
 {
@@ -7,11 +8,19 @@ namespace Biohazrd
         public TypeReference Type { get; init; }
         public bool ImplicitlyPassedByReference { get; init; }
 
-        internal TranslatedParameter(TranslatedFile file, ParmVarDecl parameter)
+        public ConstantValue? DefaultValue { get; init; }
+
+        internal unsafe TranslatedParameter(TranslatedFile file, ParmVarDecl parameter)
             : base(file, parameter)
         {
             Type = new ClangTypeReference(parameter.Type);
             ImplicitlyPassedByReference = parameter.Type.MustBePassedByReference();
+
+            DefaultValue = parameter.TryComputeConstantValue(out TranslationDiagnostic? diagnostic);
+            Diagnostics = Diagnostics.AddIfNotNull(diagnostic);
+
+            if (DefaultValue is null && diagnostic is null && parameter.HasInit)
+            { Diagnostics = Diagnostics.Add(Severity.Warning, "Non-constant default parameter values are not supported."); }
         }
 
         public override string ToString()

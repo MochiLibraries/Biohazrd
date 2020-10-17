@@ -206,6 +206,12 @@ namespace Biohazrd.CSharp
 
             bool writeImplicitParameters = mode == EmitParameterListMode.DllImportParameters || mode == EmitParameterListMode.TrampolineArguments;
             bool writeTypes = mode == EmitParameterListMode.DllImportParameters || mode == EmitParameterListMode.TrampolineParameters;
+            bool writeDefautValues = mode switch
+            {
+                EmitParameterListMode.DllImportParameters => !declaration.IsInstanceMethod, // We only emit the defaults on the trampoline.
+                EmitParameterListMode.TrampolineParameters => true,
+                _ => false
+            };
 
             VisitorContext parameterContext = context.Add(declaration);
 
@@ -263,6 +269,9 @@ namespace Biohazrd.CSharp
                 }
 
                 Writer.WriteIdentifier(parameter.Name);
+
+                if (writeDefautValues && parameter.DefaultValue is not null)
+                { Writer.Write($" = {GetConstantAsString(parameterContext, parameter, parameter.DefaultValue, parameter.Type)}"); }
             }
         }
 

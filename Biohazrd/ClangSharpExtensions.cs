@@ -1,8 +1,10 @@
-﻿using ClangSharp;
+﻿using Biohazrd.Expressions;
+using ClangSharp;
 using ClangSharp.Interop;
 using ClangSharp.Pathogen;
 using System;
 using System.Diagnostics;
+using System.Text;
 using ClangType = ClangSharp.Type;
 
 namespace Biohazrd
@@ -128,5 +130,57 @@ namespace Biohazrd
             Debug.Assert(ret is not null);
             return ret;
         }
+
+        private unsafe static ConstantValue? TryComputeConstantValue(CXCursor cursor, out TranslationDiagnostic? diagnostic)
+        {
+            bool success = false;
+            byte* error;
+            PathogenConstantValueInfo info;
+
+            try
+            {
+                success = PathogenExtensions.pathogen_ComputeConstantValue(cursor, &info, &error);
+                if (!success)
+                {
+                    if (error is null)
+                    {
+                        diagnostic = null;
+                        return null;
+                    }
+
+                    StringBuilder messageBuilder = new();
+                    messageBuilder.Append($"Failed to compute the default parameter value constant: ");
+
+                    for (; *error != 0; error++)
+                    { messageBuilder.Append((char)*error); }
+
+                    diagnostic = new TranslationDiagnostic(Severity.Warning, messageBuilder.ToString());
+                    return null;
+                }
+
+                ConstantValue value = info.ToConstantExpression();
+
+                // Since this type isn't very useful, we just turn it into a diagnostic
+                if (value is UnsupportedConstantExpression unsupportedValue)
+                {
+                    diagnostic = new TranslationDiagnostic(Severity.Warning, $"Unsupported default parameter value: {unsupportedValue.Message}");
+                    return null;
+                }
+
+                diagnostic = null;
+                return value;
+            }
+            finally
+            {
+                if (success)
+                { PathogenExtensions.pathogen_DeletePathogenConstantValueInfo(&info); }
+            }
+        }
+
+        public static ConstantValue? TryComputeConstantValue(this VarDecl declaration, out TranslationDiagnostic? diagnostic)
+            => TryComputeConstantValue(declaration.Handle, out diagnostic);
+
+        public static ConstantValue? TryComputeConstantValue(this Expr expression, out TranslationDiagnostic? diagnostic)
+            => TryComputeConstantValue(expression.Handle, out diagnostic);
     }
 }
