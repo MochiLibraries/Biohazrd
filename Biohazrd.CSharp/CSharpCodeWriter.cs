@@ -323,6 +323,10 @@ namespace Biohazrd.CSharp
             return ret?.ToString() ?? value;
         }
 
+        public static string SanitizeMultiLineComment(string comment)
+            // Break */ with a zero-width space so it reads correctly but doesn't end the comment
+            => comment.Replace("*/", "*\x200B/");
+
         protected override void WriteBetweenHeaderAndCode(StreamWriter writer)
         {
             foreach (string usingNamespace in UsingNamespaces)
