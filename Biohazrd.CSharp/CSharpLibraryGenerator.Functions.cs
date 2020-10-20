@@ -271,9 +271,7 @@ namespace Biohazrd.CSharp
                 Writer.WriteIdentifier(parameter.Name);
 
                 if (writeDefautValues && parameter.DefaultValue is not null)
-                {
-                    Writer.Write($"/* = {parameter.DefaultValue} */");
-                }
+                { Writer.Write($" = {GetConstantAsString(parameterContext, parameter, parameter.DefaultValue, parameter.Type)}"); }
             }
         }
 

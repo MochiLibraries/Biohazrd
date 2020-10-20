@@ -1,4 +1,5 @@
-﻿using Biohazrd.Transformation;
+﻿using Biohazrd.Expressions;
+using Biohazrd.Transformation;
 using System.Linq;
 
 namespace Biohazrd.CSharp
@@ -6,6 +7,11 @@ namespace Biohazrd.CSharp
     //TODO: Some of these verifications are not specific to C#, it might be a good idea to pull them out into their own thing.
     public sealed class CSharpTranslationVerifier : CSharpTransformationBase
     {
+        private CSharpTranslationVerifierPass2 Pass2 = new();
+
+        protected override TranslatedLibrary PostTransformLibrary(TranslatedLibrary library)
+            => Pass2.Transform(library);
+
         protected override TransformationResult TransformDeclaration(TransformationContext context, Biohazrd.TranslatedDeclaration declaration)
         {
             // If this declaration is at the root, ensure we're using an access level that's valid at this scope
@@ -90,7 +96,24 @@ namespace Biohazrd.CSharp
             if (context.ParentDeclaration is not TranslatedFunction)
             { declaration = declaration.WithError("Function parameters are not valid outside of a function context."); }
 
-            return base.TransformParameter(context, declaration);
+            // Verify default parameter value is compatible
+            switch (declaration.DefaultValue)
+            {
+                case StringConstant:
+                    return declaration with
+                    {
+                        DefaultValue = null,
+                        Diagnostics = declaration.Diagnostics.Add(Severity.Warning, "String constants are not supported as default parameter values.")
+                    };
+                case UnsupportedConstantExpression:
+                    // No diagnostic here, it was already emitted during the initial translation
+                    return declaration with
+                    {
+                        DefaultValue = null
+                    };
+                default:
+                    return base.TransformParameter(context, declaration);
+            }
         }
 
         protected override TransformationResult TransformRecord(TransformationContext context, TranslatedRecord declaration)
