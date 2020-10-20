@@ -160,13 +160,13 @@ namespace Biohazrd.CSharp
 
         private void Fatal(VisitorContext context, TranslatedDeclaration declaration, string? reason, string? extraDescription)
         {
-            Writer.Write($"/* Failed to emit {declaration.GetType().Name} {declaration.Name}");
+            Writer.Write($"/* Failed to emit {declaration.GetType().Name} {SanitizeMultiLineComment(declaration.Name)}");
 
             if (extraDescription is not null)
-            { Writer.Write($" {extraDescription}"); }
+            { Writer.Write($" {SanitizeMultiLineComment(extraDescription)}"); }
 
             if (reason is not null)
-            { Writer.Write($": {reason}"); }
+            { Writer.Write($": {SanitizeMultiLineComment(reason)}"); }
 
             Writer.WriteLine(" */");
 
