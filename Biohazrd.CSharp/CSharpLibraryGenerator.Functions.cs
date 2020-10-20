@@ -213,6 +213,8 @@ namespace Biohazrd.CSharp
                 _ => false
             };
 
+            VisitorContext parameterContext = context.Add(declaration);
+
             // Write out the this/retbuf parameters
             if (writeImplicitParameters)
             {
@@ -259,9 +261,9 @@ namespace Biohazrd.CSharp
                 if (writeTypes)
                 {
                     if (parameter.ImplicitlyPassedByReference)
-                    { WriteTypeAsReference(context.Add(parameter), parameter, parameter.Type); }
+                    { WriteTypeAsReference(parameterContext, parameter, parameter.Type); }
                     else
-                    { WriteType(context.Add(parameter), parameter, parameter.Type); }
+                    { WriteType(parameterContext, parameter, parameter.Type); }
 
                     Writer.Write(' ');
                 }
