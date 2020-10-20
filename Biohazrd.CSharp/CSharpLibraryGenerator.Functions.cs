@@ -207,6 +207,8 @@ namespace Biohazrd.CSharp
             bool writeImplicitParameters = mode == EmitParameterListMode.DllImportParameters || mode == EmitParameterListMode.TrampolineArguments;
             bool writeTypes = mode == EmitParameterListMode.DllImportParameters || mode == EmitParameterListMode.TrampolineParameters;
 
+            VisitorContext parameterContext = context.Add(declaration);
+
             // Write out the this/retbuf parameters
             if (writeImplicitParameters)
             {
@@ -253,9 +255,9 @@ namespace Biohazrd.CSharp
                 if (writeTypes)
                 {
                     if (parameter.ImplicitlyPassedByReference)
-                    { WriteTypeAsReference(context.Add(parameter), parameter, parameter.Type); }
+                    { WriteTypeAsReference(parameterContext, parameter, parameter.Type); }
                     else
-                    { WriteType(context.Add(parameter), parameter, parameter.Type); }
+                    { WriteType(parameterContext, parameter, parameter.Type); }
 
                     Writer.Write(' ');
                 }
