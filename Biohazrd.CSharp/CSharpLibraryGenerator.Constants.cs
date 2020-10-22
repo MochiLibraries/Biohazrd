@@ -149,12 +149,20 @@ namespace Biohazrd.CSharp
 
             // For non-loose constant enums, we have to cast
             if (!targetEnum.TranslateAsLooseConstants)
-            { ret = $"({GetTypeAsString(context, declaration, new PreResolvedTypeReference(targetEnumContext, targetEnum))}){ret}"; }
+            {
+                string cast = $"({GetTypeAsString(context, declaration, new PreResolvedTypeReference(targetEnumContext, targetEnum))})";
+
+                // Casting a negative number requires parenthesis.
+                if (constant.IsSigned && constant.SignedValue < 0)
+                { ret = $"{cast}({ret})"; }
+                else
+                { ret = $"{cast}{ret}"; }
+            }
 
             return ret;
         }
 
         private string GetIntegerConstantAsStringDirect(VisitorContext context, TranslatedDeclaration declaration, IntegerConstant constant)
-            => constant.IsSigned ? ((long)constant.Value).ToString() : constant.Value.ToString();
+            => constant.IsSigned ? constant.SignedValue.ToString() : constant.Value.ToString();
     }
 }

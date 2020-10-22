@@ -8,6 +8,8 @@
         /// <remarks>If <see cref="IsSigned"/> is true, this value will be a sign-extended <c>long</c>.</remarks>
         public ulong Value { get; init; }
 
+        public long SignedValue => (long)Value;
+
         public override string ToString()
             => IsSigned ? ((long)Value).ToString() : Value.ToString();
     }
