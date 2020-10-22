@@ -20,12 +20,15 @@ namespace Biohazrd.OutputGeneration
         private readonly StreamWriter _Writer;
         private bool IsFinished = false;
 
+        protected string FilePath { get; }
+
         protected CodeWriter(OutputSession session, string filePath)
         {
             OutputSession = session;
+            FilePath = filePath;
 
             // We don't need this until we're marked as finished, but we open it right away to lock the file.
-            _Writer = new StreamWriter(filePath);
+            _Writer = new StreamWriter(FilePath);
         }
 
         public void WriteLineLeftAdjusted(string value)

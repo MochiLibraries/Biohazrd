@@ -10,14 +10,21 @@ namespace Biohazrd.CSharp
     {
         private readonly SortedSet<string> IncludeFiles = new SortedSet<string>(StringComparer.InvariantCulture);
 
+        protected string FileDirectoryPath { get; }
+
         protected CppCodeWriter(OutputSession session, string filePath)
             : base(session, filePath)
-        { }
+            => FileDirectoryPath = Path.GetDirectoryName(FilePath) ?? ".";
 
         private static OutputSession.WriterFactory<CppCodeWriter> FactoryMethod => (session, filePath) => new CppCodeWriter(session, filePath);
 
         public void Include(string filePath)
-            => IncludeFiles.Add(filePath);
+        {
+            if (Path.IsPathRooted(filePath))
+            { filePath = Path.GetRelativePath(FileDirectoryPath, filePath); }
+
+            IncludeFiles.Add(filePath);
+        }
 
         public LeftAdjustedScope DisableScope(bool disabled, string message)
         {
