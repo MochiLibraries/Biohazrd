@@ -44,11 +44,10 @@ namespace Biohazrd.CSharp
             return true;
         }
 
-        public static void Generate(OutputSession session, string filePath, TranslatedLibrary library, string libraryName)
+        public static void Generate(OutputSession session, string filePath, TranslatedLibrary library)
         {
             StreamWriter writer = session.Open<StreamWriter>(filePath);
             session.WriteHeader(writer, "; ");
-            writer.WriteLine($"LIBRARY {libraryName}");
             writer.WriteLine("EXPORTS");
 
             foreach (TranslatedDeclaration declaration in library.EnumerateRecursively())
