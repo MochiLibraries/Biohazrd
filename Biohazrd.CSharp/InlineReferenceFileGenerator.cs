@@ -23,6 +23,8 @@ namespace Biohazrd.CSharp
             if (!ModuleDefinitionGenerator.CanFunctionBeExported(declaration))
             { return; }
 
+            Writer.Include(declaration.File.FilePath);
+
             switch (declaration.Declaration)
             {
                 case CXXConstructorDecl constructorDeclaration:
