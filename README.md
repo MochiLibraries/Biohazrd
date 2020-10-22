@@ -1,11 +1,13 @@
 # Biohazrd
 
-[![MIT Licensed](https://img.shields.io/github/license/infectedlibraries/clangsharp.pathogen?style=flat-square)](LICENSE.txt)
+[![MIT Licensed](https://img.shields.io/github/license/infectedlibraries/biohazrd?style=flat-square)](LICENSE.txt)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-lightgrey?logo=github&style=flat-square)](https://github.com/sponsors/PathogenDavid)
 
 Biohazrd is a framework for creating binding generators for C **and** C++ libraries. It aims to lower the amount of ongoing boilerplate maintenance required to use native libraries from .NET as well as allow direct interoperation with C++ libraries without a C translation later.
 
 Biohazrd is still under heavy development, documentation and API stability are non-existent. If you're interested in this project, consider [sponsoring development](https://github.com/sponsors/PathogenDavid).
+
+Interested in seeing it used? Check out [InfectedImGui](https://github.com/InfectedLibraries/InfectedImGui) or [InfectedPhysX](https://github.com/InfectedLibraries/InfectedPhysX).
 
 ## License
 
@@ -23,4 +25,3 @@ For the brave, here's a quick overview of the individual components of this repo
 | `Biohazrd.Transformation` | Infrastructure for transforming the immutable object model output by the core. (As well as a [some common transformations you might need](Biohazrd.Transformation/Common/))
 | `Biohazrd.OutputGeneration` | Infrastructure for emitting code based on the Biohazrd object model.
 | `Biohazrd.CSharp` | Transformations, output generation, and other infrastructure for supporting emitting a C# interop layer.
-| `ClangSharpTest2020` | An binding generator for [NVIDIA PhysX](https://github.com/NVIDIAGameWorks/PhysX) (not suitable for use yet -- still has hard-coded paths specific to my machine.)
