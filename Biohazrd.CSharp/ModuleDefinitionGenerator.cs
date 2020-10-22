@@ -1,6 +1,8 @@
 ﻿using Biohazrd.OutputGeneration;
 using ClangSharp;
 using ClangSharp.Interop;
+using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Biohazrd.CSharp
@@ -50,11 +52,18 @@ namespace Biohazrd.CSharp
             session.WriteHeader(writer, "; ");
             writer.WriteLine("EXPORTS");
 
+            // Accumulate the export definitions in a list that'll be sorted so we can have consistent ordering
+            List<string> exportDefinitions = new();
             foreach (TranslatedDeclaration declaration in library.EnumerateRecursively())
             {
                 if (declaration is TranslatedFunction function && CanFunctionBeExported(function))
-                { writer.WriteLine($"    {function.MangledName}"); }
+                { exportDefinitions.Add($"    {function.MangledName}"); }
             }
+
+            exportDefinitions.Sort(StringComparer.Ordinal);
+
+            foreach (string exportDefinition in exportDefinitions)
+            { writer.WriteLine(exportDefinition); }
         }
     }
 }
