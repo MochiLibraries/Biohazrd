@@ -27,6 +27,11 @@ namespace Biohazrd.CSharp
             if (destructor is not null)
             { return false; }
 
+            // Skip private and protected members for now.
+            // (Private will probably never work, protected requires special handling.)
+            if (function.Access == CX_CXXAccessSpecifier.CX_CXXPrivate || function.Access == CX_CXXAccessSpecifier.CX_CXXProtected)
+            { return false; }
+
             // Static non-method functions cannot be exported
             if (method is null && function.StorageClass == CX_StorageClass.CX_SC_Static)
             { return false; }
