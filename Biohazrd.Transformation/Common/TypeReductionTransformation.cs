@@ -60,7 +60,7 @@ namespace Biohazrd.Transformation.Common
                     return new TypeTransformationResult(result, Severity.Warning, $"The size of this constant-sized array parameter was discarded.");
                 }
                 // Incomplete arrays are translated as pointers
-                case IncompleteArrayType incompleteArrayType when context.ParentDeclaration is TranslatedParameter:
+                case IncompleteArrayType incompleteArrayType when (context.ParentDeclaration is TranslatedParameter) || (context.Parent is FunctionPointerTypeReference):
                 {
                     ClangTypeReference inner = new(incompleteArrayType.ElementType);
                     return new PointerTypeReference(inner);
