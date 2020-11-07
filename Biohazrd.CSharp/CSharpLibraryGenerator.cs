@@ -1,4 +1,5 @@
-﻿using Biohazrd.OutputGeneration;
+﻿using Biohazrd.CSharp.Infrastructure;
+using Biohazrd.OutputGeneration;
 using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
@@ -115,7 +116,10 @@ namespace Biohazrd.CSharp
                 Writer.NoSeparationNeededBeforeNextLine();
             }
 
-            base.Visit(context, declaration);
+            if (declaration is ICustomCSharpTranslatedDeclaration customDeclaration)
+            { customDeclaration.GenerateOutput(this, context, Writer); }
+            else
+            { base.Visit(context, declaration); }
         }
 
         protected override void VisitDeclaration(VisitorContext context, TranslatedDeclaration declaration)

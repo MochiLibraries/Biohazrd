@@ -13,5 +13,8 @@ namespace Biohazrd.CSharp
 
         void ICSharpOutputGenerator.AddUsing(string @namespace)
             => Writer.Using(@namespace);
+
+        void ICSharpOutputGenerator.Visit(VisitorContext context, TranslatedDeclaration declaration)
+            => Visit(context, declaration);
     }
 }

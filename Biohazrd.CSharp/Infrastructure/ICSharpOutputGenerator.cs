@@ -9,5 +9,7 @@ namespace Biohazrd.CSharp.Infrastructure
         string GetConstantAsString(VisitorContext context, TranslatedDeclaration declaration, ConstantValue constant, TypeReference targetType);
 
         void AddUsing(string @namespace);
+
+        void Visit(VisitorContext context, TranslatedDeclaration declaration);
     }
 }

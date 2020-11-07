@@ -2,6 +2,6 @@
 {
     public interface ICustomCSharpTypeReference
     {
-        string GetTypeAsString(ICSharpOutputGenerator outputTranslator, VisitorContext context, TranslatedDeclaration declaration);
+        string GetTypeAsString(ICSharpOutputGenerator outputGenerator, VisitorContext context, TranslatedDeclaration declaration);
     }
 }
