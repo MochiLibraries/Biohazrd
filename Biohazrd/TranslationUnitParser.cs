@@ -246,6 +246,9 @@ namespace Biohazrd
                         // Handle type definitions
                         case TypedefDecl typedef:
                             return new TranslatedTypedef(file, typedef);
+                        // Handle type aliases (IE: `using MyIndex = uint32_t;`)
+                        case TypeAliasDecl typeAlias:
+                            return new TranslatedTypedef(file, typeAlias);
 
                         //---------------------------------------------------------------------------------------------------------
                         // Declarations we don't expect in this method
