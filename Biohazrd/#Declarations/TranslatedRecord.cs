@@ -39,7 +39,7 @@ namespace Biohazrd
             else
             { Kind = RecordKind.Unknown; }
 
-            // Process layout adn vtables
+            // Process layout and vtables
             // Normal fields are stored in this dictionary and added as they are encountered in the cursor tree
             // This primarily allows us to easily ensure our member order matches the input file's declaration order
             Dictionary<FieldDecl, TranslatedNormalField> normalFields = new();

@@ -73,7 +73,7 @@ namespace Biohazrd.Transformation.Common
                 return declaration with
                 {
                     Name = newName,
-                    Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Renamed duplicate declaration '{declaration.Name}' -> '{newName}'")
+                    Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Renamed duplicate {declaration.GetType()} declaration '{declaration.Name}' -> '{newName}'")
                 };
             }
 
