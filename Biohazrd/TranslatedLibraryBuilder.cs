@@ -111,6 +111,7 @@ namespace Biohazrd
         public unsafe TranslatedLibrary Create()
         {
             __HACK__InstallLibClangDllWorkaround();
+            __HACK__Stl1300Workaround stl1300Workaround = __HACK__Stl1300Workaround.Instance;
 
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
             // Create an index file in-memory which includes all of the files to be processed
@@ -157,13 +158,17 @@ namespace Biohazrd
                     fixed (byte* indexFileNamePtr = Encoding.UTF8.GetBytesNullTerminated(indexFileName))
                     fixed (byte* indexCodeTextPtr = indexFileCodeTextBytes)
                     {
-                        Span<CXUnsavedFile> unsavedFiles = stackalloc CXUnsavedFile[1];
+                        int numUnsavedFiles = stl1300Workaround.ShouldBeApplied ? 2 : 1;
+                        Span<CXUnsavedFile> unsavedFiles = stackalloc CXUnsavedFile[numUnsavedFiles];
                         unsavedFiles[0] = new CXUnsavedFile()
                         {
                             Filename = (sbyte*)indexFileNamePtr,
                             Contents = (sbyte*)indexCodeTextPtr,
                             Length = (UIntPtr)indexFileCodeTextBytes.Length
                         };
+
+                        if (stl1300Workaround.ShouldBeApplied)
+                        { unsavedFiles[1] = stl1300Workaround.UnsavedFile; }
 
                         CXErrorCode translationUnitStatus = CXTranslationUnit.TryParse
                         (
@@ -212,6 +217,9 @@ namespace Biohazrd
             ImmutableArray<TranslationDiagnostic> parsingDiagnostics;
             ImmutableList<TranslatedDeclaration> declarations;
             processor.GetResults(out files, out parsingDiagnostics, out declarations);
+
+            if (stl1300Workaround.Diagnostics.Length > 0)
+            { parsingDiagnostics = stl1300Workaround.Diagnostics.AddRange(parsingDiagnostics); }
 
             // Create the library
             return new TranslatedLibrary(translationUnitAndIndex, files, parsingDiagnostics, declarations);

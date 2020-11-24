@@ -6,9 +6,9 @@ namespace Biohazrd
 {
     internal static class EncodingEx
     {
-        public static byte[] GetBytesNullTerminated(this Encoding encoding, string text)
+        public static byte[] GetBytesNullTerminated(this Encoding encoding, string text, bool pinned = false)
         {
-            byte[] ret = GC.AllocateUninitializedArray<byte>(encoding.GetByteCount(text) + 1);
+            byte[] ret = GC.AllocateUninitializedArray<byte>(encoding.GetByteCount(text) + 1, pinned);
 
             int bytesWritten = encoding.GetBytes(text.AsSpan(), ret.AsSpan().Slice(0, ret.Length - 1));
             Debug.Assert(bytesWritten == (ret.Length - 1), "It's expected that the encoder uses the entire buffer sans null terminator.");
