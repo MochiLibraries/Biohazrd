@@ -11,7 +11,15 @@ namespace Biohazrd.CSharp
             Writer.Using("System.Runtime.InteropServices");
 
             Writer.EnsureSeparation();
-            Writer.Write($"[FieldOffset({field.Offset})] {field.Accessibility.ToCSharpKeyword()} ");
+            Writer.Write($"[FieldOffset({field.Offset})] ");
+
+            // Apply MarshalAs to boolean fields
+            // This might not strictly be necessary since our struct has an explicit layout, but we do it anyway for the sake of sanity.
+            // (The marshaler definitely still runs on bools in explicit layouts, but it's not immediately clear if it is trying to interpret the memory as a 4-byte or 1-byte bool.)
+            if (field is TranslatedNormalField { Type: CSharpBuiltinTypeReference cSharpType } && cSharpType.Type == CSharpBuiltinType.Bool)
+            { Writer.Write($"[MarshalAs(UnmanagedType.I1)] "); }
+
+            Writer.Write($"{field.Accessibility.ToCSharpKeyword()} ");
         }
 
         protected override void VisitField(VisitorContext context, TranslatedField declaration)

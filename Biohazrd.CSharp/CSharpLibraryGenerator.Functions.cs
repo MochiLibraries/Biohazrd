@@ -45,6 +45,20 @@ namespace Biohazrd.CSharp
             { EmitFunctionTrampoline(context, emitContext, declaration); }
         }
 
+        private static bool FunctionNeedsCharSetParameter(TranslatedFunction declaration)
+        {
+            if (declaration.ReturnType.IsCSharpType(CSharpBuiltinType.Char))
+            { return true; }
+
+            foreach (TranslatedParameter parameter in declaration.Parameters)
+            {
+                if (parameter.Type.IsCSharpType(CSharpBuiltinType.Char))
+                { return true; }
+            }
+
+            return false;
+        }
+
         private void EmitFunctionDllImport(VisitorContext context, EmitFunctionContext emitContext, TranslatedFunction declaration)
         {
             Writer.EnsureSeparation();
@@ -61,7 +75,14 @@ namespace Biohazrd.CSharp
             if (declaration.MangledName != emitContext.DllImportName)
             { Writer.Write($", EntryPoint = \"{SanitizeStringLiteral(declaration.MangledName)}\""); }
 
+            if (FunctionNeedsCharSetParameter(declaration))
+            { Writer.Write(", CharSet = CharSet.Unicode"); }
+
             Writer.WriteLine(", ExactSpelling = true)]");
+
+            // Write out MarshalAs for boolean returns
+            if (declaration.ReturnType.IsCSharpType(CSharpBuiltinType.Bool))
+            { Writer.WriteLine("[return: MarshalAs(UnmanagedType.I1)]"); }
 
             // Write out the function signature
             // Instance methods are accessed via trampoline, so we translate the DllImport as private.
@@ -263,7 +284,13 @@ namespace Biohazrd.CSharp
                     if (parameter.ImplicitlyPassedByReference)
                     { WriteTypeAsReference(parameterContext, parameter, parameter.Type); }
                     else
-                    { WriteType(parameterContext, parameter, parameter.Type); }
+                    {
+                        // Write MarshalAs for booleans at pinvoke boundaries
+                        if (mode == EmitParameterListMode.DllImportParameters && parameter.Type.IsCSharpType(CSharpBuiltinType.Bool))
+                        { Writer.Write("[MarshalAs(UnmanagedType.I1)] "); }
+
+                        WriteType(parameterContext, parameter, parameter.Type);
+                    }
 
                     Writer.Write(' ');
                 }
