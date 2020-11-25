@@ -112,7 +112,35 @@ namespace Biohazrd.CSharp
                         DefaultValue = null
                     };
                 default:
+                {
+                    // This can happen if a C# built-in type was replaced with a different type
+                    // (Such as a type being replaced with a convienience wrapper.)
+                    static bool TypeCanHaveDefaultInCSharp(TransformationContext context, TypeReference type)
+                    {
+                        if (type is PointerTypeReference)
+                        { return true; }
+
+                        if (type is CSharpBuiltinTypeReference)
+                        { return true; }
+
+                        if (type is TranslatedTypeReference translatedType && translatedType.TryResolve(context.Library) is TranslatedEnum)
+                        { return true; }
+
+                        return false;
+                    }
+
+                    if (declaration.DefaultValue is not null && !TypeCanHaveDefaultInCSharp(context, declaration.Type))
+                    {
+                        return declaration with
+                        {
+                            DefaultValue = null,
+                            Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Default parameter values are not supported for this parameter's type.")
+                        };
+                    }
+
+                    // Default parameter value is allowed
                     return base.TransformParameter(context, declaration);
+                }
             }
         }
 
