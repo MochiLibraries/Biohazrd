@@ -1,10 +1,11 @@
 <Project>
   <PropertyGroup>
     <!-- Common C# Properties -->
+    <LangVersion>9.0</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Features>strict</Features>
     <Nullable>enable</Nullable>
-    <LangVersion>preview</LangVersion>
+    <AnalysisLevel>5.0</AnalysisLevel>
 
     <!--
       ClangSharp.Pathogen requires Windows x64 right now
@@ -13,12 +14,4 @@
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
-  <ItemGroup>
-    <!-- Using nighly compiler since the one in the current .NET Preview has outdated codegen for records
-    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="3.9.0-1.20512.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-    -->
-  </ItemGroup>
 </Project>
