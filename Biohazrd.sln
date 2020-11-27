@@ -23,6 +23,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tooling", "tooling", "{09A8
 		tooling\Common.csproj.props = tooling\Common.csproj.props
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.Utilities", "Biohazrd.Utilities\Biohazrd.Utilities.csproj", "{12BCC25F-9712-4223-8E34-50B7C060D8E2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{22921290-4487-417A-9BAA-D25A1840A554}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{22921290-4487-417A-9BAA-D25A1840A554}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{22921290-4487-417A-9BAA-D25A1840A554}.Release|Any CPU.Build.0 = Release|Any CPU
+		{12BCC25F-9712-4223-8E34-50B7C060D8E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12BCC25F-9712-4223-8E34-50B7C060D8E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12BCC25F-9712-4223-8E34-50B7C060D8E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12BCC25F-9712-4223-8E34-50B7C060D8E2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
