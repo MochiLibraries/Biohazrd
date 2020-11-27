@@ -67,6 +67,8 @@ namespace Biohazrd
         {
             try
             {
+                Debug.WriteLine($"{DebugPrefix}Applying STL#1300 workaround, see https://github.com/InfectedLibraries/Biohazrd/issues/98 for details.");
+
                 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
                 // First we locate Visual Studio using logic similar to Clang
                 // https://github.com/InfectedLibraries/llvm-project/blob/6d5c430eb3c0bd49f6f5bda4b0d2d8aa79b0fa3f/clang/lib/Driver/ToolChains/MSVC.cpp#L178-L268
