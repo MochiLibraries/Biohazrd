@@ -1,5 +1,6 @@
 ﻿using Biohazrd.Transformation;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Biohazrd.CSharp
 {
@@ -65,12 +66,8 @@ namespace Biohazrd.CSharp
             if (context.Parent is PointerTypeReference)
             { return type; }
 
-            // Methods can use MarshalAs or implicitly use these types on the vtable
-            if (context.ParentDeclaration is TranslatedFunction or TranslatedParameter)
-            { return type; }
-
-            // Fields can use MarshalAs or are translated using pointers
-            if (context.ParentDeclaration is TranslatedField or TranslatedStaticField)
+            // If the parent type reference isn't a function pointer, Blittablebool/BlittableChar should not be necessary
+            if (!context.Parents.Any(t => t is FunctionPointerTypeReference))
             { return type; }
 
             if (type.Type == CSharpBuiltinType.Bool)
