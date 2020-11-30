@@ -81,7 +81,7 @@ namespace Biohazrd.Utilities
                 => new DiagnosticOrSubcategory(diagnostic);
         }
 
-        public void WriteOutDiagnostics(TextWriter writer, bool writeToConsole)
+        public void WriteOutDiagnostics(TextWriter? writer, bool writeToConsole)
         {
             bool firstCategory = true;
             bool categoryHeaderWritten;
@@ -93,15 +93,15 @@ namespace Biohazrd.Utilities
                 { firstCategory = false; }
                 else
                 {
-                    writer.WriteLine();
+                    writer?.WriteLine();
 
                     if (writeToConsole)
                     { Console.WriteLine(); }
                 }
 
-                writer.WriteLine(headerDivider);
-                writer.WriteLine(categoryName);
-                writer.WriteLine(headerDivider);
+                writer?.WriteLine(headerDivider);
+                writer?.WriteLine(categoryName);
+                writer?.WriteLine(headerDivider);
 
                 if (writeToConsole)
                 {
@@ -130,7 +130,7 @@ namespace Biohazrd.Utilities
                 string rightPadString = leftPad == rightPad ? leftPadString : new String('-', rightPad);
                 string line = $"{leftPadString} {subcategoryName} {rightPadString}";
 
-                writer.WriteLine(line);
+                writer?.WriteLine(line);
 
                 if (writeToConsole)
                 {
@@ -196,7 +196,8 @@ namespace Biohazrd.Utilities
 
             void WriteDiagnostic(in TranslationDiagnostic diagnostic)
             {
-                WriteDiagnosticToWriter(writer, diagnostic);
+                if (writer is not null)
+                { WriteDiagnosticToWriter(writer, diagnostic); }
 
                 if (writeToConsole)
                 { WriteDiagnosticToConsole(diagnostic); }
@@ -240,7 +241,8 @@ namespace Biohazrd.Utilities
 
                 if (!hadOutput && category.SkipMessage is not null)
                 {
-                    writer.WriteLine(category.SkipMessage);
+                    if (writer is not null)
+                    { writer.WriteLine(category.SkipMessage); }
 
                     if (writeToConsole)
                     { Console.WriteLine(category.SkipMessage); }
