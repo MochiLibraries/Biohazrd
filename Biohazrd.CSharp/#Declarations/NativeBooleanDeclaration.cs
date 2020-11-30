@@ -39,7 +39,7 @@ namespace Biohazrd.CSharp
             // That one method is seemingly never used directly: https://apisof.net/catalog/System.Boolean.System.IConvertible.GetTypeCode%28%29
             writer.EnsureSeparation();
             writer.WriteLine("[StructLayout(LayoutKind.Sequential)]"); // This prevents a warning on the Value field.
-            writer.WriteLine($"public readonly struct {sanitizedName} : IComparable, IComparable<bool>, IEquatable<bool>, IComparable<{sanitizedName}>, IEquatable<{sanitizedName}>");
+            writer.WriteLine($"public readonly partial struct {sanitizedName} : IComparable, IComparable<bool>, IEquatable<bool>, IComparable<{sanitizedName}>, IEquatable<{sanitizedName}>");
             using (writer.Block())
             {
                 // Note: You get slightly better codegen in some scenarios if this is a bool with MarshalAs attached to it,

@@ -38,7 +38,7 @@ namespace Biohazrd.CSharp
             // https://github.com/dotnet/runtime/blob/29e9b5b7fd95231d9cd9d3ae351404e63cbb6d5a/src/coreclr/src/vm/fieldmarshaler.cpp#L233-L235
             writer.EnsureSeparation();
             writer.WriteLine("[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]");
-            writer.WriteLine($"public readonly struct {sanitizedName} : IComparable, IComparable<char>, IEquatable<char>, IComparable<{sanitizedName}>, IEquatable<{sanitizedName}>");
+            writer.WriteLine($"public readonly partial struct {sanitizedName} : IComparable, IComparable<char>, IEquatable<char>, IComparable<{sanitizedName}>, IEquatable<{sanitizedName}>");
             using (writer.Block())
             {
                 writer.WriteLine("private readonly char Value;");
