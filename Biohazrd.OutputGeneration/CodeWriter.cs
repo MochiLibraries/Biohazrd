@@ -64,6 +64,7 @@ namespace Biohazrd.OutputGeneration
             { return; }
 
             WriteLine();
+            NoSeparationNeeded = true;
         }
 
         public override void Write(char value)
