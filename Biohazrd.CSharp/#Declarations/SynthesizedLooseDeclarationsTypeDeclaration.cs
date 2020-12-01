@@ -5,11 +5,11 @@ using System.Collections.Immutable;
 
 namespace Biohazrd.CSharp
 {
-    public sealed record SynthesizedLooseDeclarationsType : TranslatedDeclaration, ICustomTranslatedDeclaration
+    public sealed record SynthesizedLooseDeclarationsTypeDeclaration : TranslatedDeclaration, ICustomTranslatedDeclaration
     {
         public ImmutableList<TranslatedDeclaration> Members { get; init; } = ImmutableList<TranslatedDeclaration>.Empty;
 
-        public SynthesizedLooseDeclarationsType(TranslatedFile file)
+        public SynthesizedLooseDeclarationsTypeDeclaration(TranslatedFile file)
             : base(file)
             => Accessibility = AccessModifier.Public;
 

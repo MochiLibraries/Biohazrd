@@ -27,7 +27,7 @@ namespace Biohazrd.CSharp
             => modifier == AccessModifier.Internal || modifier == AccessModifier.Public;
 
         private static bool IsValidFieldOrMethodParent(this IEnumerable<TranslatedDeclaration> declaration)
-            => declaration is TranslatedRecord or SynthesizedLooseDeclarationsType;
+            => declaration is TranslatedRecord or SynthesizedLooseDeclarationsTypeDeclaration;
 
         public static bool IsValidFieldOrMethodContext(this TransformationContext context)
             => context.Parent.IsValidFieldOrMethodParent();

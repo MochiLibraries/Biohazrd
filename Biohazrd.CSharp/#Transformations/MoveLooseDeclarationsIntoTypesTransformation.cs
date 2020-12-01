@@ -85,7 +85,7 @@ namespace Biohazrd.CSharp
                 ImmutableList<TranslatedDeclaration>.Builder synthesizedDeclarations = ImmutableList.CreateBuilder<TranslatedDeclaration>();
                 foreach ((string typeName, List<TranslatedDeclaration> declarations) in LooseDeclarationsLookup)
                 {
-                    synthesizedDeclarations.Add(new SynthesizedLooseDeclarationsType(declarations[0].File)
+                    synthesizedDeclarations.Add(new SynthesizedLooseDeclarationsTypeDeclaration(declarations[0].File)
                     {
                         Name = typeName,
                         Members = declarations.ToImmutableList()

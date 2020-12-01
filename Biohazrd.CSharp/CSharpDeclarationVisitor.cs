@@ -9,7 +9,7 @@
                 case ConstantArrayTypeDeclaration constantArrayTypeDeclaration:
                     VisitConstantArrayTypeDeclaration(context, constantArrayTypeDeclaration);
                     return;
-                case SynthesizedLooseDeclarationsType synthesizedLooseDeclarationsType:
+                case SynthesizedLooseDeclarationsTypeDeclaration synthesizedLooseDeclarationsType:
                     VisitSynthesizedLooseDeclarationsType(context, synthesizedLooseDeclarationsType);
                     return;
                 default:
@@ -21,7 +21,7 @@
         protected virtual void VisitConstantArrayTypeDeclaration(VisitorContext context, ConstantArrayTypeDeclaration declaration)
             => VisitDeclaration(context, declaration);
 
-        protected virtual void VisitSynthesizedLooseDeclarationsType(VisitorContext context, SynthesizedLooseDeclarationsType declaration)
+        protected virtual void VisitSynthesizedLooseDeclarationsType(VisitorContext context, SynthesizedLooseDeclarationsTypeDeclaration declaration)
             => VisitDeclaration(context, declaration);
     }
 }
