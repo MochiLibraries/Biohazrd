@@ -62,7 +62,7 @@ namespace Biohazrd.CSharp
             Writer.Write(" = (");
             WriteTypeAsReference(context, declaration, declaration.Type);
             //TODO: This leaks handles to the native library.
-            Writer.Write($")NativeLibrary.GetExport(NativeLibrary.Load(\"{SanitizeStringLiteral(declaration.DllFileName)}\"), \"{SanitizeStringLiteral(declaration.MangledName)}\");");
+            Writer.WriteLine($")NativeLibrary.GetExport(NativeLibrary.Load(\"{SanitizeStringLiteral(declaration.DllFileName)}\"), \"{SanitizeStringLiteral(declaration.MangledName)}\");");
         }
 
         protected override void VisitBitField(VisitorContext context, TranslatedBitField declaration)
