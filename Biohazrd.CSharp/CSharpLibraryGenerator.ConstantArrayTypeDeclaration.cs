@@ -8,7 +8,7 @@ namespace Biohazrd.CSharp
         private const string ConstantArrayEnumeratorName = "ConstantArrayEnumerator";
         private const string ConstantArrayOfPointersEnumeratorName = "ConstantArrayOfPointersEnumerator";
 
-        protected override void VisitConstantArrayTypeDeclaration(VisitorContext context, ConstantArrayTypeDeclaration declaration)
+        protected override void VisitConstantArrayType(VisitorContext context, ConstantArrayTypeDeclaration declaration)
         {
             const string element0Name = "Element0";
             const string element0PointerName = "Element0Pointer";
