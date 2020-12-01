@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using System.Diagnostics;
 
 namespace Biohazrd.Transformation.Common
 {
@@ -36,6 +37,10 @@ namespace Biohazrd.Transformation.Common
                 }
                 case PointerType pointerType:
                 {
+                    // Clang represents function pointers as PointerType -> FunctionProtoType whereas we combine the two.
+                    if (pointerType.PointeeType is FunctionProtoType innerFunctionProtoType)
+                    { return new FunctionPointerTypeReference(innerFunctionProtoType); }
+
                     ClangTypeReference inner = new(pointerType.PointeeType);
                     return new PointerTypeReference(inner);
                 }
@@ -67,6 +72,7 @@ namespace Biohazrd.Transformation.Common
                 }
                 case FunctionProtoType functionProtoType:
                 {
+                    Debug.Fail("This branch is thought to be unreachable because it is handled in the PointerType branch.");
                     return new FunctionPointerTypeReference(functionProtoType);
                 }
                 case EnumType enumType:
