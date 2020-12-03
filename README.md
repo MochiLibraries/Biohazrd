@@ -9,6 +9,8 @@ Biohazrd is still under heavy development, documentation and API stability are n
 
 Interested in seeing it used? Check out [InfectedImGui](https://github.com/InfectedLibraries/InfectedImGui) or [InfectedPhysX](https://github.com/InfectedLibraries/InfectedPhysX).
 
+We also have peliminary documentation available in [the docs folder](docs/).
+
 ## License
 
 This project is licensed under the MIT License. [See the license file for details](LICENSE.txt).
