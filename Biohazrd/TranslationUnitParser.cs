@@ -90,6 +90,17 @@ namespace Biohazrd
 
         private void ProcessCursor(Cursor cursor)
         {
+            // extern "C" declarations are completely ignored in Biohazrd
+            // Their effect is already expressed on how they affect the actual declarations, and they cause unintentional scoping problems if we let them go to CreateDeclarations.
+            // Note that this doesn't handle all extern "C" declarations since ones which are nested inside namespaces will be handled by CreateDeclarations.
+            if (cursor is Decl { Kind: CX_DeclKind.CX_DeclKind_LinkageSpec })
+            {
+                foreach (Cursor childCursor in cursor.CursorChildren)
+                { ProcessCursor(childCursor); }
+
+                return;
+            }
+
             // Ignore cursors from system headers
             // (System headers in Clang are headers that come from specific files or have a special pragma. This does not mean "ignore #include <...>".)
             if (Options.SystemHeadersAreAlwaysOutOfScope && (cursor.Extent.Start.IsInSystemHeader || cursor.Extent.End.IsInSystemHeader))
@@ -266,6 +277,7 @@ namespace Biohazrd
                         //---------------------------------------------------------------------------------------------------------
                         case NamespaceDecl:
                         case { Kind: CX_DeclKind.CX_DeclKind_LinkageSpec }: // extern "C"
+                            // Note: extern "C" is mosly handled by ProcessCursor, but they can occur here if they're nested inside a namespace.
                             return CreateChildDeclarations(this, cursor, file);
 
                         //---------------------------------------------------------------------------------------------------------
