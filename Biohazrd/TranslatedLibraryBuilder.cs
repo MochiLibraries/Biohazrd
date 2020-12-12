@@ -1,8 +1,10 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -12,8 +14,37 @@ namespace Biohazrd
 {
     public sealed partial class TranslatedLibraryBuilder
     {
-        private readonly List<string> CommandLineArguments = new List<string>();
-        private readonly List<string> FilePaths = new List<string>();
+        private readonly List<string> CommandLineArguments = new();
+        private readonly List<SourceFile> Files = new();
+
+        public void AddFile(SourceFile sourceFile)
+        {
+            Debug.Assert(Path.IsPathFullyQualified(sourceFile.FilePath), "File paths should always be fully qualified.");
+
+            // We can't index files with quotes in their paths (possible on Linux) because they can't be included
+            if (sourceFile.IndexDirectly && sourceFile.FilePath.Contains('"'))
+            { throw new ArgumentException("Files marked to be indexed must not have quotes in thier path.", nameof(sourceFile)); }
+
+            // If provided, contents must be either a string or bytes but not both
+            if (sourceFile.Contents is not null && !sourceFile.ContentBytes.IsEmpty)
+            { throw new ArgumentException($"Files must not have both {nameof(sourceFile.Contents)} and {nameof(sourceFile.ContentBytes)}.", nameof(sourceFile)); }
+
+            // If a file is virtual, it must have contents
+            if (sourceFile.IsVirtual && !sourceFile.HasContents)
+            { throw new ArgumentException("Virtual files must have contents.", nameof(sourceFile)); }
+
+            // If the file has contents, eagerly encode it as UTF8 bytes so any encoding errors happen sooner rather than later
+            if (sourceFile.Contents is not null)
+            {
+                sourceFile = sourceFile with
+                {
+                    Contents = null,
+                    ContentBytes = Encoding.UTF8.GetBytes(sourceFile.Contents)
+                };
+            }
+
+            Files.Add(sourceFile);
+        }
 
         public void AddFile(string filePath)
         {
@@ -25,11 +56,14 @@ namespace Biohazrd
             // (This also normalizes the path.)
             filePath = Path.GetFullPath(filePath);
 
-            FilePaths.Add(filePath);
+            AddFile(new SourceFile(filePath));
         }
 
         public void AddFiles(IEnumerable<string> filePaths)
         {
+            if (filePaths is ICollection<string> filePathsList)
+            { Files.Capacity += filePathsList.Count; }
+
             foreach (string filePath in filePaths)
             { AddFile(filePath); }
         }
@@ -120,20 +154,27 @@ namespace Biohazrd
             // This does assume that all input files can be included in the same translation unit and that they use `#pragma once` or equivalent header guards.
             // Since this is typical of well-formed C++ libraries, it should be fine.
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            string indexFileName;
-            string indexCodeText;
+            SourceFile indexFile;
             {
-                // According to documentation this file must already exist on the filesystem, but that doesn't actually seem to be true.
-                // https://clang.llvm.org/doxygen/structCXUnsavedFile.html#aa8bf5d4351628ee8502b517421e8b418
-                // In fact, we intentionally use a file name that's illegal (on Windows) so it's unlikely we conflict with any real files.
-                indexFileName = $"<>{nameof(TranslatedLibrary)}IndexFile.cpp";
-
                 StringBuilder indexFileCodeTextBuilder = new StringBuilder();
 
-                foreach (string filePath in FilePaths)
-                { indexFileCodeTextBuilder.AppendLine($"#include \"{filePath}\""); }
+                foreach (SourceFile file in Files)
+                {
+                    if (file.IndexDirectly)
+                    { indexFileCodeTextBuilder.AppendLine($"#include \"{file.FilePath}\""); }
+                }
 
-                indexCodeText = indexFileCodeTextBuilder.ToString();
+                // According to documentation this file must already exist on the filesystem, but that doesn't actually seem to be true for
+                // the primary file or any files included by absolute path.
+                // (However, Clang will not be able to find any files included by relative path if they don't actually exist.)
+                // https://clang.llvm.org/doxygen/structCXUnsavedFile.html#aa8bf5d4351628ee8502b517421e8b418
+                // In fact, we intentionally use a file name that's illegal (on Windows) so it's unlikely we conflict with any real files.
+                indexFile = new SourceFile($"<>BiohazrdIndexFile.cpp")
+                {
+                    IsInScope = false,
+                    IndexDirectly = false,
+                    ContentBytes = Encoding.UTF8.GetBytes(indexFileCodeTextBuilder.ToString())
+                };
             }
 
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -142,50 +183,57 @@ namespace Biohazrd
             TranslationUnitAndIndex? translationUnitAndIndex = null;
             TranslationUnit? translationUnit = null;
             {
+                List<CXUnsavedFile> unsavedFiles = new(stl1300Workaround.ShouldBeApplied ? 2 : 1);
+                List<MemoryHandle> memoryHandles = new(1);
+
                 CXIndex clangIndex = default;
                 CXTranslationUnit translationUnitHandle = default;
 
                 try
                 {
+                    //---------------------------------------------------------------------------------
+                    // Create the unsaved files list
+                    //---------------------------------------------------------------------------------
+                    // LLVM will internally copy the buffers we pass to it, so pinning these only for the duration of the index creation is fine here.
+                    // https://github.com/llvm/llvm-project/blob/llvmorg-10.0.0/clang/tools/libclang/CIndex.cpp#L3497
+
+                    // Add the index file
+                    unsavedFiles.Add(indexFile.CreateUnsavedFile(memoryHandles));
+
+                    // Add the STL1300 workaround if needed
+                    if (stl1300Workaround.ShouldBeApplied)
+                    { unsavedFiles.Add(stl1300Workaround.UnsavedFile); }
+
+                    // Add user-specified memory files
+                    foreach (SourceFile file in Files)
+                    {
+                        if (file.HasContents)
+                        { unsavedFiles.Add(file.CreateUnsavedFile(memoryHandles)); }
+                    }
+
+                    //---------------------------------------------------------------------------------
+                    // Create the translation unit
+                    //---------------------------------------------------------------------------------
                     const CXTranslationUnit_Flags translationUnitFlags = CXTranslationUnit_Flags.CXTranslationUnit_IncludeAttributedTypes;
 
                     // Allocate the libclang Index
                     clangIndex = CXIndex.Create();
 
-                    // LLVM will internally copy the buffers we pass to it, so pinning them is fine here.
-                    // https://github.com/llvm/llvm-project/blob/llvmorg-10.0.0/clang/tools/libclang/CIndex.cpp#L3497
-                    byte[] indexFileCodeTextBytes = Encoding.UTF8.GetBytes(indexCodeText);
-                    fixed (byte* indexFileNamePtr = Encoding.UTF8.GetBytesNullTerminated(indexFileName))
-                    fixed (byte* indexCodeTextPtr = indexFileCodeTextBytes)
-                    {
-                        int numUnsavedFiles = stl1300Workaround.ShouldBeApplied ? 2 : 1;
-                        Span<CXUnsavedFile> unsavedFiles = stackalloc CXUnsavedFile[numUnsavedFiles];
-                        unsavedFiles[0] = new CXUnsavedFile()
-                        {
-                            Filename = (sbyte*)indexFileNamePtr,
-                            Contents = (sbyte*)indexCodeTextPtr,
-                            Length = (UIntPtr)indexFileCodeTextBytes.Length
-                        };
+                    CXErrorCode translationUnitStatus = CXTranslationUnit.TryParse
+                    (
+                        clangIndex,
+                        indexFile.FilePath,
+                        CollectionsMarshal.AsSpan(CommandLineArguments),
+                        CollectionsMarshal.AsSpan(unsavedFiles),
+                        translationUnitFlags,
+                        out translationUnitHandle
+                    );
 
-                        if (stl1300Workaround.ShouldBeApplied)
-                        { unsavedFiles[1] = stl1300Workaround.UnsavedFile; }
-
-                        CXErrorCode translationUnitStatus = CXTranslationUnit.TryParse
-                        (
-                            clangIndex,
-                            indexFileName,
-                            CollectionsMarshal.AsSpan(CommandLineArguments),
-                            unsavedFiles,
-                            translationUnitFlags,
-                            out translationUnitHandle
-                        );
-
-                        // In the event parsing fails, we throw an exception
-                        // This generally never happens since Clang usually emits diagnostics in a healthy manner.
-                        // libclang uses the status code to report things like internal programming errors or invalid arguments.
-                        if (translationUnitStatus != CXErrorCode.CXError_Success)
-                        { throw new InvalidOperationException($"Failed to parse the Biohazrd index file due to a fatal Clang error {translationUnitStatus}."); }
-                    }
+                    // In the event parsing fails, we throw an exception
+                    // This generally never happens since Clang usually emits diagnostics in a healthy manner.
+                    // libclang uses the status code to report things like internal programming errors or invalid arguments.
+                    if (translationUnitStatus != CXErrorCode.CXError_Success)
+                    { throw new InvalidOperationException($"Failed to parse the Biohazrd index file due to a fatal Clang error {translationUnitStatus}."); }
 
                     // Create the translation unit
                     translationUnit = TranslationUnit.GetOrCreate(translationUnitHandle);
@@ -195,6 +243,10 @@ namespace Biohazrd
                 }
                 finally
                 {
+                    // Free all of the memory handles
+                    foreach (MemoryHandle memoryHandle in memoryHandles)
+                    { memoryHandle.Dispose(); }
+
                     // If we failed to create the translation unit/index pair, make sure to dispose of the index/translation unit
                     if (translationUnitAndIndex is null)
                     {
@@ -212,7 +264,7 @@ namespace Biohazrd
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
             // Process the translation unit
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            TranslationUnitParser processor = new(FilePaths, translationUnit);
+            TranslationUnitParser processor = new(Files, translationUnit);
             ImmutableArray<TranslatedFile> files;
             ImmutableArray<TranslationDiagnostic> parsingDiagnostics;
             ImmutableList<TranslatedDeclaration> declarations;

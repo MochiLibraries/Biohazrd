@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using static Biohazrd.TranslationUnitParser.CreateDeclarationsEnumerator;
 using ClangType = ClangSharp.Type;
 
@@ -29,7 +30,7 @@ namespace Biohazrd
 
         private readonly bool ParsingComplete = false;
 
-        internal TranslationUnitParser(List<string> filePaths, TranslationUnit translationUnit)
+        internal TranslationUnitParser(List<SourceFile> sourceFiles, TranslationUnit translationUnit)
         {
             TranslationUnit = translationUnit;
 
@@ -37,10 +38,10 @@ namespace Biohazrd
             // This is technically only valid on case-insensitive file systems, but in practice it's uncommon for two files to have the same case-insensitive name even on systems which support it.
             // (Especially for code which may be checked into source control and cloned on other operating systems.)
             // When https://github.com/dotnet/runtime/issues/14321 is realized, we should consider normalizing the paths to actual case instead.
-            UnusedFilePaths = new HashSet<string>(filePaths, StringComparer.OrdinalIgnoreCase);
+            UnusedFilePaths = new HashSet<string>(sourceFiles.Where(s => s.IsInScope).Select(s => s.FilePath), StringComparer.OrdinalIgnoreCase);
             AllFilePaths = new Dictionary<string, string>(UnusedFilePaths.Count, StringComparer.OrdinalIgnoreCase);
 
-            foreach (string filePath in filePaths)
+            foreach (string filePath in UnusedFilePaths)
             { AllFilePaths.Add(filePath, filePath); }
 
             // Process the translation unit
