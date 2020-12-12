@@ -1,0 +1,17 @@
+<Project>
+  <Import Project="../Directory.Build.props" />
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.8.3" />
+    <!--
+      We reference xunit bit-by-bit so we can use xunit.assert via submodule to enable nullable annotations
+      https://github.com/xunit/assert.xunit/pull/36#issuecomment-578990557
+    -->
+    <PackageReference Include="xunit.core" Version="2.4.1" />
+    <PackageReference Include="xunit.analyzers" Version="0.10.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Biohazrd.Tests.Common/Biohazrd.Tests.Common.csproj" Condition="'$(MSBuildProjectName)' != 'Biohazrd.Tests.Common'" />
+  </ItemGroup>
+</Project>
