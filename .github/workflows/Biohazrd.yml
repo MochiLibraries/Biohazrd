@@ -1,0 +1,40 @@
+name: Biohazrd
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: false
+  ContinuousIntegrationBuild: true
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        configuration: ['Debug', 'Release']
+    name: Build and Test ${{matrix.configuration}}
+    runs-on: windows-latest
+    steps:
+      # ----------------------------------------------------------------------- Checkout
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      # ----------------------------------------------------------------------- Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+
+      # ----------------------------------------------------------------------- Build
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration ${{matrix.configuration}}
+
+      # ----------------------------------------------------------------------- Test
+      - name: Test
+        run: dotnet test --no-restore --no-build --configuration ${{matrix.configuration}} --verbosity normal
