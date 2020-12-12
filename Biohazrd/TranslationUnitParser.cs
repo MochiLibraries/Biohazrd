@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using static Biohazrd.TranslationUnitParser.CreateDeclarationsEnumerator;
@@ -88,6 +89,63 @@ namespace Biohazrd
             { ProcessCursor(cursor); }
         }
 
+        private bool IsInScope(CXFile clangFile, [MaybeNullWhen(false)] out TranslatedFile file)
+        {
+            file = null;
+
+            // Check if this file is already known to be out-of-scope
+            if (KnownOutOfScopeFileHandles.Contains(clangFile.Handle))
+            { return false; }
+
+            // Check if the file is known to be in-scope
+            if (FileHandleToTranslatedFileLookup.TryGetValue(clangFile.Handle, out file))
+            { return true; }
+
+            // Get the name of the file
+            string fileName = clangFile.TryGetRealPathName().ToString();
+
+            if (String.IsNullOrEmpty(fileName))
+            { fileName = clangFile.Name.ToString(); }
+
+            // Make sure we have the full path and that it's normalized.
+            fileName = Path.GetFullPath(fileName);
+
+            // See if we know about this file and it is unused.
+            // If it isn't, this file is out of scope
+            if (UnusedFilePaths.Remove(fileName) == false)
+            {
+                // We do not expect Clang to give us two different `CXFile`s with the same file name but different handles.
+                Debug.Assert(!AllFilePaths.ContainsKey(fileName), $"'{fileName}' appeared in the translation unit multiple times with different {nameof(CXFile)} handles.");
+
+                KnownOutOfScopeFileHandles.Add(clangFile.Handle);
+                return false;
+            }
+
+            // Create a new TranslatedFile to represent this file
+            // Note that we look up the canonical name from AllFilePaths instead of using fileName directly
+            // This ensures the file casing associated wtih TranslatedFile is consistent with what was passed to TranslatedLibraryBuilder.
+            file = new TranslatedFile(AllFilePaths[fileName], clangFile.Handle);
+            FileHandleToTranslatedFileLookup.Add(clangFile.Handle, file);
+            FilesBuilder.Add(file);
+            return true;
+        }
+
+        private bool IsInScope(Cursor cursor, [MaybeNullWhen(false)] out TranslatedFile file)
+        {
+            // Ignore cursors from system headers
+            // (System headers in Clang are headers that come from specific files or have a special pragma. This does not mean "ignore #include <...>".)
+            if (Options.SystemHeadersAreAlwaysOutOfScope && (cursor.Extent.Start.IsInSystemHeader || cursor.Extent.End.IsInSystemHeader))
+            {
+                file = null;
+                return false;
+            }
+
+            // Look up the Clang file associated with the cursor
+            CXFile cursorFile = cursor.Extent.Start.GetFileLocation();
+            Debug.Assert(cursor.Extent.End.GetFileLocation().Handle == cursorFile.Handle, "The start and end file handles of a cursor should match.");
+            return IsInScope(cursorFile, out file);
+        }
+
         private void ProcessCursor(Cursor cursor)
         {
             // extern "C" declarations are completely ignored in Biohazrd
@@ -101,53 +159,12 @@ namespace Biohazrd
                 return;
             }
 
-            // Ignore cursors from system headers
-            // (System headers in Clang are headers that come from specific files or have a special pragma. This does not mean "ignore #include <...>".)
-            if (Options.SystemHeadersAreAlwaysOutOfScope && (cursor.Extent.Start.IsInSystemHeader || cursor.Extent.End.IsInSystemHeader))
-            { return; }
-
-            // Figure out what file this cursor comes from
-            CXFile cursorFile = cursor.Extent.Start.GetFileLocation();
-            Debug.Assert(cursor.Extent.End.GetFileLocation().Handle == cursorFile.Handle, "The start and end file handles of a cursor should match.");
-
-            // If this file is known to be out of scope, skip the cursor
-            if (KnownOutOfScopeFileHandles.Contains(cursorFile.Handle))
+            // Figure out what file this cursor comes from and if it is in scope
+            TranslatedFile? translatedFile;
+            if (!IsInScope(cursor, out translatedFile))
             {
                 AssertAllChildrenOutOfScope(cursor);
                 return;
-            }
-
-            // Look up the TranslatedFile associated with this file handle or determine if we need to create one
-            TranslatedFile? translatedFile;
-            if (!FileHandleToTranslatedFileLookup.TryGetValue(cursorFile.Handle, out translatedFile))
-            {
-                // Get the name of the file
-                string fileName = cursorFile.TryGetRealPathName().ToString();
-
-                if (String.IsNullOrEmpty(fileName))
-                { fileName = cursorFile.Name.ToString(); }
-
-                // Make sure we have the full path and that it's normalized.
-                fileName = Path.GetFullPath(fileName);
-
-                // See if we know about this file and it is unused.
-                // If it isn't, this file is out of scope
-                if (UnusedFilePaths.Remove(fileName) == false)
-                {
-                    // We do not expect Clang to give us two different `CXFile`s with the same file name but different handles.
-                    Debug.Assert(!AllFilePaths.ContainsKey(fileName), $"'{fileName}' appeared in the translation unit multiple times with different {nameof(CXFile)} handles.");
-
-                    KnownOutOfScopeFileHandles.Add(cursorFile.Handle);
-                    AssertAllChildrenOutOfScope(cursor);
-                    return;
-                }
-
-                // Create a new TranslatedFile to represent this file
-                // Note that we look up the canonical name from AllFilePaths instead of using fileName directly
-                // This ensures the file casing associated wtih TranslatedFile is consistent with what was passed to TranslatedLibraryBuilder.
-                translatedFile = new TranslatedFile(AllFilePaths[fileName], cursorFile.Handle);
-                FileHandleToTranslatedFileLookup.Add(cursorFile.Handle, translatedFile);
-                FilesBuilder.Add(translatedFile);
             }
 
             // Process the cursor for the associated file
