@@ -17,6 +17,8 @@ namespace Biohazrd
         private readonly List<string> CommandLineArguments = new();
         private readonly List<SourceFile> Files = new();
 
+        public TranslationOptions Options { get; set; } = new();
+
         public void AddFile(SourceFile sourceFile)
         {
             Debug.Assert(Path.IsPathFullyQualified(sourceFile.FilePath), "File paths should always be fully qualified.");
@@ -264,7 +266,7 @@ namespace Biohazrd
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
             // Process the translation unit
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            TranslationUnitParser processor = new(Files, translationUnit);
+            TranslationUnitParser processor = new(Files, Options, translationUnit);
             ImmutableArray<TranslatedFile> files;
             ImmutableArray<TranslationDiagnostic> parsingDiagnostics;
             ImmutableList<TranslatedDeclaration> declarations;

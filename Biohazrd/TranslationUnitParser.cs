@@ -15,6 +15,7 @@ namespace Biohazrd
     internal sealed partial class TranslationUnitParser
     {
         private readonly TranslationUnit TranslationUnit;
+        private readonly TranslationOptions Options;
 
         private readonly ImmutableArray<TranslationDiagnostic>.Builder ParsingDiagnosticsBuilder = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
 
@@ -30,9 +31,10 @@ namespace Biohazrd
 
         private readonly bool ParsingComplete = false;
 
-        internal TranslationUnitParser(List<SourceFile> sourceFiles, TranslationUnit translationUnit)
+        internal TranslationUnitParser(List<SourceFile> sourceFiles, TranslationOptions options, TranslationUnit translationUnit)
         {
             TranslationUnit = translationUnit;
+            Options = options;
 
             // We treat file paths are case-insensitive (see https://github.com/InfectedLibraries/Biohazrd/issues/1)
             // This is technically only valid on case-insensitive file systems, but in practice it's uncommon for two files to have the same case-insensitive name even on systems which support it.
@@ -90,7 +92,7 @@ namespace Biohazrd
         {
             // Ignore cursors from system headers
             // (System headers in Clang are headers that come from specific files or have a special pragma. This does not mean "ignore #include <...>".)
-            if (cursor.Extent.Start.IsInSystemHeader || cursor.Extent.End.IsInSystemHeader)
+            if (Options.SystemHeadersAreAlwaysOutOfScope && (cursor.Extent.Start.IsInSystemHeader || cursor.Extent.End.IsInSystemHeader))
             { return; }
 
             // Figure out what file this cursor comes from
