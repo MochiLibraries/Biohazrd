@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
-    <RestoreSources>$(RestoreSources);https://nuget-ci.infectedlibraries.net/index.json</RestoreSources>
   </PropertyGroup>
 
   <ItemGroup>
