@@ -23,13 +23,18 @@ namespace Biohazrd
         /// </remarks>
         internal IntPtr Handle { get; }
 
-        /// <summary>A dummy translated file which represents synthesized declarations that don't directly correspond to a translated file.</summary>
-        public static readonly TranslatedFile Synthesized = new TranslatedFile("<>Synthesized", new IntPtr(-1));
+        /// <summary>Whether this file was specified as in-scope to <see cref="TranslatedLibraryBuilder"/>.</summary>
+        /// <remarks>Out-of-scope files may appear on declarations in certain situations. (Such as when an in-scope declaration contains a nested include to an out-of-scope file.)</remarks>
+        public bool WasInScope { get; }
 
-        internal TranslatedFile(string filePath, IntPtr handle)
+        /// <summary>A dummy translated file which represents synthesized declarations that don't directly correspond to a translated file.</summary>
+        public static readonly TranslatedFile Synthesized = new TranslatedFile("<>Synthesized", new IntPtr(-1), false);
+
+        internal TranslatedFile(string filePath, IntPtr handle, bool wasInScope)
         {
             FilePath = filePath;
             Handle = handle;
+            WasInScope = wasInScope;
         }
 
         public static bool operator ==(TranslatedFile? a, TranslatedFile? b)

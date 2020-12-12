@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using static Biohazrd.TranslationUnitParser.CreateDeclarationsEnumerator;
@@ -26,7 +25,7 @@ namespace Biohazrd
 
         private readonly ImmutableArray<TranslatedFile>.Builder FilesBuilder = ImmutableArray.CreateBuilder<TranslatedFile>();
         private readonly Dictionary<IntPtr, TranslatedFile> FileHandleToTranslatedFileLookup = new();
-        private readonly HashSet<IntPtr> KnownOutOfScopeFileHandles = new();
+        private readonly HashSet<TranslatedFile> PromotedOutOfScopeFiles = new(ReferenceEqualityComparer.Instance);
 
         private readonly ImmutableList<TranslatedDeclaration>.Builder DeclarationsBuilder = ImmutableList.CreateBuilder<TranslatedDeclaration>();
 
@@ -52,7 +51,10 @@ namespace Biohazrd
 
             // Add null-handle files for any remaining unused files
             foreach (string filePath in UnusedFilePaths)
-            { FilesBuilder.Add(new TranslatedFile(filePath, IntPtr.Zero)); }
+            { FilesBuilder.Add(new TranslatedFile(filePath, IntPtr.Zero, true)); }
+
+            // Add all promoted out-of-scope files
+            FilesBuilder.AddRange(PromotedOutOfScopeFiles);
 
             // Mark ourselves as complete
             ParsingComplete = true;
@@ -89,17 +91,13 @@ namespace Biohazrd
             { ProcessCursor(cursor); }
         }
 
-        private bool IsInScope(CXFile clangFile, [MaybeNullWhen(false)] out TranslatedFile file)
+        private TranslatedFile GetTranslatedFile(CXFile clangFile)
         {
-            file = null;
-
-            // Check if this file is already known to be out-of-scope
-            if (KnownOutOfScopeFileHandles.Contains(clangFile.Handle))
-            { return false; }
+            TranslatedFile? file;
 
             // Check if the file is known to be in-scope
             if (FileHandleToTranslatedFileLookup.TryGetValue(clangFile.Handle, out file))
-            { return true; }
+            { return file; }
 
             // Get the name of the file
             string fileName = clangFile.TryGetRealPathName().ToString();
@@ -117,33 +115,26 @@ namespace Biohazrd
                 // We do not expect Clang to give us two different `CXFile`s with the same file name but different handles.
                 Debug.Assert(!AllFilePaths.ContainsKey(fileName), $"'{fileName}' appeared in the translation unit multiple times with different {nameof(CXFile)} handles.");
 
-                KnownOutOfScopeFileHandles.Add(clangFile.Handle);
-                return false;
+                file = new TranslatedFile(fileName, clangFile.Handle, wasInScope: false); ;
+                FileHandleToTranslatedFileLookup.Add(clangFile.Handle, file);
+                return file;
             }
 
             // Create a new TranslatedFile to represent this file
             // Note that we look up the canonical name from AllFilePaths instead of using fileName directly
             // This ensures the file casing associated wtih TranslatedFile is consistent with what was passed to TranslatedLibraryBuilder.
-            file = new TranslatedFile(AllFilePaths[fileName], clangFile.Handle);
+            file = new TranslatedFile(AllFilePaths[fileName], clangFile.Handle, wasInScope: true);
             FileHandleToTranslatedFileLookup.Add(clangFile.Handle, file);
             FilesBuilder.Add(file);
-            return true;
+            return file;
         }
 
-        private bool IsInScope(Cursor cursor, [MaybeNullWhen(false)] out TranslatedFile file)
+        private TranslatedFile GetTranslatedFile(Cursor cursor)
         {
-            // Ignore cursors from system headers
-            // (System headers in Clang are headers that come from specific files or have a special pragma. This does not mean "ignore #include <...>".)
-            if (Options.SystemHeadersAreAlwaysOutOfScope && (cursor.Extent.Start.IsInSystemHeader || cursor.Extent.End.IsInSystemHeader))
-            {
-                file = null;
-                return false;
-            }
-
             // Look up the Clang file associated with the cursor
             CXFile cursorFile = cursor.Extent.Start.GetFileLocation();
             Debug.Assert(cursor.Extent.End.GetFileLocation().Handle == cursorFile.Handle, "The start and end file handles of a cursor should match.");
-            return IsInScope(cursorFile, out file);
+            return GetTranslatedFile(cursorFile);
         }
 
         private void ProcessCursor(Cursor cursor)
@@ -159,9 +150,14 @@ namespace Biohazrd
                 return;
             }
 
+            // Ignore cursors from system headers
+            // (System headers in Clang are headers that come from specific files or have a special pragma. This does not mean "ignore #include <...>".)
+            if (Options.SystemHeadersAreAlwaysOutOfScope && (cursor.Extent.Start.IsInSystemHeader || cursor.Extent.End.IsInSystemHeader))
+            { return; }
+
             // Figure out what file this cursor comes from and if it is in scope
-            TranslatedFile? translatedFile;
-            if (!IsInScope(cursor, out translatedFile))
+            TranslatedFile translatedFile = GetTranslatedFile(cursor);
+            if (!translatedFile.WasInScope)
             {
                 AssertAllChildrenOutOfScope(cursor);
                 return;
@@ -176,12 +172,32 @@ namespace Biohazrd
             if (ParsingComplete)
             { throw new InvalidOperationException("This translation unit parser has already completed parsing."); }
 
-            // We don't expect the file to change outside of ProcessCursor
-            // (IE: Cursors from one file should not be nested under cursors from another.)
+            // Check if the cursor's file changed
+            // This can happen if a file is included inside the scope of a declaration.
+            // (Some libraries do this to reduce repetition with macros.)
+            // (In theory it might be possible/safe to skip these declarations, but we keep them an issue a warning to err on the side of caution.)
             {
                 CXFile cursorFile = cursor.Extent.Start.GetFileLocation();
-                Debug.Assert(cursor.Extent.End.GetFileLocation().Handle == cursorFile.Handle, "The start and end file handles of a cursor should match.");
-                Debug.Assert(cursorFile.Handle == file.Handle, $"Cursor from '{cursorFile.Name}' encounted while creating declarations for '{file.FilePath}'.");
+
+                if (cursorFile.Handle != file.Handle)
+                {
+                    TranslatedFile newFile = GetTranslatedFile(cursor);
+
+                    // If the file was not in scope, it is promoted to be partially in-scope for the pruposes of this declaration
+                    // (This will not cause the file to be considered in-scope if it is included again outside of the parent declaration.)
+                    // If this is the first time this file was promoted and the containing file was in-scope, issue a warning
+                    if (!newFile.WasInScope && PromotedOutOfScopeFiles.Add(newFile) && file.WasInScope)
+                    {
+                        ParsingDiagnosticsBuilder.Add
+                        (
+                            Severity.Warning,
+                            $"Out-of-scope file '{newFile.FilePath}' was included inside a declaration from in-scope file '{file.FilePath}'. "+
+                            "The file was implicitly promoted to be in-scope in the context of the containning duration."
+                        );
+                    }
+
+                    file = newFile;
+                }
             }
 
             switch (cursor)
@@ -379,8 +395,8 @@ namespace Biohazrd
                     CXFile childFile = child.Extent.Start.GetFileLocation();
 
                     // Cursors which libclang doesn't handle might not have location information
-                    if (childFile.Handle != IntPtr.Zero)
-                    { Debug.Assert(KnownOutOfScopeFileHandles.Contains(childFile.Handle), "All children of a cursor that is out of scope must be out of scope."); }
+                    if (childFile.Handle != IntPtr.Zero && FileHandleToTranslatedFileLookup.TryGetValue(childFile.Handle, out TranslatedFile? translatedFile))
+                    { Debug.Assert(!translatedFile.WasInScope, "All children of a cursor that is out of scope must be out of scope."); }
                 }
 
                 AssertAllChildrenOutOfScope(child);
