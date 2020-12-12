@@ -11,6 +11,7 @@ env:
 jobs:
   build-and-test:
     strategy:
+      fail-fast: false
       matrix:
         configuration: ['Debug', 'Release']
     name: Build and Test ${{matrix.configuration}}
@@ -38,3 +39,30 @@ jobs:
       # ----------------------------------------------------------------------- Test
       - name: Test
         run: dotnet test --no-restore --no-build --configuration ${{matrix.configuration}} --verbosity normal
+
+  send-ci-failure-notification:
+    name: Send CI Failure Notification
+    needs: build-and-test
+    if: failure() && github.event_name != 'pull_request'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      # ----------------------------------------------------------------------- Checkout
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # ----------------------------------------------------------------------- Setup Python
+      - name: Setup Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      
+      # ----------------------------------------------------------------------- Send CI Failure Notification
+      - name: Send Notification
+        run: python .github/workflows/send-ci-failure-notification.py
+        env:
+          webhook_url: ${{secrets.TEAMS_WEBHOOK_URL}}
+          github_organization: ${{github.repository_owner}}
+          github_repo: ${{github.repository}}
+          github_workflow_name: ${{github.workflow}}
+          github_run_number: ${{github.run_id}}
