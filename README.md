@@ -1,7 +1,7 @@
 # Biohazrd
 
 [![MIT Licensed](https://img.shields.io/github/license/infectedlibraries/biohazrd?style=flat-square)](LICENSE.txt)
-[![CI Status](https://img.shields.io/github/workflow/status/infectedlibraries/biohazrd/Biohazrd?style=flat-square)](https://github.com/InfectedLibraries/Biohazrd/actions?query=workflow%3ABiohazrd+branch%3Amain)
+[![CI Status](https://img.shields.io/github/workflow/status/infectedlibraries/biohazrd/Biohazrd/main?style=flat-square)](https://github.com/InfectedLibraries/Biohazrd/actions?query=workflow%3ABiohazrd+branch%3Amain)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-lightgrey?logo=github&style=flat-square)](https://github.com/sponsors/PathogenDavid)
 
 Biohazrd is a framework for creating binding generators for C **and** C++ libraries. It aims to lower the amount of ongoing boilerplate maintenance required to use native libraries from .NET as well as allow direct interoperation with C++ libraries without a C translation later.
