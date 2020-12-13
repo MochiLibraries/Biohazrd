@@ -1,4 +1,5 @@
-﻿using Xunit;
+﻿using System.Linq;
+using Xunit;
 
 namespace Biohazrd.Tests.Common
 {
@@ -16,7 +17,7 @@ namespace Biohazrd.Tests.Common
             { builder.AddCommandLineArgument($"--target={targetTriple}"); }
 
             TranslatedLibrary library = builder.Create();
-            Assert.Empty(library.ParsingDiagnostics);
+            Assert.Empty(library.ParsingDiagnostics.Where(d => d.IsError));
             return library;
         }
     }
