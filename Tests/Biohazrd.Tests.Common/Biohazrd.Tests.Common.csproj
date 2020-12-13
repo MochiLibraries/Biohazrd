@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Compile Include="$(XunitAssertsRoot)**/*.cs" Visible="false" />
+    <ProjectReference Include="..\..\Biohazrd\Biohazrd.csproj" />
   </ItemGroup>
 
 </Project>

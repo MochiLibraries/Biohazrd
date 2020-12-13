@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using Biohazrd.Tests.Common;
+using System.IO;
 using System.Linq;
 using Xunit;
 
@@ -63,7 +64,8 @@ int FieldB;
             Assert.Equal(fileB, fieldB.File);
         }
 
-        [Fact(Skip = "https://github.com/InfectedLibraries/Biohazrd/issues/113")]
+        [FutureFact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/113")]
         public void IncludedFieldIsAttributedCorrectly()
         {
             TranslatedLibraryBuilder builder = new();
@@ -109,7 +111,8 @@ int FieldA;
             Assert.Equal(fileB, fieldB.File);
         }
 
-        [Fact(Skip = "https://github.com/InfectedLibraries/Biohazrd/issues/113")]
+        [FutureFact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/113")]
         public void IncludedEnumValuesAreAttributedCorrectly()
         {
             TranslatedLibraryBuilder builder = new();

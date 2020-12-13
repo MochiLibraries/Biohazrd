@@ -25,7 +25,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tooling", "tooling", "{09A8
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.Utilities", "Biohazrd.Utilities\Biohazrd.Utilities.csproj", "{12BCC25F-9712-4223-8E34-50B7C060D8E2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Biohazrd.Tests", "Tests\Biohazrd.Tests\Biohazrd.Tests.csproj", "{6CB0CBB8-279A-4EB1-BE18-4901FF59E237}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.Tests", "Tests\Biohazrd.Tests\Biohazrd.Tests.csproj", "{6CB0CBB8-279A-4EB1-BE18-4901FF59E237}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{CB582A63-8515-4C35-97AC-89798094CD7B}"
 	ProjectSection(SolutionItems) = preProject
@@ -33,7 +33,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{CB582A63
 		Tests\Directory.Build.targets = Tests\Directory.Build.targets
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Biohazrd.Tests.Common", "Tests\Biohazrd.Tests.Common\Biohazrd.Tests.Common.csproj", "{387321DB-41DF-4E83-9B16-CE4EA44C988D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.Tests.Common", "Tests\Biohazrd.Tests.Common\Biohazrd.Tests.Common.csproj", "{387321DB-41DF-4E83-9B16-CE4EA44C988D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Biohazrd.CSharp.Tests", "Tests\Biohazrd.CSharp.Tests\Biohazrd.CSharp.Tests.csproj", "{00F21754-DDAC-498B-A6C7-1185341CDB65}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +71,10 @@ Global
 		{387321DB-41DF-4E83-9B16-CE4EA44C988D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{387321DB-41DF-4E83-9B16-CE4EA44C988D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{387321DB-41DF-4E83-9B16-CE4EA44C988D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00F21754-DDAC-498B-A6C7-1185341CDB65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00F21754-DDAC-498B-A6C7-1185341CDB65}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00F21754-DDAC-498B-A6C7-1185341CDB65}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00F21754-DDAC-498B-A6C7-1185341CDB65}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -77,6 +83,7 @@ Global
 		{09A8B262-0D6C-43DA-A39D-7EFF5E12ECA6} = {A8649210-1355-403A-8B2D-45BD759B1B32}
 		{6CB0CBB8-279A-4EB1-BE18-4901FF59E237} = {CB582A63-8515-4C35-97AC-89798094CD7B}
 		{387321DB-41DF-4E83-9B16-CE4EA44C988D} = {CB582A63-8515-4C35-97AC-89798094CD7B}
+		{00F21754-DDAC-498B-A6C7-1185341CDB65} = {CB582A63-8515-4C35-97AC-89798094CD7B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {48868128-E026-4C69-969F-8D1EE05B66F5}
