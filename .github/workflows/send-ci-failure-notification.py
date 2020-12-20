@@ -3,6 +3,8 @@ import os
 import sys
 from urllib import request
 
+import gha
+
 def get_environment_variable(name):
     ret = os.getenv(name)
 
@@ -15,6 +17,7 @@ webhook_url = get_environment_variable('webhook_url')
 github_repo = get_environment_variable('github_repo')
 github_workflow_name = get_environment_variable('github_workflow_name')
 github_run_number = get_environment_variable('github_run_number')
+gha.fail_if_errors()
 
 card_data = f'''{{
   "type": "message",
