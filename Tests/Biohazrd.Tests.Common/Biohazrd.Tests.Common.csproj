@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Include="$(XunitAssertsRoot)**/*.cs" Visible="false" />
     <ProjectReference Include="..\..\Biohazrd\Biohazrd.csproj" />
+    <PackageReference Include="Microsoft.VisualStudio.Setup.Configuration.Interop" Version="2.3.2262-g94fae01e" />
   </ItemGroup>
 
 </Project>

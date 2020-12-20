@@ -5,6 +5,7 @@ namespace Biohazrd.Transformation.Infrastructure
     /// <summary>Provides infrastructure for accumulating diagnostics from type transformations.</summary>
     public ref struct DiagnosticAccumulator
     {
+        // Do not change the layout of this struct without also modifying DiagnosticAccumulatorRef
         internal ImmutableArray<TranslationDiagnostic>.Builder? _Diagnostics;
 
         /// <summary>Indicates whether diagnostics have accumulated in this accumulator.</summary>

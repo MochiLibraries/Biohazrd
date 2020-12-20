@@ -18,6 +18,7 @@ The transformations are listed in the order they're typically applied.
 * [`KludgeUnknownClangTypesIntoBuiltinTypesTransformation`](KludgeUnknownClangTypesIntoBuiltinTypesTransformation.md)
 * [`WrapNonBlittableTypesWhereNecessaryTransformation`](WrapNonBlittableTypesWhereNecessaryTransformation.md)
 * [`MoveLooseDeclarationsIntoTypesTransformation`](MoveLooseDeclarationsIntoTypesTransformation.md)
+* [`LinkImportsTransformation`](LinkImportsTransformation.md)
 * [`DeduplicateNamesTransformation`](DeduplicateNamesTransformation.md)
 * [`CSharpTranslationVerifier`](CSharpTranslationVerifier.md)
 

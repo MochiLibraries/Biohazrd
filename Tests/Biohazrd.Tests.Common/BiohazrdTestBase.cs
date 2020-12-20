@@ -5,6 +5,7 @@ namespace Biohazrd.Tests.Common
 {
     public abstract class BiohazrdTestBase
     {
+        /// <param name="targetTriple">https://clang.llvm.org/docs/CrossCompilation.html#target-triple</param>
         protected TranslatedLibrary CreateLibrary(string cppCode, string? targetTriple = null)
         {
             TranslatedLibraryBuilder builder = new();

@@ -24,7 +24,7 @@ namespace Biohazrd
         public bool HideFromIntellisense { get; init; } //TODO: C# leak
 
         public string DllFileName { get; init; } = "TODO.dll";
-        public string MangledName { get; }
+        public string MangledName { get; init; }
 
         internal TranslatedFunction(TranslatedFile file, FunctionDecl function)
             : base(file, function)
