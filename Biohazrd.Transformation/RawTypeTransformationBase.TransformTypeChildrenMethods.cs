@@ -26,7 +26,7 @@ namespace Biohazrd.Transformation
             { result = type; }
 
             // Add any diagnostics to the result
-            result.AddDiagnostics(diagnostics.MoveToImmutable());
+            result = result.AddDiagnostics(diagnostics.MoveToImmutable());
 
             // Return the result
             return result;
