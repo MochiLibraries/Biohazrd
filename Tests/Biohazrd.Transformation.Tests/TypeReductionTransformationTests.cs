@@ -68,6 +68,80 @@ void Test(function_pointer_t function);
         }
 
         [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/115")]
+        public void FunctionPointer_PointerToNonPointerFunction()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+typedef void (function_t)(int);
+void Test(function_t* function);
+"
+            );
+
+            // Reduce with the typedef
+            {
+                TranslatedLibrary reduced = new TypeReductionTransformation().Transform(library);
+
+                TranslatedTypedef typedef = reduced.FindDeclaration<TranslatedTypedef>("function_t");
+                FunctionPointerTypeReference functionPointer = AssertVoidIntFunctionPointerType(typedef.UnderlyingType);
+                Assert.True(functionPointer.IsNotActuallyAPointer); // The function type should be bare
+
+                // Parameter should reference the typedef via pointer
+                TranslatedParameter parameter = reduced.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
+                PointerTypeReference pointerType = Assert.IsType<PointerTypeReference>(parameter.Type);
+                TranslatedTypeReference referencedType = Assert.IsAssignableFrom<TranslatedTypeReference>(pointerType.Inner);
+                Assert.Equal(typedef, referencedType.TryResolve(reduced));
+            }
+
+            // Reduce without the typedef
+            {
+                TranslatedLibrary withoutTypedef = new RemoveRemainingTypedefsTransformation().Transform(library);
+                withoutTypedef = new TypeReductionTransformation().Transform(withoutTypedef);
+
+                TranslatedParameter parameter = withoutTypedef.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
+                FunctionPointerTypeReference functionPointer = AssertVoidIntFunctionPointerType(parameter.Type);
+                Assert.False(functionPointer.IsNotActuallyAPointer); // This should be flattened to an actual pointer
+            }
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/115")]
+        public void FunctionPointer_NonPointerFunctionUsedDirectly()
+        {
+            // Yes this is legal syntax for Test. It acts like a function pointer.
+            TranslatedLibrary library = CreateLibrary
+            (@"
+typedef void (function_t)(int);
+void Test(function_t function);
+"
+            );
+
+            // Reduce with the typedef
+            {
+                TranslatedLibrary reduced = new TypeReductionTransformation().Transform(library);
+
+                TranslatedTypedef typedef = reduced.FindDeclaration<TranslatedTypedef>("function_t");
+                FunctionPointerTypeReference functionPointer = AssertVoidIntFunctionPointerType(typedef.UnderlyingType);
+                Assert.True(functionPointer.IsNotActuallyAPointer); // The function type should be bare
+
+                // Parameter should reference the typedef directly
+                TranslatedParameter parameter = reduced.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
+                TranslatedTypeReference referencedType = Assert.IsAssignableFrom<TranslatedTypeReference>(parameter.Type);
+                Assert.Equal(typedef, referencedType.TryResolve(reduced));
+            }
+
+            // Reduce without the typedef
+            {
+                TranslatedLibrary withoutTypedef = new RemoveRemainingTypedefsTransformation().Transform(library);
+                withoutTypedef = new TypeReductionTransformation().Transform(withoutTypedef);
+
+                TranslatedParameter parameter = withoutTypedef.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
+                FunctionPointerTypeReference functionPointer = AssertVoidIntFunctionPointerType(parameter.Type);
+                Assert.True(functionPointer.IsNotActuallyAPointer); // This type should still not actually be a pointer since it isn't
+            }
+        }
+
+        [Fact]
         public void FunctionPointer_NoCallingConvention()
         {
             TranslatedLibrary library = CreateLibrary(@"void Test(void (*function)(int));", "i386-pc-win32");
@@ -79,7 +153,7 @@ void Test(function_pointer_t function);
             Assert.NotEqual(CXCallingConv.CXCallingConv_X86StdCall, functionPointerType.CallingConvention);
         }
 
-        [FutureFact]
+        [Fact]
         [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/115")]
         [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/124")]
         public void FunctionPointer_CallingConvention()

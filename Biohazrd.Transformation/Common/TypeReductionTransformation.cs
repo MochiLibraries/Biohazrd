@@ -1,6 +1,5 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
-using System.Diagnostics;
 
 namespace Biohazrd.Transformation.Common
 {
@@ -57,10 +56,6 @@ namespace Biohazrd.Transformation.Common
                 }
                 case PointerType pointerType:
                 {
-                    // Clang represents function pointers as PointerType -> FunctionProtoType whereas we combine the two.
-                    if (pointerType.PointeeType is FunctionProtoType innerFunctionProtoType)
-                    { return new FunctionPointerTypeReference(innerFunctionProtoType); }
-
                     ClangTypeReference inner = new(pointerType.PointeeType);
                     return new PointerTypeReference(inner);
                 }
@@ -92,8 +87,9 @@ namespace Biohazrd.Transformation.Common
                 }
                 case FunctionProtoType functionProtoType:
                 {
-                    Debug.Fail("This branch is thought to be unreachable because it is handled in the PointerType branch.");
-                    return new FunctionPointerTypeReference(functionProtoType);
+                    // Clang represents function pointers as PointerType -> FunctionProtoType, so FunctionProtoType does not actually represent a pointer.
+                    // These two types are flattened in a second post-transform pass.
+                    return new FunctionPointerTypeReference(functionProtoType, isNotActuallyAPointer: true);
                 }
                 case EnumType enumType:
                 {
@@ -108,6 +104,31 @@ namespace Biohazrd.Transformation.Common
                 {
                     return type;
                 }
+            }
+        }
+
+        private FlattenFunctionPointerTransformation FlattenFunctionPointerPass = new();
+        protected override TranslatedLibrary PostTransformLibrary(TranslatedLibrary library)
+        {
+            library = FlattenFunctionPointerPass.Transform(library);
+            return base.PostTransformLibrary(library);
+        }
+
+        private class FlattenFunctionPointerTransformation : TypeTransformationBase
+        {
+            protected override TypeTransformationResult TransformPointerTypeReference(TypeTransformationContext context, PointerTypeReference type)
+            {
+                // Clang represents function pointers as PointerType -> FunctionProtoType
+                // It's fairly uncommon to have a function type that isn't a function pointer type, so we flatten the two
+                if (type.Inner is FunctionPointerTypeReference { IsNotActuallyAPointer: true } functionPointerType)
+                {
+                    return functionPointerType with
+                    {
+                        IsNotActuallyAPointer = false
+                    };
+                }
+                else
+                { return type; }
             }
         }
     }
