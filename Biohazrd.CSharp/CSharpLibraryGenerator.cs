@@ -116,10 +116,35 @@ namespace Biohazrd.CSharp
                 Writer.NoSeparationNeededBeforeNextLine();
             }
 
-            if (declaration is ICustomCSharpTranslatedDeclaration customDeclaration)
-            { customDeclaration.GenerateOutput(this, context, Writer); }
+            // Emit the declaration (with namespace if possible and requested)
+            if (context.Parents.Length == 0 && declaration.Namespace is string { Length: > 0 })
+            {
+                Writer.Write("namespace ");
+
+                // We have to write it out in parts to avoid escaping the dots.
+                string[] namespaceParts = declaration.Namespace.Split('.');
+                for (int i = 0; i < namespaceParts.Length; i++)
+                {
+                    if (i > 0)
+                    { Writer.Write('.'); }
+
+                    Writer.Write(namespaceParts[i]);
+                }
+
+                Writer.WriteLine();
+                using (Writer.Block())
+                { EmitDeclaration(context, declaration); }
+            }
             else
-            { base.Visit(context, declaration); }
+            { EmitDeclaration(context, declaration); }
+
+            void EmitDeclaration(VisitorContext context, TranslatedDeclaration declaration)
+            {
+                if (declaration is ICustomCSharpTranslatedDeclaration customDeclaration)
+                { customDeclaration.GenerateOutput(this, context, Writer); }
+                else
+                { base.Visit(context, declaration); }
+            }
         }
 
         protected override void VisitDeclaration(VisitorContext context, TranslatedDeclaration declaration)

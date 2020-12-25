@@ -43,6 +43,26 @@ namespace Biohazrd
 
         public AccessModifier Accessibility { get; init; } = AccessModifier.Internal;
 
+        private string? _namespace = null;
+        /// <summary>The dot-separated namespace which contains this declaration.</summary>
+        /// <remarks>
+        /// This will never contain parent types in the case of declarations within a type. (This includes nested types.)
+        ///
+        /// You can think of it as the nearest namespace to the declaration. This is done so that if you un-nest a declaration it has a namespace that makes sense.
+        /// </remarks>
+        public string? Namespace
+        {
+            get => _namespace;
+            init
+            {
+                // No namespace should use null.
+                if (value is string { Length: 0 })
+                { throw new InvalidOperationException("Namespace cannot be an empty string. (To specify no namespace, use null.)"); }
+
+                _namespace = value;
+            }
+        }
+
         public Decl? Declaration { get; init; }
         public ImmutableArray<Decl> SecondaryDeclarations { get; init; } = ImmutableArray<Decl>.Empty;
 
@@ -59,7 +79,27 @@ namespace Biohazrd
             Name = Declaration is NamedDecl namedDeclaration ? namedDeclaration.Name : null;
 
             if (Declaration is not null)
-            { Accessibility = Declaration.Access.ToTranslationAccessModifier(); }
+            {
+                Accessibility = Declaration.Access.ToTranslationAccessModifier();
+
+                string? namespaceName = null;
+                IDeclContext context = Declaration.DeclContext;
+
+                while (context is not null)
+                {
+                    if (context is NamespaceDecl namespaceContext)
+                    {
+                        if (namespaceName is null)
+                        { namespaceName = namespaceContext.Name; }
+                        else
+                        { namespaceName = $"{namespaceContext.Name}.{namespaceName}"; }
+                    }
+
+                    context = context.Parent;
+                }
+
+                Namespace = namespaceName;
+            }
         }
 
         internal bool IsTranslationOf(Decl declaration)
