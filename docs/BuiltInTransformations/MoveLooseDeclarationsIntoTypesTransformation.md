@@ -15,7 +15,7 @@ This is especially true for C or C-style libraries where all functions are loose
 
 This transformation looks for [`TranslatedFunction`](../BuiltInDeclarations/TranslatedFunction.md), [`TranslatedField`](../BuiltInDeclarations/TranslatedField.md), or [`TranslatedStaticField`](../BuiltInDeclarations/TranslatedStaticField.md) declarations which are not contained within a [`TranslatedRecord`](../BuiltInDeclarations/TranslatedRecord.md) or [`SynthesizedLooseDeclarationsTypeDeclaration`](../BuiltInDeclarations/SynthesizedLooseDeclarationsTypeDeclaration.md) and moves them into one.
 
-The transformation will move the loose declarations into a type with the same name as the file which declares it. So if the file `MyHeader.h` declares a function `MyFunction` and contains a struct named `MyHeader`, then `MyFunction` becomes a static function of `MyHeader`. (See below for an example.)
+When creating the transformation, you can optionally provide a type name provider to determine the containing type name used for a given declaration. If you do not specify a type name provider or it returns null for a given declaration, the transformation will move the loose declarations into a type with the same name as the file which declares it. So if the file `MyHeader.h` declares a function `MyFunction` and contains a struct named `MyHeader`, then `MyFunction` becomes a static function of `MyHeader`. (See below for an example.)
 
 If no such type exists, it will create a new [`SynthesizedLooseDeclarationsTypeDeclaration`](../BuiltInDeclarations/SynthesizedLooseDeclarationsTypeDeclaration.md) to contain the type.
 

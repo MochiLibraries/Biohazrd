@@ -15,10 +15,17 @@ namespace Biohazrd.CSharp
         private readonly HashSet<TranslatedDeclaration> AllLooseDeclarations = new(ReferenceEqualityComparer.Instance);
         private readonly RemoveLooseDeclarationsTransformation RemovePass;
 
+        private readonly Func<VisitorContext, TranslatedDeclaration, string?>? TypeNameProvider;
+
         protected override bool SupportsConcurrency => false;
 
         public MoveLooseDeclarationsIntoTypesTransformation()
             => RemovePass = new RemoveLooseDeclarationsTransformation(this);
+
+        public MoveLooseDeclarationsIntoTypesTransformation(Func<VisitorContext, TranslatedDeclaration, string?> typeNameProvider)
+            : this()
+            => TypeNameProvider = typeNameProvider;
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool DeclarationCouldBeLoose(TranslatedDeclaration declaration)
@@ -43,7 +50,10 @@ namespace Biohazrd.CSharp
                 { continue; }
 
                 // Determine the name for the containing type
-                string looseDeclarationsTypeName = Path.GetFileNameWithoutExtension(declaration.File.FilePath);
+                string? looseDeclarationsTypeName = TypeNameProvider?.Invoke(context, declaration);
+
+                if (String.IsNullOrEmpty(looseDeclarationsTypeName))
+                { looseDeclarationsTypeName = Path.GetFileNameWithoutExtension(declaration.File.FilePath); }
 
                 if (String.IsNullOrEmpty(looseDeclarationsTypeName))
                 { looseDeclarationsTypeName = "LooseDeclarations"; }
