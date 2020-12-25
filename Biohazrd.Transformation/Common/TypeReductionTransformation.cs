@@ -33,7 +33,7 @@ namespace Biohazrd.Transformation.Common
                     if (context.Library.TryFindTranslation(typedefType.Decl) is TranslatedDeclaration declaration)
                     { return TranslatedTypeReference.Create(declaration); }
                     else
-                    { return new ClangTypeReference(typedefType.CanonicalType); }
+                    { return new ClangTypeReference(typedefType.Decl.UnderlyingType); }
                 }
                 case PointerType pointerType:
                 {

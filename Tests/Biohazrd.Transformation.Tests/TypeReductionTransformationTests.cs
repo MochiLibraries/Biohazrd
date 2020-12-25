@@ -65,5 +65,82 @@ void Test(function_pointer_t function);
                 AssertVoidIntFunctionPointerType(parameter.Type);
             }
         }
+
+        [Fact]
+        public void Typedef_RemainingTypedefIsReducedToTypedefReference()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+typedef int MyTypedef;
+MyTypedef TestFunction();
+"
+            );
+
+            library = new TypeReductionTransformation().Transform(library);
+
+            TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            TranslatedDeclaration? returnType = Assert.IsAssignableFrom<TranslatedTypeReference>(function.ReturnType).TryResolve(library);
+            Assert.IsType<TranslatedTypedef>(returnType);
+            Assert.Equal("MyTypedef", returnType.Name);
+        }
+
+        [Fact]
+        public void Typedef_RemovedTypedefIsReducedToAliasedType()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+typedef int MyTypedef;
+MyTypedef TestFunction();
+"
+            );
+
+            library = new RemoveRemainingTypedefsTransformation().Transform(library);
+            library = new TypeReductionTransformation().Transform(library);
+
+            TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            Assert.Equal(CXTypeKind.CXType_Int, Assert.IsType<ClangTypeReference>(function.ReturnType).ClangType.Kind);
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/122")]
+        public void Typedef_RemovedTypedefToReplacedTypedefIsReducedToReplacement()
+        {
+            TranslatedLibrary library = CreateLibrary
+(@"
+typedef int MyTypedef;
+typedef MyTypedef OtherTypedef;
+OtherTypedef TestFunction();
+"
+);
+
+            library = library with
+            {
+                Declarations = library.Declarations.RemoveAll(d => d.Name == "OtherTypedef")
+            };
+            library = new TypeReductionTransformation().Transform(library);
+
+            TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            TranslatedDeclaration? returnType = Assert.IsAssignableFrom<TranslatedTypeReference>(function.ReturnType).TryResolve(library);
+            Assert.IsType<TranslatedTypedef>(returnType);
+            Assert.Equal("MyTypedef", returnType.Name);
+        }
+
+        [Fact]
+        public void Typedef_RemovedTypedefToRemovedTypedefIsReducedToAliasedType()
+        {
+            TranslatedLibrary library = CreateLibrary
+(@"
+typedef int MyTypedef;
+typedef MyTypedef OtherTypedef;
+OtherTypedef TestFunction();
+"
+);
+
+            library = new RemoveRemainingTypedefsTransformation().Transform(library);
+            library = new TypeReductionTransformation().Transform(library);
+
+            TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            Assert.Equal(CXTypeKind.CXType_Int, Assert.IsType<ClangTypeReference>(function.ReturnType).ClangType.Kind);
+        }
     }
 }
