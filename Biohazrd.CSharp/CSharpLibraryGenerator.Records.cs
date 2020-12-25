@@ -41,7 +41,7 @@ namespace Biohazrd.CSharp
                 if (declaration.VTable is not null && declaration.VTableField is not null)
                 { EmitVTable(childContext, declaration.VTableField, declaration.VTable); }
 
-                // List any unnamed members
+                // List any unsupported members
                 if (declaration.UnsupportedMembers.Count > 0)
                 {
                     Diagnostics.Add(Severity.Warning, $"Record {declaration.Name} has {declaration.UnsupportedMembers.Count} unsupported members which will not be translated.");
