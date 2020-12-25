@@ -26,6 +26,26 @@ namespace Biohazrd.Transformation.Common
                 {
                     return new ClangTypeReference(type.ClangType.CanonicalType);
                 }
+                // We don't care about attributed types, the attributes will be reflected in the actual type if they're relevant
+                case AttributedType attributedType:
+                {
+                    // The use of the canonical type here is intentional because the ModifiedType won't reflect the expected changes from the attribute
+                    // Unfortunately this also means things like typedefs are lost, but the alternative is manually modifying things in response to the attribute
+                    // and there's simply too many attributes with too many meanings in too many contexts to make that a realistic proposition.
+                    TypeTransformationResult result = new ClangTypeReference(attributedType.CanonicalType);
+
+                    // If the immediately modified type is a typedef, we issue a warning. (This isn't perfect, but it's better than nothing.)
+                    if (attributedType.ModifiedType is TypedefType modifiedTypedef)
+                    {
+                        result = result.AddDiagnostic
+                        (
+                            Severity.Warning,
+                            $"Typedef '{modifiedTypedef.Decl.Name}' was swallowed by attribute when reducing type for {context}, reduction may not be exactly as expected."
+                        );
+                    }
+
+                    return result;
+                }
                 // If a typedef is mapped to a translated declaration, it becomes a translated type reference.
                 // Otherwise we eliminate the typedef
                 case TypedefType typedefType:
