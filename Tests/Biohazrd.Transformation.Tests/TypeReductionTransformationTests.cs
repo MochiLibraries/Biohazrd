@@ -46,7 +46,7 @@ void Test(function_pointer_t function);
             // Reduce with the typedef
             {
                 TranslatedLibrary reduced = new TypeReductionTransformation().Transform(library);
-                
+
                 TranslatedTypedef typedef = reduced.FindDeclaration<TranslatedTypedef>("function_pointer_t");
                 AssertVoidIntFunctionPointerType(typedef.UnderlyingType);
 

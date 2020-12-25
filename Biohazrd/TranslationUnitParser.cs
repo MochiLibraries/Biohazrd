@@ -115,7 +115,7 @@ namespace Biohazrd
                 // We do not expect Clang to give us two different `CXFile`s with the same file name but different handles.
                 Debug.Assert(!AllFilePaths.ContainsKey(fileName), $"'{fileName}' appeared in the translation unit multiple times with different {nameof(CXFile)} handles.");
 
-                file = new TranslatedFile(fileName, clangFile.Handle, wasInScope: false); ;
+                file = new TranslatedFile(fileName, clangFile.Handle, wasInScope: false);
                 FileHandleToTranslatedFileLookup.Add(clangFile.Handle, file);
                 return file;
             }
@@ -191,7 +191,7 @@ namespace Biohazrd
                         ParsingDiagnosticsBuilder.Add
                         (
                             Severity.Warning,
-                            $"Out-of-scope file '{newFile.FilePath}' was included inside a declaration from in-scope file '{file.FilePath}'. "+
+                            $"Out-of-scope file '{newFile.FilePath}' was included inside a declaration from in-scope file '{file.FilePath}'. " +
                             "The file was implicitly promoted to be in-scope in the context of the containning duration."
                         );
                     }

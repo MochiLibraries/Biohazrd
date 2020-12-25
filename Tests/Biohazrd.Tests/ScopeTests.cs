@@ -199,7 +199,7 @@ int FieldA;
             });
 
             TranslatedLibrary library = builder.Create();
-            
+
             Assert.Empty(library.ParsingDiagnostics);
             Assert.Single(library.Declarations);
             Assert.Equal("StructA", library.Declarations[0].Name);
