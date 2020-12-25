@@ -1,7 +1,8 @@
-﻿using Biohazrd.Transformation.Common.Metadata;
+﻿using Biohazrd.CSharp.Metadata;
+using Biohazrd.Transformation;
 using System.Linq;
 
-namespace Biohazrd.Transformation.Common
+namespace Biohazrd.CSharp
 {
     public sealed class ConstOverloadRenameTransformation : TransformationBase
     {
@@ -13,7 +14,7 @@ namespace Biohazrd.Transformation.Common
                 return declaration with
                 {
                     Name = declaration.Name + "_Const",
-                    Metadata = declaration.Metadata.Add<HideDeclarationFromCodeCompletion>()
+                    Metadata = declaration.Metadata.Add<HideDeclarationFromIntellisense>()
                 };
             }
 
