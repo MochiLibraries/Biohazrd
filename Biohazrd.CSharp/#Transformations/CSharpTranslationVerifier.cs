@@ -1,4 +1,5 @@
-﻿using Biohazrd.Expressions;
+﻿using Biohazrd.CSharp.Metadata;
+using Biohazrd.Expressions;
 using Biohazrd.Transformation;
 using System.Linq;
 
@@ -86,6 +87,9 @@ namespace Biohazrd.CSharp
             //TODO: We might want to check if they can be resolved in an extra pass due to BrokenDeclarationExtractor.
             if (!context.IsValidFieldOrMethodContext())
             { declaration = declaration.WithError("Loose functions are not supported in C#."); }
+
+            if (declaration.IsVirtual && declaration.Metadata.Has<SetLastErrorFunction>())
+            { declaration = declaration.WithWarning("SetLastError is not supported on virtual methods and will be ignored."); }
 
             return base.TransformFunction(context, declaration);
         }

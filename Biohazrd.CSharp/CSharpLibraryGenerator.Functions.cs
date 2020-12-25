@@ -79,6 +79,9 @@ namespace Biohazrd.CSharp
             if (FunctionNeedsCharSetParameter(declaration))
             { Writer.Write(", CharSet = CharSet.Unicode"); }
 
+            if (declaration.Metadata.Has<SetLastErrorFunction>())
+            { Writer.Write(", SetLastError = true"); }
+
             Writer.WriteLine(", ExactSpelling = true)]");
 
             // Write out MarshalAs for boolean returns
