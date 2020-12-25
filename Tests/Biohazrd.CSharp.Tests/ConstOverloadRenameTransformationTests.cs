@@ -1,5 +1,6 @@
 ﻿using Biohazrd.Tests.Common;
 using Biohazrd.Transformation.Common;
+using Biohazrd.Transformation.Common.Metadata;
 using System.Linq;
 using Xunit;
 
@@ -29,11 +30,13 @@ public:
                 TranslatedFunction method1 = (TranslatedFunction)constOverloadsClass.Members[0];
                 Assert.Equal("Method", method1.Name);
                 Assert.False(method1.IsConst);
+                Assert.False(method1.Metadata.Has<HideDeclarationFromCodeCompletion>());
             }
             {
                 TranslatedFunction method2 = (TranslatedFunction)constOverloadsClass.Members[1];
                 Assert.NotEqual("Method", method2.Name);
                 Assert.True(method2.IsConst);
+                Assert.True(method2.Metadata.Has<HideDeclarationFromCodeCompletion>());
             }
         }
 
@@ -58,6 +61,7 @@ public:
                 TranslatedFunction method1 = (TranslatedFunction)constOverloadsClass.Members[0];
                 Assert.Equal("Method", method1.Name);
                 Assert.True(method1.IsConst);
+                Assert.False(method1.Metadata.Has<HideDeclarationFromCodeCompletion>());
             }
         }
 
@@ -83,11 +87,13 @@ public:
                 TranslatedFunction method1 = (TranslatedFunction)constOverloadsClass.Members[0];
                 Assert.Equal("Method", method1.Name);
                 Assert.True(method1.IsConst);
+                Assert.False(method1.Metadata.Has<HideDeclarationFromCodeCompletion>());
             }
             {
                 TranslatedFunction method2 = (TranslatedFunction)constOverloadsClass.Members[1];
                 Assert.Equal("Method", method2.Name);
                 Assert.True(method2.IsConst);
+                Assert.False(method2.Metadata.Has<HideDeclarationFromCodeCompletion>());
             }
         }
 
@@ -115,11 +121,13 @@ public:
                 TranslatedFunction method1 = (TranslatedFunction)constOverloadsClass.Members[0];
                 Assert.Equal("Method", method1.Name);
                 Assert.False(method1.IsConst);
+                Assert.False(method1.Metadata.Has<HideDeclarationFromCodeCompletion>());
             }
             {
                 TranslatedFunction method2 = (TranslatedFunction)constOverloadsClass.Members[1];
                 Assert.Equal("Method", method2.Name);
                 Assert.True(method2.IsConst);
+                Assert.False(method2.Metadata.Has<HideDeclarationFromCodeCompletion>());
             }
         }
     }

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using Biohazrd.Transformation.Common.Metadata;
+using System.Linq;
 
 namespace Biohazrd.Transformation.Common
 {
@@ -12,7 +13,7 @@ namespace Biohazrd.Transformation.Common
                 return declaration with
                 {
                     Name = declaration.Name + "_Const",
-                    HideFromIntellisense = true
+                    Metadata = declaration.Metadata.Add<HideDeclarationFromCodeCompletion>()
                 };
             }
 

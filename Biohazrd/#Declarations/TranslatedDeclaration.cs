@@ -68,6 +68,8 @@ namespace Biohazrd
 
         public ImmutableArray<TranslationDiagnostic> Diagnostics { get; init; } = ImmutableArray<TranslationDiagnostic>.Empty;
 
+        public DeclarationMetadata Metadata { get; init; }
+
         protected TranslatedDeclaration(TranslatedFile file, Decl? declaration = null)
         {
             File = file;

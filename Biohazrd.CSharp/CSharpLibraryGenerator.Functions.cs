@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Biohazrd.Transformation.Common.Metadata;
+using System;
 using System.Diagnostics;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
@@ -304,7 +305,7 @@ namespace Biohazrd.CSharp
 
         private void EmitEditorBrowsableAttribute(TranslatedFunction declaration)
         {
-            if (declaration.HideFromIntellisense)
+            if (declaration.Metadata.Has<HideDeclarationFromCodeCompletion>())
             {
                 Writer.Using("System.ComponentModel");
                 Writer.WriteLine("[EditorBrowsable(EditorBrowsableState.Never)]");

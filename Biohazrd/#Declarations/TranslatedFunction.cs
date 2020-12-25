@@ -21,8 +21,6 @@ namespace Biohazrd
         public bool IsConst { get; }
         public bool IsOperatorOverload { get; }
 
-        public bool HideFromIntellisense { get; init; } //TODO: C# leak
-
         public string DllFileName { get; init; } = "TODO.dll";
         public string MangledName { get; init; }
 
