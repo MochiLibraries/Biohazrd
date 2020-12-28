@@ -216,7 +216,8 @@ namespace Biohazrd
                     //---------------------------------------------------------------------------------
                     // Create the translation unit
                     //---------------------------------------------------------------------------------
-                    const CXTranslationUnit_Flags translationUnitFlags = CXTranslationUnit_Flags.CXTranslationUnit_IncludeAttributedTypes;
+                    // Do not enable CXTranslationUnit_IncludeAttributedTypes without resolving https://github.com/InfectedLibraries/Biohazrd/issues/130
+                    const CXTranslationUnit_Flags translationUnitFlags = 0;
 
                     // Allocate the libclang Index
                     clangIndex = CXIndex.Create();

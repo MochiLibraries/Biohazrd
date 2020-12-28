@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using System.Diagnostics;
 
 namespace Biohazrd.Transformation.Common
 {
@@ -28,6 +29,10 @@ namespace Biohazrd.Transformation.Common
                 // We don't care about attributed types, the attributes will be reflected in the actual type if they're relevant
                 case AttributedType attributedType:
                 {
+                    // This case should be unreachable because we disabled CXTranslationUnit_IncludeAttributedTypes as a workaround for https://github.com/InfectedLibraries/Biohazrd/issues/130
+                    // Eventually we want to re-enable the flag because disabling it has unintended side-effects, but we need to properly resolve #130 first.
+                    Debug.Fail("This case is thought to be unreachable. See https://github.com/InfectedLibraries/Biohazrd/issues/130");
+
                     // The use of the canonical type here is intentional because the ModifiedType won't reflect the expected changes from the attribute
                     // Unfortunately this also means things like typedefs are lost, but the alternative is manually modifying things in response to the attribute
                     // and there's simply too many attributes with too many meanings in too many contexts to make that a realistic proposition.

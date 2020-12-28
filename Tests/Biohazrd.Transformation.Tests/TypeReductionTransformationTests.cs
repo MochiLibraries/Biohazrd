@@ -184,7 +184,6 @@ void Test(function_pointer_stdcall_t function);
             library = new TypeReductionTransformation().Transform(library);
 
             TranslatedParameter parameter = library.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
-            Assert.Contains(parameter.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("Typedef 'function_pointer_t' was swallowed by attribute"));
             FunctionPointerTypeReference functionPointerType = AssertVoidIntFunctionPointerType(parameter.Type);
             Assert.Equal(CXCallingConv.CXCallingConv_X86StdCall, functionPointerType.CallingConvention);
         }
@@ -210,13 +209,13 @@ void Test(function_pointer_stdcall_t function);
             // Note that we _don't_ expect `function` to reference `function_pointer_t`
             // Biohazrd has no way of representing the attribute without reducing the typedef, so it gets flattened prematurely
             TranslatedParameter parameter = library.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
-            Assert.Contains(parameter.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("Typedef 'function_pointer_t' was swallowed by attribute"));
             FunctionPointerTypeReference functionPointerType = AssertVoidIntFunctionPointerType(parameter.Type);
             Assert.Equal(CXCallingConv.CXCallingConv_X86StdCall, functionPointerType.CallingConvention);
         }
 
-        [Fact]
+        [FutureFact]
         [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/124")]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/130")]
         public void AttributedType_CallingConventionOnTypedef_NoTypedefRemoved()
         {
             TranslatedLibrary library = CreateLibrary
@@ -235,7 +234,6 @@ void Test(function_pointer_stdcall_t function);
             Assert.ReferenceEqual(library.FindDeclaration<TranslatedTypedef>("function_pointer_stdcall_t"), parameterTypeTypedef);
 
             // As with AttributedType_CallingConventionOnTypedef_IntermediateTypedefRemoved, we don't expect `function_pointer_stdcall_t` to reference `function_pointer_t`
-            Assert.Contains(parameterTypeTypedef.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("Typedef 'function_pointer_t' was swallowed by attribute"));
             FunctionPointerTypeReference functionPointerType = AssertVoidIntFunctionPointerType(parameterTypeTypedef.UnderlyingType);
             Assert.Equal(CXCallingConv.CXCallingConv_X86StdCall, functionPointerType.CallingConvention);
 
@@ -243,6 +241,28 @@ void Test(function_pointer_stdcall_t function);
             TranslatedTypedef baseTypedef = library.FindDeclaration<TranslatedTypedef>("function_pointer_t");
             Assert.Empty(baseTypedef.Diagnostics);
             AssertVoidIntFunctionPointerType(baseTypedef.UnderlyingType);
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/130")]
+        public void AttributedType_ChildTypesNotAffected()
+        {
+            TranslatedLibrary library = CreateLibrary
+(@"
+typedef int MyInteger;
+void Test(void (__stdcall *function)(MyInteger));
+", "i386-pc-win32"
+);
+
+            library = new TypeReductionTransformation().Transform(library);
+
+            TranslatedParameter parameter = library.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
+            FunctionPointerTypeReference functionType = Assert.IsType<FunctionPointerTypeReference>(parameter.Type);
+            Assert.Single(functionType.ParameterTypes);
+            TranslatedTypeReference functionTypeParameterType = Assert.IsAssignableFrom<TranslatedTypeReference>(functionType.ParameterTypes[0]);
+
+            TranslatedTypedef typedef = library.FindDeclaration<TranslatedTypedef>("MyInteger");
+            Assert.ReferenceEqual(typedef, functionTypeParameterType.TryResolve(library));
         }
 
         [Fact]
