@@ -53,6 +53,9 @@ namespace Biohazrd.CSharp
                         if (declaration.File == TranslatedFile.Synthesized)
                         { continue; }
 
+                        if (declaration is ICustomCSharpTranslatedDeclaration cSharpDeclaration && !cSharpDeclaration.HasOutput)
+                        { continue; }
+
                         DoGenerate(new CSharpLibraryGenerator(options, session, $"{SanitizeIdentifier(declaration.Name)}.cs", filter: declaration));
                     }
 
