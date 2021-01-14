@@ -9,5 +9,15 @@
         /// Generally you should leave this enabled unless you're intentionally processing system headers with Biohazrd.
         /// </remarks>
         public bool SystemHeadersAreAlwaysOutOfScope { get; init; } = true;
+
+        /// <summary>If true, Biohazrd will process macros even if they are defined out of scope. (Default is false.)</summary>
+        public bool IncludeMacrosDefinedOutOfScope { get; init; } = false;
+
+        /// <summary>If true, Biohazrd will process macros which were <c>#undef</c>'d. (Default is false.)</summary>
+        /// <remarks>Macros which have been undefined cannot be evaluated and will have <see cref="TranslatedMacro.WasUndefined"/> set to true.</remarks>
+        public bool IncludeUndefinedMacros { get; init; } = false;
+
+        /// <summary>If true, Biohazrd will process macros which were synthesized by Clang or defined on the command line. (Default is false.)</summary>
+        public bool IncludeSynthesizedMacros { get; init; } = false;
     }
 }

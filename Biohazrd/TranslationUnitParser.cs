@@ -7,6 +7,8 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using static Biohazrd.TranslationUnitParser.CreateDeclarationsEnumerator;
 using ClangType = ClangSharp.Type;
 
@@ -29,6 +31,8 @@ namespace Biohazrd
 
         private readonly ImmutableList<TranslatedDeclaration>.Builder DeclarationsBuilder = ImmutableList.CreateBuilder<TranslatedDeclaration>();
 
+        private readonly ImmutableArray<TranslatedMacro>.Builder MacrosBuilder;
+
         private readonly bool ParsingComplete = false;
 
         internal TranslationUnitParser(List<SourceFile> sourceFiles, TranslationOptions options, TranslationUnit translationUnit)
@@ -46,8 +50,37 @@ namespace Biohazrd
             foreach (string filePath in UnusedFilePaths)
             { AllFilePaths.Add(filePath, filePath); }
 
+            // Create macro builder
+            // Note that there are more preprocessor identifiers than there are macros because preprocessor identifiers are used for some non-macro things as well.
+            // As such, this is an upper bound rather than a specific count.
+            int maximumMacroCount = checked((int)PathogenExtensions.pathogen_GetPreprocessorIdentifierCount(TranslationUnit.Handle));
+            MacrosBuilder = ImmutableArray.CreateBuilder<TranslatedMacro>(maximumMacroCount);
+
             // Process the translation unit
             ProcessTranslationUnit();
+
+            // Process macros
+            unsafe
+            {
+                [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+                static void EnumerateMacro(PathogenMacroInformation* macroInfo, void* userData)
+                {
+                    GCHandle thisHandle = GCHandle.FromIntPtr((IntPtr)userData);
+                    Unsafe.As<TranslationUnitParser>(thisHandle.Target)!.ProcessMacro(macroInfo);
+                }
+
+                GCHandle thisHandle = default;
+                try
+                {
+                    thisHandle = GCHandle.Alloc(this);
+                    PathogenExtensions.pathogen_EnumerateMacros(TranslationUnit.Handle, &EnumerateMacro, (void*)GCHandle.ToIntPtr(thisHandle));
+                }
+                finally
+                {
+                    if (thisHandle.IsAllocated)
+                    { thisHandle.Free(); }
+                }
+            }
 
             // Add null-handle files for any remaining unused files
             foreach (string filePath in UnusedFilePaths)
@@ -94,6 +127,11 @@ namespace Biohazrd
         private TranslatedFile GetTranslatedFile(CXFile clangFile)
         {
             TranslatedFile? file;
+
+            // Null file handles are considered to be synthesized
+            // (This can occur for macros which are synthesized by Clang or defined on the command line.)
+            if (clangFile.Handle == IntPtr.Zero)
+            { return TranslatedFile.Synthesized; }
 
             // Check if the file is known to be in-scope
             if (FileHandleToTranslatedFileLookup.TryGetValue(clangFile.Handle, out file))
@@ -192,7 +230,7 @@ namespace Biohazrd
                         (
                             Severity.Warning,
                             $"Out-of-scope file '{newFile.FilePath}' was included inside a declaration from in-scope file '{file.FilePath}'. " +
-                            "The file was implicitly promoted to be in-scope in the context of the containning duration."
+                            "The file was implicitly promoted to be in-scope in the context of the containing declaration."
                         );
                     }
 
@@ -403,12 +441,32 @@ namespace Biohazrd
             }
         }
 
+        private unsafe void ProcessMacro(PathogenMacroInformation* macroInfo)
+        {
+            if (!Options.IncludeUndefinedMacros && macroInfo->WasUndefined)
+            { return; }
+
+            CXFile fileHandle = macroInfo->Location.GetFileLocation();
+            bool isSynthesized = fileHandle.Handle == IntPtr.Zero;
+
+            if (!Options.IncludeSynthesizedMacros && isSynthesized)
+            { return; }
+
+            TranslatedFile file = GetTranslatedFile(fileHandle);
+
+            if (!isSynthesized && !Options.IncludeMacrosDefinedOutOfScope && !file.WasInScope)
+            { return; }
+
+            MacrosBuilder.Add(new TranslatedMacro(file, macroInfo));
+        }
+
         private bool ResultsFetched = false;
         internal void GetResults
         (
             out ImmutableArray<TranslatedFile> files,
             out ImmutableArray<TranslationDiagnostic> parsingDiagnostics,
-            out ImmutableList<TranslatedDeclaration> declarations
+            out ImmutableList<TranslatedDeclaration> declarations,
+            out ImmutableArray<TranslatedMacro> macros
         )
         {
             if (!ParsingComplete)
@@ -421,6 +479,11 @@ namespace Biohazrd
             files = FilesBuilder.MoveToImmutableSafe();
             parsingDiagnostics = ParsingDiagnosticsBuilder.MoveToImmutableSafe();
             declarations = DeclarationsBuilder.ToImmutable();
+
+            // Internally within ClangSharp.Pathogen, macros are enumerated from a hash map
+            // As such the apparent order seems nonsensical so we sort them for the sake of determinism
+            MacrosBuilder.Sort((a, b) => StringComparer.Ordinal.Compare(a.Name, b.Name));
+            macros = MacrosBuilder.MoveToImmutableSafe();
         }
     }
 }

@@ -271,13 +271,14 @@ namespace Biohazrd
             ImmutableArray<TranslatedFile> files;
             ImmutableArray<TranslationDiagnostic> parsingDiagnostics;
             ImmutableList<TranslatedDeclaration> declarations;
-            processor.GetResults(out files, out parsingDiagnostics, out declarations);
+            ImmutableArray<TranslatedMacro> macros;
+            processor.GetResults(out files, out parsingDiagnostics, out declarations, out macros);
 
             if (stl1300Workaround.Diagnostics.Length > 0)
             { parsingDiagnostics = stl1300Workaround.Diagnostics.AddRange(parsingDiagnostics); }
 
             // Create the library
-            return new TranslatedLibrary(translationUnitAndIndex, files, parsingDiagnostics, declarations);
+            return new TranslatedLibrary(translationUnitAndIndex, files, parsingDiagnostics, declarations, macros);
         }
     }
 }
