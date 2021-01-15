@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Biohazrd.Tests.Common;
+using System;
 using System.IO;
 using System.Linq;
 using Xunit;
@@ -189,6 +190,16 @@ struct StructB {};
             Assert.NotNull(fileA);
             Assert.NotNull(fileB);
             Assert.NotEqual(IntPtr.Zero, fileA.Handle);
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/132")]
+        public void EmptyIndexFileDoesNotCrash()
+        {
+            TranslatedLibraryBuilder builder = new();
+            TranslatedLibrary library = builder.Create();
+            Assert.NotNull(library);
+            Assert.Empty(library.Declarations);
         }
     }
 }

@@ -35,7 +35,7 @@ namespace Biohazrd
 
         private readonly bool ParsingComplete = false;
 
-        internal TranslationUnitParser(List<SourceFile> sourceFiles, TranslationOptions options, TranslationUnit translationUnit)
+        internal TranslationUnitParser(List<SourceFileInternal> sourceFiles, TranslationOptions options, TranslationUnit translationUnit)
         {
             TranslationUnit = translationUnit;
             Options = options;

@@ -1,7 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -15,7 +14,7 @@ namespace Biohazrd
     public sealed partial class TranslatedLibraryBuilder
     {
         private readonly List<string> CommandLineArguments = new();
-        private readonly List<SourceFile> Files = new();
+        private readonly List<SourceFileInternal> Files = new();
 
         public TranslationOptions Options { get; set; } = new();
 
@@ -27,25 +26,11 @@ namespace Biohazrd
             if (sourceFile.IndexDirectly && sourceFile.FilePath.Contains('"'))
             { throw new ArgumentException("Files marked to be indexed must not have quotes in thier path.", nameof(sourceFile)); }
 
-            // If provided, contents must be either a string or bytes but not both
-            if (sourceFile.Contents is not null && !sourceFile.ContentBytes.IsEmpty)
-            { throw new ArgumentException($"Files must not have both {nameof(sourceFile.Contents)} and {nameof(sourceFile.ContentBytes)}.", nameof(sourceFile)); }
-
             // If a file is virtual, it must have contents
-            if (sourceFile.IsVirtual && !sourceFile.HasContents)
+            if (sourceFile.IsVirtual && sourceFile.Contents is null)
             { throw new ArgumentException("Virtual files must have contents.", nameof(sourceFile)); }
 
-            // If the file has contents, eagerly encode it as UTF8 bytes so any encoding errors happen sooner rather than later
-            if (sourceFile.Contents is not null)
-            {
-                sourceFile = sourceFile with
-                {
-                    Contents = null,
-                    ContentBytes = Encoding.UTF8.GetBytes(sourceFile.Contents)
-                };
-            }
-
-            Files.Add(sourceFile);
+            Files.Add(new SourceFileInternal(sourceFile));
         }
 
         public void AddFile(string filePath)
@@ -144,40 +129,43 @@ namespace Biohazrd
             }
         }
 
+        /// <summary>Creates the Biohazrd index file</summary>
+        /// <remarks>
+        /// Creates an index file in-memory which includes all of the files to be processed
+        /// We want to process all files as a single translation unit because it makes it much easier to reason about relationships between declarations in individual files.
+        ///
+        /// This does assume that all input files can be included in the same translation unit and that they use `#pragma once` or equivalent header guards.
+        /// Since this is typical of well-formed C++ libraries, it should be fine.
+        /// </remarks>
+        private SourceFile CreateIndexFile()
+        {
+            StringBuilder indexFileCodeTextBuilder = new StringBuilder();
+
+            foreach (SourceFileInternal file in Files)
+            {
+                if (file.IndexDirectly)
+                { indexFileCodeTextBuilder.AppendLine($"#include \"{file.FilePath}\""); }
+            }
+
+            // According to documentation this file must already exist on the filesystem, but that doesn't actually seem to be true for
+            // the primary file or any files included by absolute path.
+            // (However, Clang will not be able to find any files included by relative path if they don't actually exist.)
+            // https://clang.llvm.org/doxygen/structCXUnsavedFile.html#aa8bf5d4351628ee8502b517421e8b418
+            // In fact, we intentionally use a file name that's illegal (on Windows) so it's unlikely we conflict with any real files.
+            return new SourceFile($"<>BiohazrdIndexFile.cpp")
+            {
+                IsInScope = false,
+                IndexDirectly = false,
+                Contents = indexFileCodeTextBuilder.ToString()
+            };
+        }
+
         public unsafe TranslatedLibrary Create()
         {
             __HACK__InstallLibClangDllWorkaround();
             __HACK__Stl1300Workaround stl1300Workaround = __HACK__Stl1300Workaround.Instance;
 
-            //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            // Create an index file in-memory which includes all of the files to be processed
-            // We want to process all files as a single translation unit because it makes it much easier to reason about relationships between declarations in individual files.
-            //
-            // This does assume that all input files can be included in the same translation unit and that they use `#pragma once` or equivalent header guards.
-            // Since this is typical of well-formed C++ libraries, it should be fine.
-            //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            SourceFile indexFile;
-            {
-                StringBuilder indexFileCodeTextBuilder = new StringBuilder();
-
-                foreach (SourceFile file in Files)
-                {
-                    if (file.IndexDirectly)
-                    { indexFileCodeTextBuilder.AppendLine($"#include \"{file.FilePath}\""); }
-                }
-
-                // According to documentation this file must already exist on the filesystem, but that doesn't actually seem to be true for
-                // the primary file or any files included by absolute path.
-                // (However, Clang will not be able to find any files included by relative path if they don't actually exist.)
-                // https://clang.llvm.org/doxygen/structCXUnsavedFile.html#aa8bf5d4351628ee8502b517421e8b418
-                // In fact, we intentionally use a file name that's illegal (on Windows) so it's unlikely we conflict with any real files.
-                indexFile = new SourceFile($"<>BiohazrdIndexFile.cpp")
-                {
-                    IsInScope = false,
-                    IndexDirectly = false,
-                    ContentBytes = Encoding.UTF8.GetBytes(indexFileCodeTextBuilder.ToString())
-                };
-            }
+            SourceFileInternal indexFile = new SourceFileInternal(CreateIndexFile());
 
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
             // Create the translation unit
@@ -186,7 +174,6 @@ namespace Biohazrd
             TranslationUnit? translationUnit = null;
             {
                 List<CXUnsavedFile> unsavedFiles = new(stl1300Workaround.ShouldBeApplied ? 2 : 1);
-                List<MemoryHandle> memoryHandles = new(1);
 
                 CXIndex clangIndex = default;
                 CXTranslationUnit translationUnitHandle = default;
@@ -196,21 +183,19 @@ namespace Biohazrd
                     //---------------------------------------------------------------------------------
                     // Create the unsaved files list
                     //---------------------------------------------------------------------------------
-                    // LLVM will internally copy the buffers we pass to it, so pinning these only for the duration of the index creation is fine here.
-                    // https://github.com/llvm/llvm-project/blob/llvmorg-10.0.0/clang/tools/libclang/CIndex.cpp#L3497
 
                     // Add the index file
-                    unsavedFiles.Add(indexFile.CreateUnsavedFile(memoryHandles));
+                    unsavedFiles.Add(indexFile.UnsavedFile);
 
                     // Add the STL1300 workaround if needed
                     if (stl1300Workaround.ShouldBeApplied)
                     { unsavedFiles.Add(stl1300Workaround.UnsavedFile); }
 
                     // Add user-specified memory files
-                    foreach (SourceFile file in Files)
+                    foreach (SourceFileInternal file in Files)
                     {
-                        if (file.HasContents)
-                        { unsavedFiles.Add(file.CreateUnsavedFile(memoryHandles)); }
+                        if (file.HasUnsavedFile)
+                        { unsavedFiles.Add(file.UnsavedFile); }
                     }
 
                     //---------------------------------------------------------------------------------
@@ -232,6 +217,9 @@ namespace Biohazrd
                         out translationUnitHandle
                     );
 
+                    // Ensure the index file sticks around until parsing is completed
+                    GC.KeepAlive(indexFile);
+
                     // In the event parsing fails, we throw an exception
                     // This generally never happens since Clang usually emits diagnostics in a healthy manner.
                     // libclang uses the status code to report things like internal programming errors or invalid arguments.
@@ -246,10 +234,6 @@ namespace Biohazrd
                 }
                 finally
                 {
-                    // Free all of the memory handles
-                    foreach (MemoryHandle memoryHandle in memoryHandles)
-                    { memoryHandle.Dispose(); }
-
                     // If we failed to create the translation unit/index pair, make sure to dispose of the index/translation unit
                     if (translationUnitAndIndex is null)
                     {

@@ -1,9 +1,5 @@
-﻿using ClangSharp.Interop;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
-using System.Text;
 
 namespace Biohazrd
 {
@@ -46,23 +42,8 @@ namespace Biohazrd
         /// This property can be used to override the contents of an existing file, or specify a file which doesn't actually exist on disk.
         ///
         /// If this property is <c>null</c>, it is expected that the file exists on disk and is accessible by Clang.
-        ///
-        /// If this property is specified, <see cref="ContentBytes"/> must be empty.
         /// </remarks>
         public string? Contents { get; init; } = null;
-
-        /// <summary>The contents of the file, encoded as UTF8 bytes.</summary>
-        /// <remarks>
-        /// This property can be used to override the contents of an existing file, or specify a file which doesn't actually exist on disk.
-        ///
-        /// If this property is <c>null</c>, it is expected that the file exists on disk and is accessible by Clang.
-        ///
-        /// If this property is non-empty, <see cref="Contents"/> must be null.
-        /// </remarks>
-        public ReadOnlyMemory<byte> ContentBytes { get; init; } = ReadOnlyMemory<byte>.Empty;
-
-        /// <summary>True if this file has <see cref="Contents"/> or <see cref="ContentBytes" /></summary>
-        public bool HasContents => Contents is not null || !ContentBytes.IsEmpty;
 
         /// <summary>Creates a new file</summary>
         /// <param name="filePath">The path to the file</param>
@@ -90,40 +71,6 @@ namespace Biohazrd
                 }
                 else
                 { FilePath = Path.GetFullPath(FilePath); }
-            }
-        }
-
-        internal unsafe CXUnsavedFile CreateUnsavedFile(List<MemoryHandle> memoryHandles)
-        {
-            if (!HasContents)
-            { throw new InvalidOperationException("This method can only be called on files with contnets"); }
-
-            if (memoryHandles is null)
-            { throw new ArgumentNullException(nameof(memoryHandles)); }
-
-            MemoryHandle filePathHandle = default;
-            MemoryHandle contentsHandle = default;
-            try
-            {
-                byte[] filePathBytes = Encoding.UTF8.GetBytesNullTerminated(FilePath);
-                filePathHandle = filePathBytes.AsMemory().Pin();
-
-                ReadOnlyMemory<byte> contents = Contents is not null ? Encoding.UTF8.GetBytes(Contents) : ContentBytes;
-                contentsHandle = contents.Pin();
-
-                return new CXUnsavedFile()
-                {
-                    Filename = (sbyte*)filePathHandle.Pointer,
-                    Contents = (sbyte*)contentsHandle.Pointer,
-                    Length = (nuint)contents.Length
-                };
-            }
-            catch
-            {
-                // Disposing of a defaulted MemoryHandle is safe
-                contentsHandle.Dispose();
-                filePathHandle.Dispose();
-                throw;
             }
         }
     }
