@@ -277,5 +277,16 @@ namespace Biohazrd
             // Create the library
             return new TranslatedLibrary(translationUnitAndIndex, files, parsingDiagnostics, declarations, macros);
         }
+
+        /// <summary>Creates a constant evaluator for evaluating macros and arbitrary C++ expressions.</summary>
+        /// <remarks>The constant evaluator has a significant overhead (internally it has to reparse the entirity of the C++ library) so don't create it unless you plan to actually use it.</remarks>
+        public TranslatedLibraryConstantEvaluator CreateConstantEvaluator()
+            => new TranslatedLibraryConstantEvaluator
+            (
+                CreateIndexFile(),
+                Files.ToImmutableArray(),
+                CreateUnsavedFilesList(indexFile: null), // The constant evaluator needs to be responsible for the index file so it can keep it from being collected.
+                CollectionsMarshal.AsSpan(CommandLineArguments)
+            );
     }
 }

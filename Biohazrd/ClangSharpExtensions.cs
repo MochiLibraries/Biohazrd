@@ -131,7 +131,7 @@ namespace Biohazrd
             return ret;
         }
 
-        private unsafe static ConstantValue? TryComputeConstantValue(CXCursor cursor, out TranslationDiagnostic? diagnostic)
+        public unsafe static ConstantValue? TryComputeConstantValue(this CXCursor cursor, out TranslationDiagnostic? diagnostic)
         {
             bool success = false;
             byte* error;
@@ -149,7 +149,7 @@ namespace Biohazrd
                     }
 
                     StringBuilder messageBuilder = new();
-                    messageBuilder.Append($"Failed to compute the default parameter value constant: ");
+                    messageBuilder.Append($"Failed to compute constant: ");
 
                     for (; *error != 0; error++)
                     { messageBuilder.Append((char)*error); }
@@ -163,7 +163,7 @@ namespace Biohazrd
                 // Since this type isn't very useful, we just turn it into a diagnostic
                 if (value is UnsupportedConstantExpression unsupportedValue)
                 {
-                    diagnostic = new TranslationDiagnostic(Severity.Warning, $"Unsupported default parameter value: {unsupportedValue.Message}");
+                    diagnostic = new TranslationDiagnostic(Severity.Warning, $"Unsupported constant: {unsupportedValue.Message}");
                     return null;
                 }
 

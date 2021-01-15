@@ -35,9 +35,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{CB582A63
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.Tests.Common", "Tests\Biohazrd.Tests.Common\Biohazrd.Tests.Common.csproj", "{387321DB-41DF-4E83-9B16-CE4EA44C988D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Biohazrd.Transformation.Tests", "Tests\Biohazrd.Transformation.Tests\Biohazrd.Transformation.Tests.csproj", "{AA32BABE-BA96-4C91-A46B-5526A739C4F1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.Transformation.Tests", "Tests\Biohazrd.Transformation.Tests\Biohazrd.Transformation.Tests.csproj", "{AA32BABE-BA96-4C91-A46B-5526A739C4F1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Biohazrd.CSharp.Tests", "Tests\Biohazrd.CSharp.Tests\Biohazrd.CSharp.Tests.csproj", "{00F21754-DDAC-498B-A6C7-1185341CDB65}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.CSharp.Tests", "Tests\Biohazrd.CSharp.Tests\Biohazrd.CSharp.Tests.csproj", "{00F21754-DDAC-498B-A6C7-1185341CDB65}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

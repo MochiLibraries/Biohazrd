@@ -25,10 +25,14 @@ namespace Biohazrd
             : this(SourceLocation.Null, severity, message)
         { }
 
-        private static readonly CXDiagnosticDisplayOptions ClangFormatOptions = CXDiagnostic.DefaultDisplayOptions & ~CXDiagnosticDisplayOptions.CXDiagnostic_DisplaySourceLocation;
         internal TranslationDiagnostic(CXDiagnostic clangDiagnostic)
+            : this(new SourceLocation(clangDiagnostic.Location), clangDiagnostic)
+        { }
+
+        private static readonly CXDiagnosticDisplayOptions ClangFormatOptions = CXDiagnostic.DefaultDisplayOptions & ~CXDiagnosticDisplayOptions.CXDiagnostic_DisplaySourceLocation;
+        internal TranslationDiagnostic(SourceLocation location, CXDiagnostic clangDiagnostic)
         {
-            Location = new SourceLocation(clangDiagnostic.Location);
+            Location = location;
             Severity = clangDiagnostic.Severity switch
             {
                 CXDiagnosticSeverity.CXDiagnostic_Ignored => Severity.Ignored,

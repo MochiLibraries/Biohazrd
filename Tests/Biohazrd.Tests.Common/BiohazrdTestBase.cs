@@ -6,7 +6,7 @@ namespace Biohazrd.Tests.Common
     public abstract class BiohazrdTestBase
     {
         /// <param name="targetTriple">https://clang.llvm.org/docs/CrossCompilation.html#target-triple</param>
-        protected TranslatedLibrary CreateLibrary(string cppCode, string? targetTriple = null, TranslationOptions? options = null)
+        protected TranslatedLibraryBuilder CreateLibraryBuilder(string cppCode, string? targetTriple = null, TranslationOptions? options = null)
         {
             TranslatedLibraryBuilder builder = new();
             builder.AddFile(new SourceFile("A.h")
@@ -20,7 +20,13 @@ namespace Biohazrd.Tests.Common
             if (options is not null)
             { builder.Options = options; }
 
-            TranslatedLibrary library = builder.Create();
+            return builder;
+        }
+
+        /// <param name="targetTriple">https://clang.llvm.org/docs/CrossCompilation.html#target-triple</param>
+        protected TranslatedLibrary CreateLibrary(string cppCode, string? targetTriple = null, TranslationOptions? options = null)
+        {
+            TranslatedLibrary library = CreateLibraryBuilder(cppCode, targetTriple, options).Create();
             Assert.Empty(library.ParsingDiagnostics.Where(d => d.IsError));
             return library;
         }
