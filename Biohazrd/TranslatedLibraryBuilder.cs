@@ -160,12 +160,39 @@ namespace Biohazrd
             };
         }
 
+        /// <summary>Creates an <see cref="CXUnsavedFile"/> listing to pass to Clang for parsing this library</summary>
+        /// <remarks>
+        /// The first file will always be the index file.
+        ///
+        /// Make sure to keep the <paramref name="indexFile"/> reference alive as long as the resulting list is alive to avoid the file's buffers from being garbage collected.
+        ///
+        /// If <paramref name="indexFile"/> is null, the index file entry will be defaulted and must be populated by the caller.
+        /// </remarks>
+        private List<CXUnsavedFile> CreateUnsavedFilesList(SourceFileInternal? indexFile)
+        {
+            __HACK__Stl1300Workaround stl1300Workaround = __HACK__Stl1300Workaround.Instance;
+            List<CXUnsavedFile> result = new(stl1300Workaround.ShouldBeApplied ? 2 : 1);
+
+            // Add the index file
+            result.Add(indexFile is not null ? indexFile.UnsavedFile : default(CXUnsavedFile));
+
+            // Add the STL1300 workaround if needed
+            if (stl1300Workaround.ShouldBeApplied)
+            { result.Add(stl1300Workaround.UnsavedFile); }
+
+            // Add user-specified in-memory files
+            foreach (SourceFileInternal file in Files)
+            {
+                if (file.HasUnsavedFile)
+                { result.Add(file.UnsavedFile); }
+            }
+
+            return result;
+        }
+
         public unsafe TranslatedLibrary Create()
         {
             __HACK__InstallLibClangDllWorkaround();
-            __HACK__Stl1300Workaround stl1300Workaround = __HACK__Stl1300Workaround.Instance;
-
-            SourceFileInternal indexFile = new SourceFileInternal(CreateIndexFile());
 
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
             // Create the translation unit
@@ -173,31 +200,12 @@ namespace Biohazrd
             TranslationUnitAndIndex? translationUnitAndIndex = null;
             TranslationUnit? translationUnit = null;
             {
-                List<CXUnsavedFile> unsavedFiles = new(stl1300Workaround.ShouldBeApplied ? 2 : 1);
-
                 CXIndex clangIndex = default;
                 CXTranslationUnit translationUnitHandle = default;
+                SourceFileInternal? indexFile = null;
 
                 try
                 {
-                    //---------------------------------------------------------------------------------
-                    // Create the unsaved files list
-                    //---------------------------------------------------------------------------------
-
-                    // Add the index file
-                    unsavedFiles.Add(indexFile.UnsavedFile);
-
-                    // Add the STL1300 workaround if needed
-                    if (stl1300Workaround.ShouldBeApplied)
-                    { unsavedFiles.Add(stl1300Workaround.UnsavedFile); }
-
-                    // Add user-specified memory files
-                    foreach (SourceFileInternal file in Files)
-                    {
-                        if (file.HasUnsavedFile)
-                        { unsavedFiles.Add(file.UnsavedFile); }
-                    }
-
                     //---------------------------------------------------------------------------------
                     // Create the translation unit
                     //---------------------------------------------------------------------------------
@@ -206,6 +214,10 @@ namespace Biohazrd
 
                     // Allocate the libclang Index
                     clangIndex = CXIndex.Create();
+
+                    // Create unsaved files
+                    indexFile = new SourceFileInternal(CreateIndexFile());
+                    List<CXUnsavedFile> unsavedFiles = CreateUnsavedFilesList(indexFile);
 
                     CXErrorCode translationUnitStatus = CXTranslationUnit.TryParse
                     (
@@ -258,6 +270,7 @@ namespace Biohazrd
             ImmutableArray<TranslatedMacro> macros;
             processor.GetResults(out files, out parsingDiagnostics, out declarations, out macros);
 
+            __HACK__Stl1300Workaround stl1300Workaround = __HACK__Stl1300Workaround.Instance;
             if (stl1300Workaround.Diagnostics.Length > 0)
             { parsingDiagnostics = stl1300Workaround.Diagnostics.AddRange(parsingDiagnostics); }
 
