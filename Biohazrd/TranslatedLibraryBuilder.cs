@@ -237,13 +237,13 @@ namespace Biohazrd
                     // If we failed to create the translation unit/index pair, make sure to dispose of the index/translation unit
                     if (translationUnitAndIndex is null)
                     {
-                        if (clangIndex.Handle != default)
-                        { clangIndex.Dispose(); }
-
                         if (translationUnit is not null)
                         { translationUnit.Dispose(); }
                         else if (translationUnitHandle.Handle != default)
                         { translationUnitHandle.Dispose(); }
+
+                        if (clangIndex.Handle != default)
+                        { clangIndex.Dispose(); }
                     }
                 }
             }
