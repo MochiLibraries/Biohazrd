@@ -30,6 +30,13 @@ namespace Biohazrd
             }
         }
 
+        public TranslatedEnumConstant(string name, ulong value)
+            : base(TranslatedFile.Synthesized)
+        {
+            Name = name;
+            Value = value;
+        }
+
         private static IntegerLiteral? TryGetValueLiteral(Cursor declaration)
         {
             foreach (Cursor cursor in declaration.CursorChildren)

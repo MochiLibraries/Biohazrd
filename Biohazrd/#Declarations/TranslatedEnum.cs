@@ -37,6 +37,16 @@ namespace Biohazrd
             Values = valuesBuilder.ToImmutable();
         }
 
+        public TranslatedEnum(string name, TypeReference underlyingType)
+            : base(TranslatedFile.Synthesized)
+        {
+            Name = name;
+            UnderlyingType = underlyingType;
+            Values = ImmutableList<TranslatedEnumConstant>.Empty;
+            TranslateAsLooseConstants = false;
+            IsFlags = false;
+        }
+
         public override IEnumerator<TranslatedDeclaration> GetEnumerator()
             => Values.GetEnumerator();
 
