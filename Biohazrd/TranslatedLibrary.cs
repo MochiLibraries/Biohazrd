@@ -19,7 +19,7 @@ namespace Biohazrd
         /// <summary>An array of <see cref="TranslatedFile"/>s corresponding to the input files originally used to create the original <see cref="TranslatedLibrary"/>.</summary>
         /// <remarks>This will not include <see cref="TranslatedFile.Synthesized"/> even if any declarations are using it.</remarks>
         public ImmutableArray<TranslatedFile> Files { get; }
-        public ImmutableArray<TranslationDiagnostic> ParsingDiagnostics { get; }
+        public ImmutableArray<TranslationDiagnostic> ParsingDiagnostics { get; init; }
 
         internal TranslatedLibrary
         (
