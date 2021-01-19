@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="ClangSharp" Version="10.0.0-beta" />
-    <PackageReference Include="ClangSharp.Pathogen" Version="0.0.0-ci17" />
+    <PackageReference Include="ClangSharp.Pathogen" Version="0.0.0-ci18" />
     <!-- This package is needed to support __HACK__Stl1300Workaround -->
     <PackageReference Include="Microsoft.VisualStudio.Setup.Configuration.Interop" Version="2.3.2262-g94fae01e" />
   </ItemGroup>

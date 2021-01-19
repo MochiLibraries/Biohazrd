@@ -250,6 +250,8 @@ namespace Biohazrd
                     {
                         case CX_AttrKind.CX_AttrKind_DLLExport:
                         case CX_AttrKind.CX_AttrKind_DLLImport:
+                        case CX_AttrKind.CX_AttrKind_MSNoVTable:
+                        case CX_AttrKind.CX_AttrKind_Uuid:
                         //TODO: Alignment could impact the translation if types are allocated client-side.
                         case CX_AttrKind.CX_AttrKind_Aligned:
                             return None;
