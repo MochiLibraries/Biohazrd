@@ -127,6 +127,9 @@ namespace Biohazrd.CSharp
                         if (type is CSharpBuiltinTypeReference)
                         { return true; }
 
+                        if (type is FunctionPointerTypeReference)
+                        { return true; }
+
                         if (type is TranslatedTypeReference translatedType && translatedType.TryResolve(context.Library) is TranslatedEnum)
                         { return true; }
 
