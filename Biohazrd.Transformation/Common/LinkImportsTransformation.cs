@@ -37,7 +37,14 @@ namespace Biohazrd.Transformation.Common
         public bool WarnOnAmbiguousSymbols { get; set; } = true;
 
         /// <summary>If true, an error will be issued for symbols which cannot be resolved.</summary>
+        /// <remarks>
+        /// This does not apply to virtual methods because they're generally not exported. If you have advanced needs and expect virtual methods to be exported, enable <see cref="ErrorOnMissingVirtualMethods"/>.
+        /// </remarks>
         public bool ErrorOnMissing { get; set; }
+
+        /// <summary>If true, an error will be issued for virtual methods which cannot be resolved.</summary>
+        /// <remarks>You generally do not want to enable this option unless you have advanced needs for virtual methods to be exported.</remarks>
+        public bool ErrorOnMissingVirtualMethods { get; set; }
 
         public void AddLibrary(string filePath)
         {
@@ -71,7 +78,7 @@ namespace Biohazrd.Transformation.Common
             }
         }
 
-        private bool Resolve(string symbolName, [NotNullWhen(true)] out string? dllFileName, [NotNullWhen(true)] out string? mangledName, ref DiagnosticAccumulator diagnosticsAccumulator, bool isFunction)
+        private bool Resolve(string symbolName, [NotNullWhen(true)] out string? dllFileName, [NotNullWhen(true)] out string? mangledName, ref DiagnosticAccumulator diagnosticsAccumulator, bool isFunction, bool isVirtualMethod)
         {
             DiagnosticAccumulatorRef diagnostics = new(ref diagnosticsAccumulator);
 
@@ -80,7 +87,7 @@ namespace Biohazrd.Transformation.Common
             if (!Imports.TryGetValue(symbolName, out symbolEntry))
             {
                 // If the symbol could not be resolved, emit a diagnostic if requested and fail
-                if (ErrorOnMissing)
+                if ((ErrorOnMissing && !isVirtualMethod) || (ErrorOnMissingVirtualMethods && isVirtualMethod))
                 { diagnostics.Add(new TranslationDiagnostic(Severity.Error, $"Could not resolve symbol '{symbolName}'")); }
 
                 dllFileName = null;
@@ -182,7 +189,7 @@ namespace Biohazrd.Transformation.Common
             string? resolvedName;
             DiagnosticAccumulator diagnostics = new();
 
-            if (!Resolve(declaration.MangledName, out resolvedDll, out resolvedName, ref diagnostics, isFunction: true))
+            if (!Resolve(declaration.MangledName, out resolvedDll, out resolvedName, ref diagnostics, isFunction: true, isVirtualMethod: declaration.IsVirtual))
             {
                 // If there's no changes, don't modify the function
                 if (!diagnostics.HasDiagnostics)
@@ -206,7 +213,7 @@ namespace Biohazrd.Transformation.Common
             string? resolvedName;
             DiagnosticAccumulator diagnostics = new();
 
-            if (!Resolve(declaration.MangledName, out resolvedDll, out resolvedName, ref diagnostics, isFunction: false))
+            if (!Resolve(declaration.MangledName, out resolvedDll, out resolvedName, ref diagnostics, isFunction: false, isVirtualMethod: false))
             {
                 // If there's no changes, don't modify the field
                 if (!diagnostics.HasDiagnostics)

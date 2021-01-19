@@ -427,5 +427,54 @@ extern ""C"" void AnotherFunction();
             CreateImportLib(transformation, nameof(TrackVerboseImportInformation_MustBeSetBeforeAddingAnyLibraries), "TestFunction");
             Assert.Throws<InvalidOperationException>(() => transformation.TrackVerboseImportInformation = true);
         }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/136")]
+        public void VirtualMethod_NoErrorOnMissing()
+        {
+            LinkImportsTransformation transformation = new()
+            {
+                ErrorOnMissing = true
+            };
+
+            TranslatedLibrary library = CreateLibrary(@"
+class Test
+{
+public:
+    virtual void VirtualMethod();
+};
+"
+            );
+
+            TranslatedFunction methodBeforeTransformation = library.FindDeclaration<TranslatedRecord>("Test").FindDeclaration<TranslatedFunction>("VirtualMethod");
+            library = transformation.Transform(library);
+            TranslatedFunction methodAfterTransformation = library.FindDeclaration<TranslatedRecord>("Test").FindDeclaration<TranslatedFunction>("VirtualMethod");
+
+            Assert.ReferenceEqual(methodBeforeTransformation, methodAfterTransformation);
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/136")]
+        public void VirtualMethod_ErrorOnMissing()
+        {
+            LinkImportsTransformation transformation = new()
+            {
+                ErrorOnMissing = true,
+                ErrorOnMissingVirtualMethods = true
+            };
+
+            TranslatedLibrary library = CreateLibrary(@"
+class Test
+{
+public:
+    virtual void VirtualMethod();
+};
+"
+            );
+
+            library = transformation.Transform(library);
+            TranslatedFunction virtualMethod = library.FindDeclaration<TranslatedRecord>("Test").FindDeclaration<TranslatedFunction>("VirtualMethod");
+            Assert.Contains(virtualMethod.Diagnostics, d => d.IsError && d.Message.Contains("Could not resolve"));
+        }
     }
 }
