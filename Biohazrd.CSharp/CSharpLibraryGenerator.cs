@@ -106,6 +106,10 @@ namespace Biohazrd.CSharp
                 { return; }
             }
 
+            // Skip declarations with no output
+            if (declaration is ICustomCSharpTranslatedDeclaration cSharpDeclaration && !cSharpDeclaration.HasOutput)
+            { return; }
+
             // Dump Clang information
             if (Options.DumpClangInfo && declaration.Declaration is not null)
             {
