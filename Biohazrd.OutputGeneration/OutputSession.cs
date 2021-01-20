@@ -15,6 +15,9 @@ namespace Biohazrd.OutputGeneration
             set => _BaseOutputDirectory = Path.GetFullPath(value);
         }
 
+        /// <summary>If true, files outside the final output directory will not be logged.</summary>
+        public bool ConservativeFileLogging { get; set; } = true;
+
         public bool AutoRenameConflictingFiles { get; set; } = true;
 
         private Dictionary<Type, Delegate> Factories = new();
@@ -193,6 +196,7 @@ namespace Biohazrd.OutputGeneration
                         { break; }
 
                         filePath = Path.Combine(BaseOutputDirectory, filePath);
+                        filePath = Path.GetFullPath(filePath);
 
                         if (!Writers.ContainsKey(filePath))
                         { File.Delete(filePath); }
@@ -205,8 +209,8 @@ namespace Biohazrd.OutputGeneration
             {
                 foreach (string writtenFilePath in FilesWritten.OrderBy(f => f))
                 {
-                    // If the path is outside of the output directory, don't log it
-                    if (!writtenFilePath.StartsWith(BaseOutputDirectory))
+                    // If conservative logging is enabled and the path is outside of the output directory, don't log it
+                    if (ConservativeFileLogging && !writtenFilePath.StartsWith(BaseOutputDirectory))
                     { continue; }
 
                     // Make the path relative to the output directory
