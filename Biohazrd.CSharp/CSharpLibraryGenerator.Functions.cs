@@ -115,6 +115,7 @@ namespace Biohazrd.CSharp
             // (We do this first so we can change our emit if the method is broken.)
             string? methodAccess = null;
             string? methodAccessFailure = null;
+            TypeReference? thisTypeCast = null;
 
             if (!declaration.IsVirtual)
             { methodAccess = SanitizeIdentifier(emitContext.DllImportName); }
@@ -143,7 +144,17 @@ namespace Biohazrd.CSharp
                     if (vTableEntry is null)
                     { methodAccessFailure = "Could not find entry in virtual method table."; }
                     else
-                    { methodAccess = $"{SanitizeIdentifier(record.VTableField.Name)}->{SanitizeIdentifier(vTableEntry.Name)}"; }
+                    {
+                        methodAccess = $"{SanitizeIdentifier(record.VTableField.Name)}->{SanitizeIdentifier(vTableEntry.Name)}";
+
+                        // Determine if we need to cast the this pointer
+                        // (This happens if a virtual method is lifted from a base type to a child.)
+                        if (vTableEntry.Type is FunctionPointerTypeReference vTableFunctionPointer
+                            && vTableFunctionPointer.ParameterTypes.Length > 0
+                            && vTableFunctionPointer.ParameterTypes[0] is PointerTypeReference { Inner: TypeReference vTableThis } vTableThisPointer
+                            && (vTableThis is not TranslatedTypeReference vTableThisTranslated || !ReferenceEquals(vTableThisTranslated.TryResolve(context.Library), context.ParentDeclaration)))
+                        { thisTypeCast = vTableThisPointer; }
+                    }
                 }
             }
 
@@ -196,7 +207,7 @@ namespace Biohazrd.CSharp
                         Writer.WriteLine($" {SanitizeIdentifier(emitContext.ReturnBufferParameterName)};");
 
                         Writer.Write($"{methodAccess}(");
-                        EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments);
+                        EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments, thisTypeCast);
                         Writer.WriteLine(");");
 
                         Writer.WriteLine($"return {SanitizeIdentifier(emitContext.ReturnBufferParameterName)};");
@@ -210,7 +221,7 @@ namespace Biohazrd.CSharp
                     { Writer.Write("return "); }
 
                     Writer.Write($"{methodAccess}(");
-                    EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments);
+                    EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments, thisTypeCast);
                     Writer.Write(");");
 
                     Writer.WriteLine(" }");
@@ -225,8 +236,11 @@ namespace Biohazrd.CSharp
             TrampolineArguments,
         }
 
-        private void EmitFunctionParameterList(VisitorContext context, EmitFunctionContext emitContext, TranslatedFunction declaration, EmitParameterListMode mode)
+        private void EmitFunctionParameterList(VisitorContext context, EmitFunctionContext emitContext, TranslatedFunction declaration, EmitParameterListMode mode, TypeReference? thisCastType = null)
         {
+            if (thisCastType is not null && mode != EmitParameterListMode.TrampolineArguments)
+            { throw new ArgumentException("Emitting a this cast is only possible for trampoline arguments.", nameof(thisCastType)); }
+
             bool first = true;
 
             bool writeImplicitParameters = mode == EmitParameterListMode.DllImportParameters || mode == EmitParameterListMode.TrampolineArguments;
@@ -250,6 +264,12 @@ namespace Biohazrd.CSharp
                     {
                         WriteType(context, declaration, emitContext.ThisType);
                         Writer.Write(' ');
+                    }
+                    else if (thisCastType is not null)
+                    {
+                        Writer.Write('(');
+                        WriteType(context, declaration, thisCastType);
+                        Writer.Write(')');
                     }
 
                     Writer.WriteIdentifier(emitContext.ThisParameterName);
