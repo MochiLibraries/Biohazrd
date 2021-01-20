@@ -19,9 +19,9 @@ namespace Biohazrd.Utilities
         public void AddCategory(string categoryName, IEnumerable<TranslationDiagnostic> diagnostics, string? skipMessage = null)
             => Categories.Add(new DiagnosticCategory(categoryName, diagnostics, skipMessage));
 
-        public void AddFrom(TranslatedLibrary library, string? skipMessage = null)
+        public void AddFrom(TranslatedLibrary library, string? skipMessage = null, string? categoryNameSuffix = null)
         {
-            AddCategory("Parsing Diagnostics", library.ParsingDiagnostics, skipMessage);
+            AddCategory($"Parsing Diagnostics{categoryNameSuffix}", library.ParsingDiagnostics, skipMessage);
 
             ImmutableArray<DiagnosticOrSubcategory>.Builder translationDiagnostics = ImmutableArray.CreateBuilder<DiagnosticOrSubcategory>();
             foreach (TranslatedDeclaration declaration in library.EnumerateRecursively())
@@ -35,7 +35,7 @@ namespace Biohazrd.Utilities
                 }
             }
 
-            AddCategory("Translation Diagnostics", translationDiagnostics.MoveToImmutableSafe(), skipMessage);
+            AddCategory($"Translation Diagnostics{categoryNameSuffix}", translationDiagnostics.MoveToImmutableSafe(), skipMessage);
         }
 
         public void AddFrom(BrokenDeclarationExtractor brokenDeclarationExtractor, string? skipMessage = null)
