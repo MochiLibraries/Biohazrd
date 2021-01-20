@@ -25,7 +25,7 @@ namespace Biohazrd.CSharp
             Writer.Using("System.Runtime.InteropServices"); // StructLayoutAttribute, FieldOffsetAttribute
 
             Writer.EnsureSeparation();
-            Writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size={declaration.SizeBytes})]");
+            Writer.WriteLine($"[StructLayout(LayoutKind.Explicit, Size = {declaration.SizeBytes})]");
             Writer.WriteLine($"{declaration.Accessibility.ToCSharpKeyword()} unsafe partial struct {SanitizeIdentifier(declaration.Name)}");
             using (Writer.Block())
             {
