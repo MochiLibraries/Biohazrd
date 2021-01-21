@@ -28,7 +28,7 @@ namespace Biohazrd
             if (!record.Handle.IsDefinition)
             { throw new ArgumentException("Only defining records can be translated!"); }
 
-            MustBePassedByReference = record.MustBePassedByReference();
+            MustBePassedByReference = record.MustBePassedByReference(isForInstanceMethodReturnValue: false);
 
             if (record.IsStruct)
             { Kind = RecordKind.Struct; }

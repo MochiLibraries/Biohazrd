@@ -40,7 +40,7 @@ namespace Biohazrd
                     // Ideally we should be able to encode this some other way.
                     for (int i = 0; i < functionTypeReference.ParameterTypes.Length; i++)
                     {
-                        if (functionTypeReference.ParameterTypes[i] is ClangTypeReference clangType && clangType.ClangType.MustBePassedByReference())
+                        if (functionTypeReference.ParameterTypes[i] is ClangTypeReference clangType && clangType.ClangType.MustBePassedByReference(isForInstanceMethodReturnValue: false))
                         {
                             functionTypeReference = functionTypeReference with
                             {
@@ -51,12 +51,14 @@ namespace Biohazrd
 
                     //TODO: This depends on the calling convention
                     // Add the retbuf parameter if necessary
-                    if (functionType.ReturnType.MustBePassedByReference())
+                    if (functionType.ReturnType.MustBePassedByReference(isForInstanceMethodReturnValue: true))
                     {
+                        PointerTypeReference returnBufferType = new(functionTypeReference.ReturnType);
+
                         functionTypeReference = functionTypeReference with
                         {
-                            ParameterTypes = functionTypeReference.ParameterTypes.Insert(0, functionTypeReference.ReturnType),
-                            ReturnType = VoidTypeReference.Instance
+                            ParameterTypes = functionTypeReference.ParameterTypes.Insert(0, returnBufferType),
+                            ReturnType = returnBufferType
                         };
                     }
 

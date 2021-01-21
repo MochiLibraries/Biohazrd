@@ -58,12 +58,17 @@ namespace Biohazrd
                 _ => AccessModifier.Public // The access specifier is invalid for declarations which aren't members of a record, so they are translated as public.
             };
 
-        internal static bool RecordMustBePassedByReference(this CXCursor cursor)
+        internal static bool RecordMustBePassedByReference(this CXCursor cursor, bool isForInstanceMethodReturnValue)
         {
             if (!cursor.IsDeclaration || cursor.DeclKind < CX_DeclKind.CX_DeclKind_FirstRecord || cursor.DeclKind > CX_DeclKind.CX_DeclKind_LastRecord)
             { throw new ArgumentException("The cursor must be a record declaration.", nameof(cursor)); }
 
             // Note: These rules assume Microsoft x64 ABI, need to evaluate for x86 and non-Windows x64
+
+            // On x64 Windows, user-defined records are _always_ returned by reference for instance methods
+            // See https://github.com/InfectedLibraries/Biohazrd/issues/142
+            if (isForInstanceMethodReturnValue)
+            { return true; }
 
             // ArgPassingRestrictions only covers cases like having a copy constructor or something similar
             // It (surpririsingly) doesn't handle cases involving the size of the record
@@ -88,19 +93,19 @@ namespace Biohazrd
             }
         }
 
-        internal static bool MustBePassedByReference(this RecordDecl record)
-            => record.Handle.RecordMustBePassedByReference();
+        internal static bool MustBePassedByReference(this RecordDecl record, bool isForInstanceMethodReturnValue)
+            => record.Handle.RecordMustBePassedByReference(isForInstanceMethodReturnValue);
 
-        public static bool MustBePassedByReference(this ClangType type)
+        public static bool MustBePassedByReference(this ClangType type, bool isForInstanceMethodReturnValue)
         {
             switch (type)
             {
                 case ElaboratedType elaboratedType:
-                    return elaboratedType.NamedType.MustBePassedByReference();
+                    return elaboratedType.NamedType.MustBePassedByReference(isForInstanceMethodReturnValue);
                 case TypedefType typedefType:
-                    return typedefType.CanonicalType.MustBePassedByReference();
+                    return typedefType.CanonicalType.MustBePassedByReference(isForInstanceMethodReturnValue);
                 case RecordType recordType:
-                    return ((RecordDecl)recordType.Decl).MustBePassedByReference();
+                    return ((RecordDecl)recordType.Decl).MustBePassedByReference(isForInstanceMethodReturnValue);
                 default:
                     return false;
             }

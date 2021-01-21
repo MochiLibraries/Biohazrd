@@ -14,7 +14,7 @@ namespace Biohazrd
             : base(file, parameter)
         {
             Type = new ClangTypeReference(parameter.Type);
-            ImplicitlyPassedByReference = parameter.Type.MustBePassedByReference();
+            ImplicitlyPassedByReference = parameter.Type.MustBePassedByReference(isForInstanceMethodReturnValue: false);
 
             DefaultValue = parameter.TryComputeConstantValue(out TranslationDiagnostic? diagnostic);
             Diagnostics = Diagnostics.AddIfNotNull(diagnostic);

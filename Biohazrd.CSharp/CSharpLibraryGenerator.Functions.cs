@@ -93,9 +93,9 @@ namespace Biohazrd.CSharp
             AccessModifier accessibility = declaration.IsInstanceMethod ? AccessModifier.Private : declaration.Accessibility;
             Writer.Write($"{accessibility.ToCSharpKeyword()} static extern ");
 
-            // If the return value is passed by reference, the return type is void
+            // If the return value is passed by reference, the return type is the return buffer pointer
             if (declaration.ReturnByReference)
-            { Writer.Write("void"); }
+            { WriteTypeAsReference(context, declaration, declaration.ReturnType); }
             else
             { WriteType(context, declaration, declaration.ReturnType); }
 
@@ -282,7 +282,10 @@ namespace Biohazrd.CSharp
                     if (!first)
                     { Writer.Write(", "); }
 
-                    Writer.Write("out ");
+                    if (!declaration.IsVirtual)
+                    { Writer.Write("out "); }
+                    else if (mode == EmitParameterListMode.TrampolineArguments)
+                    { Writer.Write("&"); }
 
                     if (writeTypes)
                     {

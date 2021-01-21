@@ -29,7 +29,6 @@ namespace Biohazrd
         {
             MangledName = function.Handle.Mangling.ToString();
             ReturnType = new ClangTypeReference(function.ReturnType);
-            ReturnByReference = function.ReturnType.MustBePassedByReference();
 
             // Enumerate parameters
             ImmutableArray<TranslatedParameter>.Builder parametersBuilder = ImmutableArray.CreateBuilder<TranslatedParameter>(function.Parameters.Count);
@@ -63,6 +62,9 @@ namespace Biohazrd
                 IsVirtual = false;
                 IsConst = false;
             }
+
+            // Determine if return value must be passed by reference
+            ReturnByReference = function.ReturnType.MustBePassedByReference(isForInstanceMethodReturnValue: IsInstanceMethod);
 
             // Handle operator overloads
             ref PathogenOperatorOverloadInfo operatorOverloadInfo = ref function.GetOperatorOverloadInfo();
