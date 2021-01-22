@@ -1,6 +1,7 @@
 ﻿using Biohazrd.CSharp.Metadata;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp
@@ -162,6 +163,9 @@ namespace Biohazrd.CSharp
 
             // Hide from Intellisense if applicable
             EmitEditorBrowsableAttribute(declaration);
+
+            // Add method implementation options if applicable
+            EmitMethodImplAttribute(declaration);
 
             // Obsolete the method if we won't be able to build the trampoline
             if (methodAccessFailure is not null)
@@ -336,6 +340,45 @@ namespace Biohazrd.CSharp
                 Writer.Using("System.ComponentModel");
                 Writer.WriteLine("[EditorBrowsable(EditorBrowsableState.Never)]");
             }
+        }
+
+        private void EmitMethodImplAttribute(TranslatedFunction declaration)
+        {
+            if (!declaration.Metadata.TryGet<TrampolineMethodImplOptions>(out TrampolineMethodImplOptions optionsMetadata))
+            { return; }
+
+            MethodImplOptions options = optionsMetadata.Options;
+
+            if (options == 0)
+            { return; }
+
+            Writer.Using("System.Runtime.CompilerServices");
+            Writer.Write("[MethodImpl(");
+
+            bool first = true;
+            foreach (MethodImplOptions option in Enum.GetValues<MethodImplOptions>())
+            {
+                if ((options & option) == option)
+                {
+                    if (first)
+                    { first = false; }
+                    else
+                    { Writer.Write(" | "); }
+
+                    Writer.Write($"{nameof(MethodImplOptions)}.{option}");
+                    options &= ~option;
+                }
+            }
+
+            if (first || options != 0)
+            {
+                if (!first)
+                { Writer.Write(" | "); }
+
+                Writer.Write($"({nameof(MethodImplOptions)}){(int)options}");
+            }
+
+            Writer.WriteLine(")]");
         }
 
         protected override void VisitParameter(VisitorContext context, TranslatedParameter declaration)
