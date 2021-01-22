@@ -21,7 +21,6 @@ namespace Biohazrd.CSharp
             }
 
             Writer.Using("System"); // IndexOutOfRangeException, IntPtr
-            Writer.Using("System.Runtime.CompilerServices"); // Unsafe
             Writer.Using("System.Runtime.InteropServices"); // StructLayoutAttribute, FieldOffsetAttribute
 
             Writer.EnsureSeparation();
