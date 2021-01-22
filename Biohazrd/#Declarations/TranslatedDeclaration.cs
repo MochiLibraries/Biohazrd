@@ -11,7 +11,7 @@ namespace Biohazrd
 {
     public abstract record TranslatedDeclaration : IEquatable<TranslatedDeclaration>, IEnumerable<TranslatedDeclaration>
     {
-        public TranslatedFile File { get; }
+        public TranslatedFile File { get; init; }
         public DeclarationId Id { get; }
 
         public TranslatedDeclaration Original { get; }
