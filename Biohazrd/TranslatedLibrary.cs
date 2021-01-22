@@ -125,7 +125,7 @@ namespace Biohazrd
 
             foreach ((VisitorContext childContext, TranslatedDeclaration child) in this.EnumerateRecursivelyWithContext())
             {
-                if (child.Id == id)
+                if (child.Id == id || child.ReplacedIds.Contains(id))
                 {
                     resultWithContext = (child, childContext);
                     break;

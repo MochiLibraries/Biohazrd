@@ -13,6 +13,7 @@ namespace Biohazrd
     {
         public TranslatedFile File { get; init; }
         public DeclarationId Id { get; }
+        public ImmutableHashSet<DeclarationId> ReplacedIds { get; private init; } = ImmutableHashSet<DeclarationId>.Empty;
 
         public TranslatedDeclaration Original { get; }
         public bool IsOriginal => ReferenceEquals(Original, this);
@@ -64,11 +65,37 @@ namespace Biohazrd
         }
 
         public Decl? Declaration { get; init; }
-        public ImmutableArray<Decl> SecondaryDeclarations { get; init; } = ImmutableArray<Decl>.Empty;
+        public ImmutableArray<Decl> SecondaryDeclarations { get; [Obsolete("Use ReplacedDeclarations instead")] init; } = ImmutableArray<Decl>.Empty;
 
         public ImmutableArray<TranslationDiagnostic> Diagnostics { get; init; } = ImmutableArray<TranslationDiagnostic>.Empty;
 
         public DeclarationMetadata Metadata { get; init; }
+
+        public ImmutableArray<TranslatedDeclaration> ReplacedDeclarations
+        {
+            init
+            {
+                ImmutableHashSet<DeclarationId>.Builder replacedIds = ReplacedIds.ToBuilder();
+                ImmutableArray<Decl>.Builder secondaryDeclarations = SecondaryDeclarations.ToBuilder();
+                secondaryDeclarations.Capacity += value.Length;
+
+                foreach (TranslatedDeclaration replacedDeclaration in value)
+                {
+                    replacedIds.Add(replacedDeclaration.Id);
+                    replacedIds.UnionWith(replacedDeclaration.ReplacedIds);
+
+                    if (replacedDeclaration.Declaration is not null)
+                    { secondaryDeclarations.Add(replacedDeclaration.Declaration); }
+
+                    secondaryDeclarations.AddRange(replacedDeclaration.SecondaryDeclarations);
+                }
+
+                ReplacedIds = replacedIds.ToImmutable();
+#pragma warning disable CS0618 // Type or member is obsolete
+                SecondaryDeclarations = secondaryDeclarations.MoveToImmutableSafe();
+#pragma warning restore CS0618
+            }
+        }
 
         protected TranslatedDeclaration(TranslatedFile file, Decl? declaration = null)
         {
