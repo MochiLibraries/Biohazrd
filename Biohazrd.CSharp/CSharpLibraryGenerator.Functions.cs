@@ -164,6 +164,13 @@ namespace Biohazrd.CSharp
             // Hide from Intellisense if applicable
             EmitEditorBrowsableAttribute(declaration);
 
+            // Hide from the debugger if applicable
+            if (Options.HideTrampolinesFromDebugger)
+            {
+                Writer.Using("System.Diagnostics");
+                Writer.WriteLine("[DebuggerStepThrough, DebuggerHidden]");
+            }
+
             // Add method implementation options if applicable
             EmitMethodImplAttribute(declaration);
 
