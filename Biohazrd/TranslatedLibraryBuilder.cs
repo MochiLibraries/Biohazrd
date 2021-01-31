@@ -1,5 +1,6 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -194,6 +195,8 @@ namespace Biohazrd
         {
             __HACK__InstallLibClangDllWorkaround();
 
+            ImmutableArray<TranslationDiagnostic>.Builder miscDiagnostics = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
+
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
             // Create the translation unit
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -238,6 +241,22 @@ namespace Biohazrd
                     if (translationUnitStatus != CXErrorCode.CXError_Success)
                     { throw new InvalidOperationException($"Failed to parse the Biohazrd index file due to a fatal Clang error {translationUnitStatus}."); }
 
+                    // Instantiate all fully-sepcialized templates in the translation unit
+                    // Clang instantiates fully specialized templates lazily, which means when they're only used in some contexts it will treat them as defined.
+                    // (For instance, a specialization only used for a parameter's type in a declarared function is never actually implicitly defined.)
+                    // As such, we do this to fully define all implicitly-defined fully specified templates across the entire translation unit.
+                    // We want to do this earlier rather than later since it ends up mutating the translation unit, which ClangSharp tends to dislike since it assumes it's immutable.
+                    // See https://github.com/InfectedLibraries/Biohazrd/issues/153 for details.
+                    {
+                        PathogenTemplateInstantiationMetrics metrics = PathogenExtensions.pathogen_InstantiateAllFullySpecializedClassTemplates(translationUnitHandle);
+
+                        if (metrics.SuccessfulInstantiationsCount > 0)
+                        { miscDiagnostics.Add(Severity.Note, $"Successfully late-instantiated {metrics.SuccessfulInstantiationsCount} template specialization{(metrics.SuccessfulInstantiationsCount == 1 ? "" : "s")}."); }
+
+                        if (metrics.FailedInstantiationsCount > 0)
+                        { miscDiagnostics.Add(Severity.Warning, $"Failed to late-instantiate {metrics.FailedInstantiationsCount} template specialization{(metrics.FailedInstantiationsCount == 1 ? "" : "s")}."); }
+                    }
+
                     // Create the translation unit
                     translationUnit = TranslationUnit.GetOrCreate(translationUnitHandle);
 
@@ -269,6 +288,13 @@ namespace Biohazrd
             ImmutableList<TranslatedDeclaration> declarations;
             ImmutableArray<TranslatedMacro> macros;
             processor.GetResults(out files, out parsingDiagnostics, out declarations, out macros);
+
+            // Prepend misc diagnostics if we have any
+            if (miscDiagnostics.Count > 0)
+            {
+                miscDiagnostics.AddRange(parsingDiagnostics);
+                parsingDiagnostics = miscDiagnostics.MoveToImmutableSafe();
+            }
 
             __HACK__Stl1300Workaround stl1300Workaround = __HACK__Stl1300Workaround.Instance;
             if (stl1300Workaround.Diagnostics.Length > 0)
