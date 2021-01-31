@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Xunit
 {
@@ -12,7 +13,7 @@ namespace Xunit
             where T : class
             => NotEqual<T>(expected, actual, ReferenceEqualityComparer.Instance);
 
-        public static T NotNull<T>(T? obj)
+        public static T NotNull<T>([NotNull] T? obj)
             where T : class
         {
             NotNull((object?)obj);
