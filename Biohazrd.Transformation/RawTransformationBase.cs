@@ -53,6 +53,9 @@ namespace Biohazrd.Transformation
             // Release this instance from processing the library
             _CurrentLibrary = null;
 
+            // Allow very late post-transformation steps as a workaround for https://github.com/InfectedLibraries/Biohazrd/issues/64
+            library = __HACK__PostPostTransformLibrary(library);
+
             // Return the modified library
             return library;
         }
@@ -61,6 +64,10 @@ namespace Biohazrd.Transformation
             => library;
 
         protected virtual TranslatedLibrary PostTransformLibrary(TranslatedLibrary library)
+            => library;
+
+        // This is a dirty hack to work around https://github.com/InfectedLibraries/Biohazrd/issues/64 for CSharpTypeReductionTransformation.
+        protected virtual TranslatedLibrary __HACK__PostPostTransformLibrary(TranslatedLibrary library)
             => library;
 
         private TransformationResult TransformRecursively(TransformationContext context, TranslatedDeclaration declaration)

@@ -1,6 +1,7 @@
 ﻿using Biohazrd.Transformation;
 using Biohazrd.Transformation.Common;
 using ClangSharp;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
@@ -14,14 +15,21 @@ namespace Biohazrd.CSharp
         private ConcurrentBag<ConstantArrayTypeDeclaration> NewConstantArrayTypes = new();
         private object ConstantArrayTypeCreationLock = new();
 
-        public int ConstantArrayTypesCreated { get; private set; }
+        private int _ConstantArrayTypesCreated;
+
+        // Previously consumers of this transformation had to manually re-run this transformation as a workaround for
+        // https://github.com/InfectedLibraries/Biohazrd/issues/64
+        // Instead we now do this ourselves using PostTransformLibrary, which was added in
+        // https://github.com/InfectedLibraries/Biohazrd/issues/54
+        [Obsolete("This transformation no longer requires being manually re-run to resolve constant arrays.")]
+        public int ConstantArrayTypesCreated => _ConstantArrayTypesCreated;
 
         protected override TranslatedLibrary PreTransformLibrary(TranslatedLibrary library)
         {
             Debug.Assert(ConstantArrayTypes.Count == 0 && NewConstantArrayTypes.Count == 0, "There should not be any constant array types at this point.");
             ConstantArrayTypes.Clear();
             NewConstantArrayTypes.Clear();
-            ConstantArrayTypesCreated = 0;
+            _ConstantArrayTypesCreated = 0;
 
             // We only look for constant array type declarations at the root of the library since that's were we add them
             foreach (ConstantArrayTypeDeclaration existingDeclaration in library.Declarations.OfType<ConstantArrayTypeDeclaration>())
@@ -40,12 +48,17 @@ namespace Biohazrd.CSharp
                 Declarations = library.Declarations.AddRange(NewConstantArrayTypes.OrderBy(t => t.Name))
             };
 
-            ConstantArrayTypesCreated = NewConstantArrayTypes.Count;
+            _ConstantArrayTypesCreated = NewConstantArrayTypes.Count;
             ConstantArrayTypes.Clear();
             NewConstantArrayTypes.Clear();
 
             return base.PostTransformLibrary(library);
         }
+
+        protected override TranslatedLibrary __HACK__PostPostTransformLibrary(TranslatedLibrary library)
+            // Persistently run the transformation to ensure nested constant arrays are generated
+            // (This is a workaround for https://github.com/InfectedLibraries/Biohazrd/issues/64)
+            => _ConstantArrayTypesCreated > 0 ? Transform(library) : base.__HACK__PostPostTransformLibrary(library);
 
         private ConstantArrayTypeDeclaration GetOrCreateConstantArrayTypeDeclaration(ConstantArrayType constantArrayType)
         {
