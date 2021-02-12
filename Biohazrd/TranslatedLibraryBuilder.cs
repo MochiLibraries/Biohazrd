@@ -68,68 +68,6 @@ namespace Biohazrd
         public void AddCommandLineArguments(params string[] commandLineArguments)
             => AddCommandLineArguments((IEnumerable<string>)commandLineArguments);
 
-
-        private static bool HaveInstalledLibClangResolver = false;
-        private static object HaveInstalledLibClangResolverLock = new();
-        private static volatile bool OurResolverWasUsedForClang = false;
-        /// <summary>Installs Biohazrd's libclang resolver for ClangSharp.</summary>
-        /// <remarks>
-        /// You do not typically need to call this method, but if you are using ClangSharp directly in your code before your first call to <see cref="Create"/>,
-        /// you must call this method before any usage of ClangSharp. If you fail to do so, <see cref="Create"/> will throw an exception and/or Biohazrd may experience issues.
-        ///
-        /// For details on the issue this method is working around, see https://github.com/InfectedLibraries/llvm-project/issues/2#issuecomment-712897834
-        /// </remarks>
-        public static unsafe void __HACK__InstallLibClangDllWorkaround()
-        {
-            // This is a workaround to avoid loading two different libclang DLLs, and can be removed once https://github.com/InfectedLibraries/llvm-project/issues/2 is fixed.
-            // If we don't do this, weird things can happen in some scenarios.
-            // (For example, pathogen_ComputerConstantValue can return garbage for floats because LLVM uses compares pointers to statically allocated memory to differentiate various float storages.)
-            // In theory this could be in ClangSharp.Pathogen instead, but we'd have to call it here anyway since we need to ensure this happens before ClangSharp is used.
-            static IntPtr LibClangResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
-            {
-                if (libraryName == "libclang")
-                {
-                    OurResolverWasUsedForClang = true;
-                    return NativeLibrary.Load("libclang-pathogen.dll", typeof(ClangSharp.Pathogen.ClangSharpExtensions).Assembly, null);
-                }
-
-                return IntPtr.Zero;
-            }
-
-            lock (HaveInstalledLibClangResolverLock)
-            {
-                if (!HaveInstalledLibClangResolver)
-                {
-                    clang.ResolveLibrary += LibClangResolver;
-                    HaveInstalledLibClangResolver = true;
-
-                    // Calling createIndex causes the runtime to resolve the export for it.
-                    // Since it is basically the starting point for actually using libclang, we can use this to determine if ClangSharp was used before our resolver was installed.
-                    // We can't use something like clang.getVersion because the runtime resolves the DLL separately for each function and it might not have been called.
-                    void* index = null;
-                    try
-                    {
-                        index = clang.createIndex(0, 0);
-
-                        if (!OurResolverWasUsedForClang)
-                        {
-                            throw new InvalidOperationException
-                            (
-                                "ClangSharp was initialized before we were able to install our resolver! " +
-                                $"Manually call {typeof(TranslatedLibraryBuilder).FullName}.{nameof(__HACK__InstallLibClangDllWorkaround)} at the start of Main to resolve this issue."
-                            );
-                        }
-                    }
-                    finally
-                    {
-                        // This needs to happen _after_ the check or the loading of disposeIndex might trigger our check since someone may have created and index but is yet to dispose of it.
-                        if (index is not null)
-                        { clang.disposeIndex(index); }
-                    }
-                }
-            }
-        }
-
         /// <summary>Creates the Biohazrd index file</summary>
         /// <remarks>
         /// Creates an index file in-memory which includes all of the files to be processed
@@ -193,8 +131,7 @@ namespace Biohazrd
 
         public unsafe TranslatedLibrary Create()
         {
-            __HACK__InstallLibClangDllWorkaround();
-
+            LibClangSharpResolver.VerifyResolverWasUsed();
             ImmutableArray<TranslationDiagnostic>.Builder miscDiagnostics = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
 
             //---------------------------------------------------------------------------------------------------------------------------------------------------------------------

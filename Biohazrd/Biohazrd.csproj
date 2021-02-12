@@ -6,7 +6,12 @@
 
   <ItemGroup>
     <PackageReference Include="ClangSharp" Version="10.0.0-beta" />
-    <PackageReference Include="ClangSharp.Pathogen" Version="[0.0.0-ci21]" />
+    <PackageReference Include="ClangSharp.Pathogen" Version="[0.0.0-ci24]" />
+    
+    <!-- Exclude ClangSharp's runtime packages (we provide libclang and libClangSharp via ClangSharp.Pathogen -->
+    <PackageReference Include="libClang" Version="10.0.0" PrivateAssets="all" />
+    <PackageReference Include="libClangSharp" Version="10.0.0-beta1" PrivateAssets="all" />
+    
     <!-- This package is needed to support __HACK__Stl1300Workaround -->
     <PackageReference Include="Microsoft.VisualStudio.Setup.Configuration.Interop" Version="2.3.2262-g94fae01e" />
   </ItemGroup>
