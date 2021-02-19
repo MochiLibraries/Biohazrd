@@ -294,5 +294,15 @@ namespace Biohazrd.Tests
             AssertMacro(results[0], "TEST_1", 111);
             AssertMacro(results[2], "TEST_3", 333);
         }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/158")]
+        public void EvaluateBatch_EmptyExpressionList()
+        {
+            TranslatedLibraryBuilder builder = CreateLibraryBuilder("#define TEST 3226");
+            TranslatedLibraryConstantEvaluator evaluator = builder.CreateConstantEvaluator();
+            ImmutableArray<ConstantEvaluationResult> results = evaluator.EvaluateBatch(Array.Empty<string>());
+            Assert.Empty(results);
+        }
     }
 }

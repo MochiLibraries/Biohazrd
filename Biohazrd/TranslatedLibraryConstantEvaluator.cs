@@ -178,6 +178,10 @@ namespace Biohazrd
             CheckDisposed();
             const string evaluationPrefix = "__BIOHAZRD_EXPRESSION_EVALUATION__";
 
+            // Early out if there are no expressions
+            if (expressions.Count == 0)
+            { return ImmutableArray<ConstantEvaluationResult>.Empty; }
+
             //-------------------------------------------------------------------------------------
             // Build the evaluation index file
             //-------------------------------------------------------------------------------------
