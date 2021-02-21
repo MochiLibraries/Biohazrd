@@ -7,6 +7,7 @@ using System.IO;
 
 namespace Biohazrd.CSharp
 {
+    [Obsolete("The responsibilities of this helper have been delegated to Biohazrd.Transformation.Common.LinkImportsTransformation and Biohazrd.Utilities.InlineExportHelper.")]
     public static class ModuleDefinitionGenerator
     {
         internal static bool CanFunctionBeExported(TranslatedFunction declaration)

@@ -1,8 +1,10 @@
 ﻿using Biohazrd.OutputGeneration;
 using ClangSharp;
+using System;
 
 namespace Biohazrd.CSharp
 {
+    [Obsolete("This helper has been superseded by Biohazrd.Utilities.InlineExportHelper.")]
     public sealed class InlineReferenceFileGenerator : DeclarationVisitor
     {
         private readonly CppCodeWriter Writer;
