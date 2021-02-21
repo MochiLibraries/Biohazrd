@@ -11,20 +11,20 @@ namespace Biohazrd
 {
     public sealed record TranslatedFunction : TranslatedDeclaration
     {
-        public CallingConvention CallingConvention { get; }
+        public CallingConvention CallingConvention { get; init; }
 
         public TypeReference ReturnType { get; init; }
         public bool ReturnByReference { get; init; }
         public ImmutableArray<TranslatedParameter> Parameters { get; init; }
 
-        public bool IsInstanceMethod { get; }
-        public bool IsVirtual { get; }
-        public bool IsConst { get; }
+        public bool IsInstanceMethod { get; init; }
+        public bool IsVirtual { get; init; }
+        public bool IsConst { get; init; }
         [Obsolete("Replaced by " + nameof(SpecialFunctionKind))]
         public bool IsOperatorOverload => SpecialFunctionKind == SpecialFunctionKind.OperatorOverload ||SpecialFunctionKind == SpecialFunctionKind.ConversionOverload;
-        public bool IsInline { get; }
+        public bool IsInline { get; init; }
 
-        public SpecialFunctionKind SpecialFunctionKind { get; }
+        public SpecialFunctionKind SpecialFunctionKind { get; init; }
 
         public string DllFileName { get; init; } = "TODO.dll";
         public string MangledName { get; init; }
