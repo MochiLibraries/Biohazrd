@@ -22,6 +22,7 @@ namespace Biohazrd
         public bool IsConst { get; }
         [Obsolete("Replaced by " + nameof(SpecialFunctionKind))]
         public bool IsOperatorOverload => SpecialFunctionKind == SpecialFunctionKind.OperatorOverload ||SpecialFunctionKind == SpecialFunctionKind.ConversionOverload;
+        public bool IsInline { get; }
 
         public SpecialFunctionKind SpecialFunctionKind { get; }
 
@@ -35,6 +36,7 @@ namespace Biohazrd
             { MangledName = mangling.ToString(); }
 
             ReturnType = new ClangTypeReference(function.ReturnType);
+            IsInline = function.IsInlined;
             SpecialFunctionKind = SpecialFunctionKind.None;
 
             // Enumerate parameters
