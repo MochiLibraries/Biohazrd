@@ -20,7 +20,10 @@ namespace Biohazrd
         public bool IsInstanceMethod { get; }
         public bool IsVirtual { get; }
         public bool IsConst { get; }
-        public bool IsOperatorOverload { get; }
+        [Obsolete("Replaced by " + nameof(SpecialFunctionKind))]
+        public bool IsOperatorOverload => SpecialFunctionKind == SpecialFunctionKind.OperatorOverload ||SpecialFunctionKind == SpecialFunctionKind.ConversionOverload;
+
+        public SpecialFunctionKind SpecialFunctionKind { get; }
 
         public string DllFileName { get; init; } = "TODO.dll";
         public string MangledName { get; init; }
@@ -32,6 +35,7 @@ namespace Biohazrd
             { MangledName = mangling.ToString(); }
 
             ReturnType = new ClangTypeReference(function.ReturnType);
+            SpecialFunctionKind = SpecialFunctionKind.None;
 
             // Enumerate parameters
             ImmutableArray<TranslatedParameter>.Builder parametersBuilder = ImmutableArray.CreateBuilder<TranslatedParameter>(function.Parameters.Count);
@@ -75,24 +79,34 @@ namespace Biohazrd
             if (operatorOverloadInfo.Kind != PathogenOperatorOverloadKind.None)
             {
                 Name = $"operator_{operatorOverloadInfo.Name}";
-                IsOperatorOverload = true;
+
+                Debug.Assert(SpecialFunctionKind == SpecialFunctionKind.None);
+                SpecialFunctionKind = SpecialFunctionKind.OperatorOverload;
             }
-            else
-            { IsOperatorOverload = false; }
 
             // Handle conversion operator overloads
             if (function is CXXConversionDecl)
             {
                 Name = $"____ConversionOperator_{function.ReturnType}";
-                IsOperatorOverload = true;
+
+                Debug.Assert(SpecialFunctionKind == SpecialFunctionKind.None);
+                SpecialFunctionKind = SpecialFunctionKind.ConversionOverload;
             }
 
-            // Rename constructors/destructors
+            // Handle constructors/destructors
             if (function is CXXConstructorDecl)
-            { Name = "Constructor"; }
+            {
+                Name = "Constructor";
+
+                Debug.Assert(SpecialFunctionKind == SpecialFunctionKind.None);
+                SpecialFunctionKind = SpecialFunctionKind.Constructor;
+            }
             else if (function is CXXDestructorDecl)
             {
                 Name = "Destructor";
+
+                Debug.Assert(SpecialFunctionKind == SpecialFunctionKind.None);
+                SpecialFunctionKind = SpecialFunctionKind.Destructor;
 
                 // clang_Cursor_getMangling returns the name of the vbase destructor (prefix ?_D), which is not what gets exported by MSVC and is thus useless for our purposes.
                 // We instead want the normal destructor (prefix ?1) which is the only value returned by Clang for destructors when targeting the Microsoft ABI so we use the first mangling for them.
@@ -127,14 +141,24 @@ namespace Biohazrd
         public override string ToString()
         {
             string baseString = base.ToString();
+
+            string methodNameString = SpecialFunctionKind switch
+            {
+                SpecialFunctionKind.Constructor => "Constructor",
+                SpecialFunctionKind.Destructor => "Destructor",
+                SpecialFunctionKind.OperatorOverload => "Operator Overload",
+                SpecialFunctionKind.ConversionOverload => "Conversion Operator",
+                _ => Declaration is CXXMethodDecl ? "Method" : "Function"
+            };
+
             if (IsVirtual)
-            { return $"Virtual Method {baseString}"; }
+            { return $"Virtual {methodNameString} {baseString}"; }
             else if (IsInstanceMethod)
-            { return $"Instance Method {baseString}"; }
+            { return $"Instance {methodNameString} {baseString}"; }
             else if (Declaration is CXXMethodDecl)
-            { return $"Static Method {baseString}"; }
+            { return $"Static {methodNameString} {baseString}"; }
             else
-            { return $"Function {baseString}"; }
+            { return $"{methodNameString} {baseString}"; }
         }
     }
 }
