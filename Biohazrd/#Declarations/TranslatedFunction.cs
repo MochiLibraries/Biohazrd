@@ -4,6 +4,7 @@ using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Biohazrd
@@ -27,7 +28,9 @@ namespace Biohazrd
         internal TranslatedFunction(TranslatedFile file, FunctionDecl function)
             : base(file, function)
         {
-            MangledName = function.Handle.Mangling.ToString();
+            using (CXString mangling = function.Handle.Mangling)
+            { MangledName = mangling.ToString(); }
+
             ReturnType = new ClangTypeReference(function.ReturnType);
 
             // Enumerate parameters
@@ -88,7 +91,31 @@ namespace Biohazrd
             if (function is CXXConstructorDecl)
             { Name = "Constructor"; }
             else if (function is CXXDestructorDecl)
-            { Name = "Destructor"; }
+            {
+                Name = "Destructor";
+
+                // clang_Cursor_getMangling returns the name of the vbase destructor (prefix ?_D), which is not what gets exported by MSVC and is thus useless for our purposes.
+                // We instead want the normal destructor (prefix ?1) which is the only value returned by Clang for destructors when targeting the Microsoft ABI so we use the first mangling for them.
+                // (In theory constructors are in a similar position where Clang uses a different Itanium-equivalent type to query the mangled name, but the C++ constructor name mangling doesn't change for these.)
+                // Some more details are provided here: https://github.com/InfectedLibraries/Biohazrd/issues/12#issuecomment-782604833
+                unsafe
+                {
+                    CXStringSet* manglings = null;
+                    try
+                    {
+                        manglings = function.Handle.CXXManglings;
+                        Debug.Assert(manglings->Count > 0);
+
+                        if (manglings->Count > 0)
+                        { MangledName = manglings->Strings[0].ToString(); }
+                    }
+                    finally
+                    {
+                        if (manglings != null)
+                        { clang.disposeStringSet(manglings); }
+                    }
+                }
+            }
         }
 
         public override IEnumerator<TranslatedDeclaration> GetEnumerator()
