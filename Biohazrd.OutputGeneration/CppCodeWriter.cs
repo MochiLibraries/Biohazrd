@@ -1,9 +1,8 @@
-﻿using Biohazrd.OutputGeneration;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Biohazrd.CSharp
+namespace Biohazrd.OutputGeneration
 {
     [ProvidesOutputSessionFactory]
     public class CppCodeWriter : CLikeCodeWriter
