@@ -8,6 +8,7 @@ namespace Biohazrd.OutputGeneration
     public class CppCodeWriter : CLikeCodeWriter
     {
         private readonly SortedSet<string> IncludeFiles = new SortedSet<string>(StringComparer.InvariantCulture);
+        private readonly SortedSet<string> SystemIncludeFiles = new SortedSet<string>(StringComparer.InvariantCulture);
 
         protected string FileDirectoryPath { get; }
 
@@ -17,12 +18,12 @@ namespace Biohazrd.OutputGeneration
 
         private static OutputSession.WriterFactory<CppCodeWriter> FactoryMethod => (session, filePath) => new CppCodeWriter(session, filePath);
 
-        public void Include(string filePath)
+        public void Include(string filePath, bool systemInclude = false)
         {
             if (Path.IsPathRooted(filePath))
             { filePath = Path.GetRelativePath(FileDirectoryPath, filePath); }
 
-            IncludeFiles.Add(filePath);
+            (systemInclude ? SystemIncludeFiles : IncludeFiles).Add(filePath);
         }
 
         public LeftAdjustedScope DisableScope(bool disabled, string message)
@@ -49,6 +50,12 @@ namespace Biohazrd.OutputGeneration
             { writer.WriteLine($"#include \"{includeFile}\""); }
 
             if (IncludeFiles.Count > 0)
+            { writer.WriteLine(); }
+
+            foreach (string includeFile in SystemIncludeFiles)
+            { writer.WriteLine($"#include <{includeFile}>"); }
+
+            if (SystemIncludeFiles.Count > 0)
             { writer.WriteLine(); }
         }
     }
