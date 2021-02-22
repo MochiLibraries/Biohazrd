@@ -11,7 +11,7 @@ namespace Biohazrd.CSharp
     public sealed class MoveLooseDeclarationsIntoTypesTransformation : TransformationBase
     {
         // containingTypeName => declarations
-        private readonly Dictionary<string, List<TranslatedDeclaration>> LooseDeclarationsLookup = new();
+        private readonly Dictionary<(string? Namespace, string ContainingType), List<TranslatedDeclaration>> LooseDeclarationsLookup = new();
         private readonly HashSet<TranslatedDeclaration> AllLooseDeclarations = new(ReferenceEqualityComparer.Instance);
         private readonly RemoveLooseDeclarationsTransformation RemovePass;
 
@@ -35,7 +35,7 @@ namespace Biohazrd.CSharp
         protected override TranslatedLibrary PreTransformLibrary(TranslatedLibrary library)
         {
             // Ensure our lookup is empty
-            Debug.Assert(LooseDeclarationsLookup.Count == 0, "The state of this transformaiton should be empty at this point.");
+            Debug.Assert(LooseDeclarationsLookup.Count == 0, "The state of this transformation should be empty at this point.");
             LooseDeclarationsLookup.Clear();
 
             // Enumerate all loose declarations
@@ -60,10 +60,11 @@ namespace Biohazrd.CSharp
 
                 // Add the loose declaration to the lookup
                 List<TranslatedDeclaration>? declarationsForName;
-                if (!LooseDeclarationsLookup.TryGetValue(looseDeclarationsTypeName, out declarationsForName))
+                (string?, string) key = (declaration.Namespace, looseDeclarationsTypeName);
+                if (!LooseDeclarationsLookup.TryGetValue(key, out declarationsForName))
                 {
                     declarationsForName = new List<TranslatedDeclaration>();
-                    LooseDeclarationsLookup.Add(looseDeclarationsTypeName, declarationsForName);
+                    LooseDeclarationsLookup.Add(key, declarationsForName);
                 }
 
                 // If the declaration has the same name as the type it will be contained in, rename it since that's not allowed
@@ -93,11 +94,12 @@ namespace Biohazrd.CSharp
             if (LooseDeclarationsLookup.Count > 0)
             {
                 ImmutableList<TranslatedDeclaration>.Builder synthesizedDeclarations = ImmutableList.CreateBuilder<TranslatedDeclaration>();
-                foreach ((string typeName, List<TranslatedDeclaration> declarations) in LooseDeclarationsLookup)
+                foreach (((string? namespaceName, string typeName), List<TranslatedDeclaration> declarations) in LooseDeclarationsLookup)
                 {
                     synthesizedDeclarations.Add(new SynthesizedLooseDeclarationsTypeDeclaration(declarations[0].File)
                     {
                         Name = typeName,
+                        Namespace = namespaceName,
                         Members = declarations.ToImmutableList()
                     });
                 }
@@ -133,7 +135,7 @@ namespace Biohazrd.CSharp
         protected override TransformationResult TransformRecord(TransformationContext context, TranslatedRecord declaration)
         {
             // If this record matches one of the container names for any loose declarations, add them to this record
-            if (LooseDeclarationsLookup.Remove(declaration.Name, out List<TranslatedDeclaration>? looseDeclarations))
+            if (LooseDeclarationsLookup.Remove((declaration.Namespace, declaration.Name), out List<TranslatedDeclaration>? looseDeclarations))
             {
                 declaration = declaration with { Members = declaration.Members.AddRange(looseDeclarations) };
             }

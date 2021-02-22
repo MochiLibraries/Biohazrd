@@ -25,11 +25,11 @@ namespace Biohazrd.Tests.Common
         public static TranslatedDeclaration FindDeclaration(this IEnumerable<TranslatedDeclaration> declarations, string declarationName)
             => declarations.FindDeclaration(d => d.Name == declarationName);
 
-        public static TDeclaration FindDeclaration<TDeclaration>(this IEnumerable<TranslatedDeclaration> declarations, Func<TranslatedDeclaration, bool> predicate)
+        public static TDeclaration FindDeclaration<TDeclaration>(this IEnumerable<TranslatedDeclaration> declarations, Func<TDeclaration, bool> predicate)
             where TDeclaration : TranslatedDeclaration
         {
-            TranslatedDeclaration result = declarations.FindDeclaration(predicate);
-            Assert.IsType<TDeclaration>(result);
+            TranslatedDeclaration? result = declarations.OfType<TDeclaration>().FirstOrDefault(predicate);
+            Assert.NotNull(result);
             return (TDeclaration)result;
         }
 
