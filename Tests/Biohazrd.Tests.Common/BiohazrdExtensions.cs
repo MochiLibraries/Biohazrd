@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Xunit;
@@ -14,20 +15,27 @@ namespace Biohazrd.Tests.Common
             return result;
         }
 
-        public static TranslatedDeclaration FindDeclaration(this IEnumerable<TranslatedDeclaration> declarations, string declarationName)
+        public static TranslatedDeclaration FindDeclaration(this IEnumerable<TranslatedDeclaration> declarations, Func<TranslatedDeclaration, bool> predicate)
         {
-            TranslatedDeclaration? result = declarations.FirstOrDefault(d => d.Name == declarationName);
+            TranslatedDeclaration? result = declarations.FirstOrDefault(predicate);
             Assert.NotNull(result);
             return result;
         }
 
-        public static TDeclaration FindDeclaration<TDeclaration>(this IEnumerable<TranslatedDeclaration> declarations, string declarationName)
+        public static TranslatedDeclaration FindDeclaration(this IEnumerable<TranslatedDeclaration> declarations, string declarationName)
+            => declarations.FindDeclaration(d => d.Name == declarationName);
+
+        public static TDeclaration FindDeclaration<TDeclaration>(this IEnumerable<TranslatedDeclaration> declarations, Func<TranslatedDeclaration, bool> predicate)
             where TDeclaration : TranslatedDeclaration
         {
-            TranslatedDeclaration result = declarations.FindDeclaration(declarationName);
+            TranslatedDeclaration result = declarations.FindDeclaration(predicate);
             Assert.IsType<TDeclaration>(result);
             return (TDeclaration)result;
         }
+
+        public static TDeclaration FindDeclaration<TDeclaration>(this IEnumerable<TranslatedDeclaration> declarations, string declarationName)
+            where TDeclaration : TranslatedDeclaration
+            => declarations.FindDeclaration<TDeclaration>(d => d.Name == declarationName);
 
         public static TDeclaration FindDeclaration<TDeclaration>(this IEnumerable<TranslatedDeclaration> declarations)
             where TDeclaration : TranslatedDeclaration

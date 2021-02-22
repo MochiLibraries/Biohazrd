@@ -1,76 +1,106 @@
-﻿using System.Collections.Generic;
+﻿using Biohazrd.Transformation.Infrastructure;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Biohazrd.Transformation.Common
 {
     public sealed class DeduplicateNamesTransformation : TransformationBase
     {
-        private readonly Dictionary<(object Parent, string Name), int> NextSuffixNumber = new();
+        private readonly ConcurrentDictionary<TranslatedDeclaration, string> DeduplicatedNames = new(ReferenceEqualityComparer.Instance);
+        private TranslatedLibrary? OriginalInputLibrary;
+        private TranslatedLibrary? DeduplicatedReferencesLibrary;
 
-        protected override bool SupportsConcurrency => false;
-
-        private class DuplicateNamesFinder : DeclarationVisitor
+        private void LogForDeduplicate(TranslatedDeclaration declaration, int id)
         {
-            private readonly DeduplicateNamesTransformation Transformation;
+            // The exception below should never be thrown because we pre-process with DeduplicateReferencesTransformation
+            if (!DeduplicatedNames.TryAdd(declaration, $"{declaration.Name}_{id}"))
+            { throw new ArgumentException($"The {declaration.GetType().FullName} '{declaration}' was encountered more than once!", nameof(declaration)); }
+        }
 
-            private void FindDuplicateNames(IEnumerable<TranslatedDeclaration> declarations)
+        private void CheckForDuplicates<TKey>(IEnumerable<TranslatedDeclaration> parent, Func<TranslatedDeclaration, TKey> keySelector)
+            where TKey : notnull
+        {
+            Dictionary<TKey, TranslatedDeclaration> foundNames = new();
+            Dictionary<TKey, int> nextId = new();
+            foreach (TranslatedDeclaration declaration in parent)
             {
-                HashSet<string> FoundNames = new();
-                HashSet<string> FoundDuplicates = new();
+                TKey key = keySelector(declaration);
 
-                foreach (TranslatedDeclaration declaration in declarations)
+                // If there's a key conflict we found a duplicate
+                if (!foundNames.TryAdd(key, declaration))
                 {
-                    if (!FoundNames.Add(declaration.Name))
-                    { FoundDuplicates.Add(declaration.Name); }
+                    int id;
+
+                    // If there is no "next" id, this is the first duplicate found so we need to mark the original to be de-duplicated too
+                    // (In theory we could leave the original alone, but this makes it more obvious declarations are part of the same de-duplicated group.)
+                    // (This also allows us to properly rename non-functions which conflict with functions.)
+                    if (!nextId.TryGetValue(key, out id))
+                    {
+                        LogForDeduplicate(foundNames[key], 0);
+                        id = 1;
+                    }
+
+                    LogForDeduplicate(declaration, id);
+                    nextId[key] = id + 1;
                 }
-
-                foreach (string duplicateName in FoundDuplicates)
-                { Transformation.NextSuffixNumber.Add((declarations, duplicateName), 0); }
-            }
-
-            public DuplicateNamesFinder(DeduplicateNamesTransformation transformation, TranslatedLibrary library)
-            {
-                Transformation = transformation;
-                FindDuplicateNames(library);
-            }
-
-            protected override void VisitDeclaration(VisitorContext context, TranslatedDeclaration declaration)
-            {
-                FindDuplicateNames(declaration);
-                base.VisitDeclaration(context, declaration);
             }
         }
 
         protected override TranslatedLibrary PreTransformLibrary(TranslatedLibrary library)
         {
-            Debug.Assert(NextSuffixNumber.Count == 0, "The suffix number dictionary should be empty.");
-            NextSuffixNumber.Clear();
+            Debug.Assert(DeduplicatedNames.Count == 0);
+            Debug.Assert(OriginalInputLibrary is null);
+            Debug.Assert(DeduplicatedReferencesLibrary is null);
+            DeduplicatedNames.Clear();
 
-            // Find all the the names we will deduplicate
-            new DuplicateNamesFinder(this, library).Visit(library);
+            OriginalInputLibrary = library;
+
+            // Preprocess the library to deduplicate all declarations referenced more than once
+            // This is required to avoid some nasty edge cases (such as the DuplicateParentWithDuplicateChildTest1 test.)
+            library = new DeduplicateReferencesTransformation().Transform(library);
+            DeduplicatedReferencesLibrary = library;
+
+            // Check for duplicates at the library level
+            // (At the library level, declarations can be disambiguated by namespace)
+            CheckForDuplicates(library, d => (d.Namespace, d.Name));
 
             return library;
         }
 
         protected override TranslatedLibrary PostTransformLibrary(TranslatedLibrary library)
         {
-            NextSuffixNumber.Clear();
+            // Edge case: If the library contained duplicate references but no duplicate names we can end up causing it to appear to have been modified even though it effectively wasn't
+            // It's not a huge deal that we do this, but we avoid the unecessary "change"
+            if (ReferenceEquals(library, DeduplicatedReferencesLibrary))
+            {
+                Debug.Assert(OriginalInputLibrary is not null);
+                library = OriginalInputLibrary;
+            }
+
+            DeduplicatedNames.Clear();
+            OriginalInputLibrary = null;
+            DeduplicatedReferencesLibrary = null;
+
             return library;
         }
 
         protected override TransformationResult TransformDeclaration(TransformationContext context, TranslatedDeclaration declaration)
         {
+            // Check if any children of this transformation will need to be de-duplicated
+            if (declaration.Any())
+            { CheckForDuplicates(declaration, d => d.Name); }
+
             // Don't rename functions since overloading allows duplicates
             if (declaration is TranslatedFunction)
             { return declaration; }
 
-            (object, string) key = (context.Parent, declaration.Name);
-
-            if (NextSuffixNumber.TryGetValue(key, out int suffixNumber))
+            // Deduplicate this declaration if needed
+            if (DeduplicatedNames.TryGetValue(declaration, out string? newName))
             {
-                NextSuffixNumber[key] = suffixNumber + 1;
-                string newName = $"{declaration.Name}_{suffixNumber}";
-                return declaration with
+                declaration = declaration with
                 {
                     Name = newName,
                     Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Renamed duplicate {declaration.GetType()} declaration '{declaration.Name}' -> '{newName}'")
