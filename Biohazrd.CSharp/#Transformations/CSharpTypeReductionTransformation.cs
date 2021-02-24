@@ -99,7 +99,15 @@ namespace Biohazrd.CSharp
             switch (type.ClangType)
             {
                 case ConstantArrayType constantArrayType:
-                    return GetOrCreateConstantArrayTypeDeclaration(constantArrayType).ThisTypeReference;
+                    TypeReference result = GetOrCreateConstantArrayTypeDeclaration(constantArrayType).ThisTypeReference;
+
+                    // From the C++17 spec dcl.fct:
+                    // > any parameter of type “array of T” [...] is adjusted to be “pointer to T”.
+                    // https://timsong-cpp.github.io/cppwp/n4659/dcl.fct#5
+                    if (context.ParentDeclaration is TranslatedParameter)
+                    { result = new PointerTypeReference(result); }
+
+                    return result;
                 default:
                     return base.TransformClangTypeReference(context, type);
             }
