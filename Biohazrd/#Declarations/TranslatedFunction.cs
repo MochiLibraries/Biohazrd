@@ -21,7 +21,7 @@ namespace Biohazrd
         public bool IsVirtual { get; init; }
         public bool IsConst { get; init; }
         [Obsolete("Replaced by " + nameof(SpecialFunctionKind))]
-        public bool IsOperatorOverload => SpecialFunctionKind == SpecialFunctionKind.OperatorOverload ||SpecialFunctionKind == SpecialFunctionKind.ConversionOverload;
+        public bool IsOperatorOverload => SpecialFunctionKind == SpecialFunctionKind.OperatorOverload || SpecialFunctionKind == SpecialFunctionKind.ConversionOverload;
         public bool IsInline { get; init; }
 
         public SpecialFunctionKind SpecialFunctionKind { get; init; }
