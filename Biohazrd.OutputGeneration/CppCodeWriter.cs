@@ -26,7 +26,7 @@ namespace Biohazrd.OutputGeneration
             (systemInclude ? SystemIncludeFiles : IncludeFiles).Add(filePath);
         }
 
-        public LeftAdjustedScope DisableScope(bool disabled, string message)
+        public LeftAdjustedScope DisableScope(bool disabled, string? message = null)
         {
             if (!disabled)
             { return default; }
@@ -43,6 +43,9 @@ namespace Biohazrd.OutputGeneration
             NoSeparationNeededBeforeNextLine();
             return ret;
         }
+
+        public LeftAdjustedScope DisableScope(string? message = null)
+            => DisableScope(true, message);
 
         protected override void WriteBetweenHeaderAndCode(StreamWriter writer)
         {

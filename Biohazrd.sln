@@ -39,6 +39,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.Transformation.Tes
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.CSharp.Tests", "Tests\Biohazrd.CSharp.Tests\Biohazrd.CSharp.Tests.csproj", "{00F21754-DDAC-498B-A6C7-1185341CDB65}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Biohazrd.OutputGeneration.Tests", "Tests\Biohazrd.OutputGeneration.Tests\Biohazrd.OutputGeneration.Tests.csproj", "{00E42A88-A883-4C43-BE2E-8A241A32EDA9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -81,6 +83,10 @@ Global
 		{00F21754-DDAC-498B-A6C7-1185341CDB65}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00F21754-DDAC-498B-A6C7-1185341CDB65}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{00F21754-DDAC-498B-A6C7-1185341CDB65}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00E42A88-A883-4C43-BE2E-8A241A32EDA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00E42A88-A883-4C43-BE2E-8A241A32EDA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00E42A88-A883-4C43-BE2E-8A241A32EDA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00E42A88-A883-4C43-BE2E-8A241A32EDA9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -91,6 +97,7 @@ Global
 		{387321DB-41DF-4E83-9B16-CE4EA44C988D} = {CB582A63-8515-4C35-97AC-89798094CD7B}
 		{AA32BABE-BA96-4C91-A46B-5526A739C4F1} = {CB582A63-8515-4C35-97AC-89798094CD7B}
 		{00F21754-DDAC-498B-A6C7-1185341CDB65} = {CB582A63-8515-4C35-97AC-89798094CD7B}
+		{00E42A88-A883-4C43-BE2E-8A241A32EDA9} = {CB582A63-8515-4C35-97AC-89798094CD7B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {48868128-E026-4C69-969F-8D1EE05B66F5}

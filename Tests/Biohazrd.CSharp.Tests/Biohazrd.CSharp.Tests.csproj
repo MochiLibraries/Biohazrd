@@ -8,6 +8,7 @@
     <ProjectReference Include="..\..\Biohazrd.CSharp\Biohazrd.CSharp.csproj" />
     <ProjectReference Include="..\..\Biohazrd.Transformation\Biohazrd.Transformation.csproj" />
     <ProjectReference Include="..\..\Biohazrd\Biohazrd.csproj" />
+    <ProjectReference Include="..\Biohazrd.OutputGeneration.Tests\Biohazrd.OutputGeneration.Tests.csproj" />
   </ItemGroup>
 
 </Project>
