@@ -8,7 +8,7 @@ namespace Biohazrd.OutputGeneration
     public abstract partial class CodeWriter : TextWriter
     {
         private const int IndentSize = 4;
-        protected int IndentLevel { get; private set; } = 0;
+        protected int IndentLevel { get; set; } = 0;
         private bool OnNewLine = true;
         private string? LinePrefix = null;
         private bool NoSeparationNeeded = true;
@@ -67,10 +67,16 @@ namespace Biohazrd.OutputGeneration
             NoSeparationNeeded = true;
         }
 
-        public override void Write(char value)
+        protected virtual void BeforeWrite()
+        {
+        }
+
+        public sealed override void Write(char value)
         {
             if (IsFinished)
             { throw new InvalidOperationException("Can't write to a code writer after it has been finished."); }
+
+            BeforeWrite();
 
             NoSeparationNeeded = false;
 
@@ -95,10 +101,16 @@ namespace Biohazrd.OutputGeneration
             { OnNewLine = true; }
         }
 
+        protected virtual void BeforeFinish()
+        {
+        }
+
         public void Finish()
         {
             if (IsFinished)
             { throw new InvalidOperationException("Can't finish a code writer more than once."); }
+
+            BeforeFinish();
 
             if (IndentLevel > 0)
             { throw new InvalidOperationException("All indent scopes should be closed before finishing."); }
