@@ -1,5 +1,6 @@
 ﻿using Biohazrd.Transformation;
 using Biohazrd.Transformation.Common;
+using Biohazrd.Transformation.Infrastructure;
 using ClangSharp;
 using System;
 using System.Collections.Concurrent;
@@ -56,9 +57,16 @@ namespace Biohazrd.CSharp
         }
 
         protected override TranslatedLibrary __HACK__PostPostTransformLibrary(TranslatedLibrary library)
+        {
             // Persistently run the transformation to ensure nested constant arrays are generated
             // (This is a workaround for https://github.com/InfectedLibraries/Biohazrd/issues/64)
-            => _ConstantArrayTypesCreated > 0 ? Transform(library) : base.__HACK__PostPostTransformLibrary(library);
+            library = _ConstantArrayTypesCreated > 0 ? Transform(library) : base.__HACK__PostPostTransformLibrary(library);
+
+            // Final pass to fix up function pointer parameters
+            library = new FunctionPointerParameterFixupPassTransformation().Transform(library);
+
+            return library;
+        }
 
         private ConstantArrayTypeDeclaration GetOrCreateConstantArrayTypeDeclaration(ConstantArrayType constantArrayType)
         {
@@ -110,6 +118,38 @@ namespace Biohazrd.CSharp
                     return result;
                 default:
                     return base.TransformClangTypeReference(context, type);
+            }
+        }
+
+        // This transformation fixes up function pointer types to have the same pass-via-pointer behavior as above
+        // (Ideally we don't need to do this, but we don't currently have a great way to disambiguate between a function pointer's return type and a parameter types from the context.)
+        private sealed class FunctionPointerParameterFixupPassTransformation : TypeTransformationBase
+        {
+            protected override TypeTransformationResult TransformFunctionPointerTypeReference(TypeTransformationContext context, FunctionPointerTypeReference type)
+            {
+                DiagnosticAccumulator diagnostics = new();
+                TypeArrayTransformHelper newParameters = new(type.ParameterTypes, ref diagnostics);
+
+                foreach (TypeReference parameterType in type.ParameterTypes)
+                {
+                    if (parameterType is TranslatedTypeReference translatedTypeReference && translatedTypeReference.TryResolve(context.Library) is ConstantArrayTypeDeclaration)
+                    { newParameters.Add(new PointerTypeReference(parameterType)); }
+                    else
+                    { newParameters.Add(parameterType); }
+                }
+
+                Debug.Assert(newParameters.TransformationIsComplete);
+                if (newParameters.WasChanged || diagnostics.HasDiagnostics)
+                {
+                    TypeTransformationResult result = type with
+                    {
+                        ParameterTypes = newParameters.MoveToImmutable()
+                    };
+                    result.AddDiagnostics(diagnostics.MoveToImmutable());
+                    return result;
+                }
+
+                return type;
             }
         }
     }
