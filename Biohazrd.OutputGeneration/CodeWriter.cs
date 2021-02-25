@@ -8,11 +8,11 @@ namespace Biohazrd.OutputGeneration
     public abstract partial class CodeWriter : TextWriter
     {
         private const int IndentSize = 4;
-        private int IndentLevel = 0;
+        protected int IndentLevel { get; private set; } = 0;
         private bool OnNewLine = true;
         private string? LinePrefix = null;
         private bool NoSeparationNeeded = true;
-        private readonly StringBuilder CodeBuilder = new StringBuilder();
+        private readonly StringBuilder CodeBuilder = new();
 
         public override Encoding Encoding => Encoding.Unicode;
 

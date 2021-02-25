@@ -4,6 +4,7 @@ using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
@@ -123,29 +124,12 @@ namespace Biohazrd.CSharp
                 Writer.NoSeparationNeededBeforeNextLine();
             }
 
-            // Emit the declaration (with namespace if possible and requested)
-            if (context.Parents.Length == 0 && declaration.Namespace is string { Length: > 0 })
-            {
-                Writer.Write("namespace ");
+            // Emit the namespace (if at root) and declaration
+            string? namespaceName = declaration.Namespace;
+            if (context.Parents.Length > 0)
+            { namespaceName = null; }
 
-                // We have to write it out in parts to avoid escaping the dots.
-                string[] namespaceParts = declaration.Namespace.Split('.');
-                for (int i = 0; i < namespaceParts.Length; i++)
-                {
-                    if (i > 0)
-                    { Writer.Write('.'); }
-
-                    Writer.Write(namespaceParts[i]);
-                }
-
-                Writer.WriteLine();
-                using (Writer.Block())
-                { EmitDeclaration(context, declaration); }
-            }
-            else
-            { EmitDeclaration(context, declaration); }
-
-            void EmitDeclaration(VisitorContext context, TranslatedDeclaration declaration)
+            using (Writer.Namespace(namespaceName))
             {
                 if (declaration is ICustomCSharpTranslatedDeclaration customDeclaration)
                 { customDeclaration.GenerateOutput(this, context, Writer); }

@@ -1,5 +1,6 @@
 ﻿using Biohazrd.CSharp.Infrastructure;
 using ClangSharp.Pathogen;
+using System.Linq;
 using System.Runtime.InteropServices;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
@@ -77,22 +78,9 @@ namespace Biohazrd.CSharp
 
                         result += SanitizeIdentifier(referenced.Name);
 
-                        // Add using statement if necessary
-                        if (referenced.Namespace is not null)
-                        {
-                            TranslatedDeclaration effectiveRootDeclaration = context.Parents.Length > 0 ? context.Parents[0] : declaration;
-                            bool needUsingStatement = false;
-
-                            if (effectiveRootDeclaration.Namespace is null)
-                            { needUsingStatement = true; }
-                            // The . suffix ensures that dissimilar namespaces with a common root are not considered common
-                            // (IE: This handles a type from InfectedDirectX.Direct3D12 referencing a type from InfectedDirectX.Direct3D)
-                            else if (!$"{effectiveRootDeclaration.Namespace}.".StartsWith($"{referenced.Namespace}."))
-                            { needUsingStatement = true; }
-
-                            if (needUsingStatement)
-                            { Writer.Using(referenced.Namespace); }
-                        }
+                        // Add using statement to the referenced declaration('s containing type) if necessary
+                        string? referencedNamespace = (referencedContext.Parents.FirstOrDefault() ?? referenced).Namespace;
+                        Writer.Using(referencedNamespace);
 
                         return result;
                     }
