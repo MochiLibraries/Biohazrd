@@ -1,4 +1,5 @@
-﻿using Biohazrd.Transformation;
+﻿using Biohazrd.OutputGeneration.Metadata;
+using Biohazrd.Transformation;
 using Biohazrd.Transformation.Infrastructure;
 using ClangSharp;
 using ClangType = ClangSharp.Type;
@@ -26,6 +27,10 @@ namespace Biohazrd.CSharp
             // These properties only exist to support CSharpTypeReductionTransformation
             OriginalClangElementType = clangType.ElementType;
             ThisTypeReference = TranslatedTypeReference.Create(this);
+
+            // Place all constant array helpers into the same file
+            // Note: This is actually _required_ until https://github.com/InfectedLibraries/Biohazrd/issues/63 is fixed.
+            Metadata = Metadata.Add(new OutputFileName("ConstantArrayHelpers"));
         }
 
         public override string ToString()

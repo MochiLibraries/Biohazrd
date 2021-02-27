@@ -24,7 +24,7 @@ namespace Biohazrd
 
         internal bool IsDefault => Library is null;
 
-        internal VisitorContext(TranslatedLibrary library)
+        public VisitorContext(TranslatedLibrary library)
         {
             Library = library;
             Parents = ImmutableArray<TranslatedDeclaration>.Empty;

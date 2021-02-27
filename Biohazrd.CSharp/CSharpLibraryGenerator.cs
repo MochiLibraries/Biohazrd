@@ -1,9 +1,10 @@
 ﻿using Biohazrd.CSharp.Infrastructure;
 using Biohazrd.OutputGeneration;
+using Biohazrd.OutputGeneration.Metadata;
 using ClangSharp.Pathogen;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
@@ -11,8 +12,6 @@ namespace Biohazrd.CSharp
 {
     public sealed partial class CSharpLibraryGenerator : CSharpDeclarationVisitor
     {
-        private readonly TranslatedFile? FileFilter;
-        private readonly TranslatedDeclaration? DeclarationFilter;
         private readonly CSharpCodeWriter Writer;
         private readonly CSharpGenerationOptions Options;
 
@@ -24,73 +23,50 @@ namespace Biohazrd.CSharp
             Writer = session.Open<CSharpCodeWriter>(filePath);
         }
 
-        private CSharpLibraryGenerator(CSharpGenerationOptions options, OutputSession session, string filePath, TranslatedFile filter)
-            : this(options, session, filePath)
-            => FileFilter = filter;
-
-        private CSharpLibraryGenerator(CSharpGenerationOptions options, OutputSession session, string filePath, TranslatedDeclaration filter)
-            : this(options, session, filePath)
-            => DeclarationFilter = filter;
-
-        public static ImmutableArray<TranslationDiagnostic> Generate(CSharpGenerationOptions options, OutputSession session, TranslatedLibrary library, LibraryTranslationMode mode)
+        public static ImmutableArray<TranslationDiagnostic> Generate(CSharpGenerationOptions options, OutputSession session, TranslatedLibrary library)
         {
             ImmutableArray<TranslationDiagnostic>.Builder diagnosticsBuilder = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
 
-            void DoGenerate(CSharpLibraryGenerator generator)
+            // path => generator
+            Dictionary<string, CSharpLibraryGenerator> generators = new();
+
+            // For each declaration at the root, create a generator
+            VisitorContext rootVisitorContext = new(library);
+            foreach (TranslatedDeclaration declaration in library.Declarations)
             {
-                generator.Visit(library);
-                generator.Writer.Finish();
-                diagnosticsBuilder.AddRange(generator.Diagnostics);
+                // Skip declarations with no output
+                if (declaration is ICustomCSharpTranslatedDeclaration cSharpDeclaration && !cSharpDeclaration.HasOutput)
+                { continue; }
+
+                // Determine the file for the declaration
+                string outputFileName;
+                if (declaration.Metadata.TryGet(out OutputFileName metadataFileName))
+                {
+                    outputFileName = metadataFileName.FileName;
+
+                    if (Path.GetExtension(outputFileName) is not ".cs")
+                    { outputFileName += ".cs"; }
+                }
+                else
+                { outputFileName = $"{SanitizeIdentifier(declaration.Name)}.cs"; }
+
+                // Get or create the generator for this file
+                CSharpLibraryGenerator? generator;
+                if (!generators.TryGetValue(outputFileName, out generator))
+                {
+                    generator = new CSharpLibraryGenerator(options, session, outputFileName);
+                    generators.Add(outputFileName, generator);
+                }
+
+                // Add this declaration to the generator
+                generator.Visit(rootVisitorContext, declaration);
             }
 
-            switch (mode)
+            // Finish all writers and collect diagnostics
+            foreach (CSharpLibraryGenerator generator in generators.Values)
             {
-                case LibraryTranslationMode.OneFilePerType:
-                {
-                    foreach (TranslatedDeclaration declaration in library.Declarations)
-                    {
-                        //HACK: These are handled below
-                        if (declaration.File == TranslatedFile.Synthesized)
-                        { continue; }
-
-                        if (declaration is ICustomCSharpTranslatedDeclaration cSharpDeclaration && !cSharpDeclaration.HasOutput)
-                        { continue; }
-
-                        DoGenerate(new CSharpLibraryGenerator(options, session, $"{SanitizeIdentifier(declaration.Name)}.cs", filter: declaration));
-                    }
-
-                    //HACK: Manually emit synthesized types
-                    // Really the FindAllNonNestedTypeDeclarationsVisitor is a bit too naive about what constitutes as a "Type"
-                    // We should probably just loop over library.Declarations, but right now constant arrays expect to all be emitted by the same generator.
-                    DoGenerate(new CSharpLibraryGenerator(options, session, "SynthesizedDeclarations.cs", filter: TranslatedFile.Synthesized));
-                }
-                break;
-                case LibraryTranslationMode.OneFilePerInputFile:
-                {
-                    // Enumerate all of the files which have at least one declaration
-                    HashSet<TranslatedFile> filesWithDeclarations = new();
-                    foreach (TranslatedDeclaration declaration in library.EnumerateRecursively())
-                    { filesWithDeclarations.Add(declaration.File); }
-
-                    // Generate an output file for every input file that has declarations
-                    foreach (TranslatedFile file in filesWithDeclarations)
-                    {
-                        string fileName = Path.GetFileNameWithoutExtension(file.FilePath) + ".cs";
-
-                        if (file == TranslatedFile.Synthesized)
-                        { fileName = "SynthesizedDeclarations.cs"; }
-
-                        DoGenerate(new CSharpLibraryGenerator(options, session, fileName, filter: file));
-                    }
-                }
-                break;
-                case LibraryTranslationMode.OneFile:
-                {
-                    DoGenerate(new CSharpLibraryGenerator(options, session, "TranslatedLibrary.cs"));
-                }
-                break;
-                default:
-                    throw new ArgumentException("The specified mode is invalid.", nameof(mode));
+                generator.Writer.Finish();
+                diagnosticsBuilder.AddRange(generator.Diagnostics);
             }
 
             return diagnosticsBuilder.MoveToImmutableSafe();
@@ -98,17 +74,12 @@ namespace Biohazrd.CSharp
 
         protected override void Visit(VisitorContext context, TranslatedDeclaration declaration)
         {
-            if (context.Parents.Length == 0)
-            {
-                if (DeclarationFilter is not null && !ReferenceEquals(declaration, DeclarationFilter))
-                { return; }
-                else if (FileFilter is not null && declaration.File != FileFilter)
-                { return; }
-            }
-
             // Skip declarations with no output
             if (declaration is ICustomCSharpTranslatedDeclaration cSharpDeclaration && !cSharpDeclaration.HasOutput)
-            { return; }
+            {
+                Debug.Assert(context.Parents.Length > 0, "This case should've been handled in Generate for root declarations.");
+                return;
+            }
 
             // Dump Clang information
             if (Options.DumpClangInfo && declaration.Declaration is not null)
