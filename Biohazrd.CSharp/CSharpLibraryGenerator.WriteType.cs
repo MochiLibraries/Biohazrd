@@ -47,6 +47,9 @@ namespace Biohazrd.CSharp
                     {
                         return GetTypeAsString(context, declaration, referencedEnum.UnderlyingType);
                     }
+                    // If the reference is to a typedef, we write out the underlying type instead
+                    else if (referenced is TranslatedTypedef referencedTypedef)
+                    { return GetTypeAsString(context, declaration, referencedTypedef.UnderlyingType); }
                     // If the reference is to a custom C# declaration, allow it to override how it is referenced.
                     // Note that GetReferenceTypeAsString is allowed to have side-effects (namely adding usings) and still return null to indicate the normal emit logic should run.
                     // As such, this should be the final check before the standard emit logic runs.

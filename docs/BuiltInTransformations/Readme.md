@@ -10,7 +10,6 @@ The transformations are listed in the order they're typically applied.
 * [`AddBaseVTableAliasTransformation`](AddBaseVTableAliasTransformation.md)
 * [`ConstOverloadRenameTransformation`](ConstOverloadRenameTransformation.md)
 * [`MakeEverythingPublicTransformation`](MakeEverythingPublicTransformation.md)
-* [`RemoveRemainingTypedefsTransformation`](RemoveRemainingTypedefsTransformation.md)
 * [`TypeReductionTransformation`](TypeReductionTransformation.md)
 * [`CSharpTypeReductionTransformation`](CSharpTypeReductionTransformation.md)
 * [`CSharpBuiltinTypeTransformation`](CSharpBuiltinTypeTransformation.md)
@@ -30,3 +29,4 @@ Some more complex transformations are actually implemented as multiple transform
 The following transformations may not always be necessary, but are provided for your convienence:
 
 * [`AddTrampolineMethodOptionsTransformation`](AddTrampolineMethodOptionsTransformation.md)
+* [`ResolveTypedefsTransformation`](ResolveTypedefsTransformation.md)

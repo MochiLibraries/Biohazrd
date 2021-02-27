@@ -119,7 +119,7 @@ namespace Biohazrd.CSharp
                 {
                     // This can happen if a C# built-in type was replaced with a different type
                     // (Such as a type being replaced with a convienience wrapper.)
-                    static bool TypeCanHaveDefaultInCSharp(TransformationContext context, TypeReference type)
+                    static bool TypeCanHaveDefaultInCSharp(TranslatedLibrary library, TypeReference type)
                     {
                         if (type is PointerTypeReference)
                         { return true; }
@@ -130,13 +130,21 @@ namespace Biohazrd.CSharp
                         if (type is FunctionPointerTypeReference)
                         { return true; }
 
-                        if (type is TranslatedTypeReference translatedType && translatedType.TryResolve(context.Library) is TranslatedEnum)
-                        { return true; }
+                        if (type is TranslatedTypeReference translatedType)
+                        {
+                            switch (translatedType.TryResolve(library))
+                            {
+                                case TranslatedTypedef typedef:
+                                    return TypeCanHaveDefaultInCSharp(library, typedef.UnderlyingType);
+                                case TranslatedEnum:
+                                    return true;
+                            }
+                        }
 
                         return false;
                     }
 
-                    if (declaration.DefaultValue is not null && !TypeCanHaveDefaultInCSharp(context, declaration.Type))
+                    if (declaration.DefaultValue is not null && !TypeCanHaveDefaultInCSharp(context.Library, declaration.Type))
                     {
                         return declaration with
                         {
@@ -166,22 +174,39 @@ namespace Biohazrd.CSharp
 
         protected override TransformationResult TransformBitField(TransformationContext context, TranslatedBitField declaration)
         {
-            switch (declaration.Type)
+            static bool CanBeBitFieldType(TranslatedLibrary library, TypeReference type)
             {
-                // Integral C# built-in types are allowed
-                case CSharpBuiltinTypeReference { Type: { IsIntegral: true } }:
-                    return base.TransformBitField(context, declaration);
-                // Booleans are supported
-                case CSharpBuiltinTypeReference cSharpBuiltinTypeReference when cSharpBuiltinTypeReference == CSharpBuiltinType.Bool:
-                    return base.TransformBitField(context, declaration);
-                // Integral enums are allowed
-                case TranslatedTypeReference typeReference:
-                    if (typeReference.TryResolve(context.Library) is TranslatedEnum { UnderlyingType: CSharpBuiltinTypeReference { Type: { IsIntegral: true } } })
-                    { return base.TransformBitField(context, declaration); }
-                    break;
+                switch (type)
+                {
+                    // Integral C# built-in types are allowed
+                    case CSharpBuiltinTypeReference { Type: { IsIntegral: true } }:
+                        return true;
+                    // Booleans are supported
+                    case CSharpBuiltinTypeReference cSharpBuiltinTypeReference when cSharpBuiltinTypeReference == CSharpBuiltinType.Bool:
+                        return true;
+                    case TranslatedTypeReference typeReference:
+                    {
+                        switch (typeReference.TryResolve(library))
+                        {
+                            // Integral enums are allowed
+                            case TranslatedEnum { UnderlyingType: CSharpBuiltinTypeReference { Type: { IsIntegral: true } } }:
+                                return true;
+                            // For typedefs defer to the underlying type
+                            case TranslatedTypedef typedef:
+                                return CanBeBitFieldType(library, typedef.UnderlyingType);
+                            default:
+                                return false;
+                        }
+                    }
+                    default:
+                        return false;
+                }
             }
 
-            return declaration.WithError($"Bit fields must by typed by an integral C# built-in type or an enum with an integral underlying type. {declaration.Type} is neither.");
+            if (CanBeBitFieldType(context.Library, declaration.Type))
+            { return base.TransformBitField(context, declaration); }
+            else
+            { return declaration.WithError($"Bit fields must by typed by an integral C# built-in type or an enum with an integral underlying type. {declaration.Type} is neither."); }
         }
 
         protected override TransformationResult TransformStaticField(TransformationContext context, TranslatedStaticField declaration)

@@ -27,6 +27,10 @@ namespace Biohazrd.Transformation.Common
             Dictionary<TKey, int> nextId = new();
             foreach (TranslatedDeclaration declaration in parent)
             {
+                // Typedefs have no output on C# and therefore do not need to be de-duplicated
+                if (declaration is TranslatedTypedef)
+                { continue; }
+
                 TKey key = keySelector(declaration);
 
                 // If there's a key conflict we found a duplicate

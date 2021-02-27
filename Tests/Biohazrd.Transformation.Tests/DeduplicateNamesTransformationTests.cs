@@ -271,5 +271,14 @@ struct MyStruct
                 Assert.NotEqual("Test", myStruct.FindDeclaration<TranslatedNormalField>().Name);
             }
         }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/169")]
+        public void TypedefDoesNotCauseDeduplication()
+        {
+            TranslatedLibrary library = CreateLibrary(@"typedef struct MyStruct { } MyStruct;");
+            TranslatedLibrary transformed = new DeduplicateNamesTransformation().Transform(library);
+            Assert.ReferenceEqual(library, transformed);
+        }
     }
 }

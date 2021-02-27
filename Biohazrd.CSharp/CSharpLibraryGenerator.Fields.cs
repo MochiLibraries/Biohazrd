@@ -68,29 +68,40 @@ namespace Biohazrd.CSharp
         protected override void VisitBitField(VisitorContext context, TranslatedBitField declaration)
         {
             // Determine the type for the backing field
-            CSharpBuiltinType? backingType = null;
+            static CSharpBuiltinType? GetBackingType(TranslatedLibrary library, TypeReference type, out TypeReference effectiveType, ref bool fieldIsEnum, ref bool fieldIsEnumWithSignedValues)
+            {
+                effectiveType = type;
+
+                switch (type)
+                {
+                    case CSharpBuiltinTypeReference cSharpType:
+                        return cSharpType.Type;
+                    case TranslatedTypeReference typeReference:
+                        switch (typeReference.TryResolve(library))
+                        {
+                            case TranslatedEnum { UnderlyingType: CSharpBuiltinTypeReference cSharpType } translatedEnum:
+                                CSharpBuiltinType result = cSharpType.Type;
+                                fieldIsEnum = true;
+
+                                // Check if any of the enum's values are negative
+                                if (cSharpType.Type.IsSigned)
+                                { fieldIsEnumWithSignedValues = translatedEnum.Values.Any(v => v.Value > cSharpType.Type.MaxValue); }
+
+                                return result;
+                            case TranslatedTypedef translatedTypedef:
+                                return GetBackingType(library, translatedTypedef.UnderlyingType, out effectiveType, ref fieldIsEnum, ref fieldIsEnumWithSignedValues);
+                            default:
+                                return null;
+                        }
+                    default:
+                        return null;
+                }
+            }
+
+            TypeReference effectiveType;
             bool fieldIsEnum = false;
             bool fieldIsEnumWithSignedValues = false;
-
-            switch (declaration.Type)
-            {
-                case CSharpBuiltinTypeReference cSharpType:
-                    backingType = cSharpType.Type;
-                    break;
-                case TranslatedTypeReference typeReference:
-                {
-                    if (typeReference.TryResolve(context.Library) is TranslatedEnum { UnderlyingType: CSharpBuiltinTypeReference cSharpType } translatedEnum)
-                    {
-                        backingType = cSharpType.Type;
-                        fieldIsEnum = true;
-
-                        // Check if any of the enum's values are negative
-                        if (cSharpType.Type.IsSigned)
-                        { fieldIsEnumWithSignedValues = translatedEnum.Values.Any(v => v.Value > cSharpType.Type.MaxValue); }
-                    }
-                }
-                break;
-            }
+            CSharpBuiltinType? backingType = GetBackingType(context.Library, declaration.Type, out effectiveType, ref fieldIsEnum, ref fieldIsEnumWithSignedValues);
 
             // Boolean bitfields require some special treatment
             bool isBoolBitfield = backingType == CSharpBuiltinType.Bool;
@@ -132,7 +143,7 @@ namespace Biohazrd.CSharp
             // Get all the relevant types as strings
             string backingTypeString = GetTypeAsString(context, declaration, backingType);
             string unsignedBackingTypeString = GetTypeAsString(context, declaration, unsignedBackingType);
-            string declarationTypeString = GetTypeAsString(context, declaration, declaration.Type);
+            string declarationTypeString = GetTypeAsString(context, declaration, effectiveType);
 
             // Clang (and by extension, Biohazrd) puts the offset of the field at the nearest byte boundry
             // We could just use the smallest underlying type can fit the bit field, but this doesn't work when the width of the field at the end of the bit field group
@@ -196,7 +207,7 @@ namespace Biohazrd.CSharp
                 // If the backing type doesn't match the declaration type or it isn't 4 or 8 bytes (IE: it isn't int, uint, long, or ulong) we need to cast the result
                 if (isBoolBitfield)
                 { getter = $"({getter}) != 0"; }
-                else if (backingType != declaration.Type || (backingType.SizeOf != 4 && backingType.SizeOf != 8))
+                else if (backingType != effectiveType || (backingType.SizeOf != 4 && backingType.SizeOf != 8))
                 { getter = $"({declarationTypeString})({getter})"; }
 
                 Writer.WriteLine($"get => {getter};");
@@ -213,7 +224,7 @@ namespace Biohazrd.CSharp
 
                     if (isBoolBitfield)
                     { Writer.Write($"(value ? 1U : 0U)"); }
-                    else if (unsignedBackingType != declaration.Type)
+                    else if (unsignedBackingType != effectiveType)
                     { Writer.Write($"(({intermediateBackingTypeString})value)"); }
                     else
                     { Writer.Write("value"); }

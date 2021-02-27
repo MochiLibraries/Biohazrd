@@ -2,6 +2,7 @@
 using Biohazrd.OutputGeneration;
 using Biohazrd.OutputGeneration.Metadata;
 using ClangSharp.Pathogen;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -36,6 +37,10 @@ namespace Biohazrd.CSharp
             {
                 // Skip declarations with no output
                 if (declaration is ICustomCSharpTranslatedDeclaration cSharpDeclaration && !cSharpDeclaration.HasOutput)
+                { continue; }
+
+                // Typedefs generally have no output in C#, but they do have some informational output when Clang dumping is enabled
+                if (declaration is TranslatedTypedef && !options.DumpClangInfo)
                 { continue; }
 
                 // Determine the file for the declaration
@@ -123,13 +128,15 @@ namespace Biohazrd.CSharp
 
         protected override void VisitTypedef(VisitorContext context, TranslatedTypedef declaration)
         {
-            Fatal(context, declaration, "Typedefs cannot be directly represented in C#.");
-            Writer.Write("// ");
+            if (Options.DumpClangInfo)
+            {
+                Writer.Write("// ");
 
-            if (context.ParentDeclaration is not null)
-            { Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} "); }
+                if (context.ParentDeclaration is not null)
+                { Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} "); }
 
-            Writer.WriteLine($"typedef '{declaration.UnderlyingType}' '{declaration.Name}'");
+                Writer.WriteLine($"typedef '{declaration.UnderlyingType}' '{declaration.Name}'");
+            }
         }
 
         protected override void VisitUndefinedRecord(VisitorContext context, TranslatedUndefinedRecord declaration)

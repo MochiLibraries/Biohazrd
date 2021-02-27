@@ -59,7 +59,7 @@ void Test(function_pointer_t function);
 
             // Reduce without the typedef
             {
-                TranslatedLibrary withoutTypedef = new RemoveRemainingTypedefsTransformation().Transform(library);
+                TranslatedLibrary withoutTypedef = new ResolveTypedefsTransformation().Transform(library);
                 withoutTypedef = new TypeReductionTransformation().Transform(withoutTypedef);
 
                 TranslatedParameter parameter = withoutTypedef.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
@@ -95,7 +95,7 @@ void Test(function_t* function);
 
             // Reduce without the typedef
             {
-                TranslatedLibrary withoutTypedef = new RemoveRemainingTypedefsTransformation().Transform(library);
+                TranslatedLibrary withoutTypedef = new ResolveTypedefsTransformation().Transform(library);
                 withoutTypedef = new TypeReductionTransformation().Transform(withoutTypedef);
 
                 TranslatedParameter parameter = withoutTypedef.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
@@ -132,7 +132,7 @@ void Test(function_t function);
 
             // Reduce without the typedef
             {
-                TranslatedLibrary withoutTypedef = new RemoveRemainingTypedefsTransformation().Transform(library);
+                TranslatedLibrary withoutTypedef = new ResolveTypedefsTransformation().Transform(library);
                 withoutTypedef = new TypeReductionTransformation().Transform(withoutTypedef);
 
                 TranslatedParameter parameter = withoutTypedef.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
@@ -180,7 +180,7 @@ void Test(function_pointer_stdcall_t function);
 ", "i386-pc-win32"
             );
 
-            library = new RemoveRemainingTypedefsTransformation().Transform(library);
+            library = new ResolveTypedefsTransformation().Transform(library);
             library = new TypeReductionTransformation().Transform(library);
 
             TranslatedParameter parameter = library.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("function");
@@ -293,7 +293,7 @@ MyTypedef TestFunction();
 "
             );
 
-            library = new RemoveRemainingTypedefsTransformation().Transform(library);
+            library = new ResolveTypedefsTransformation().Transform(library);
             library = new TypeReductionTransformation().Transform(library);
 
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
@@ -335,7 +335,7 @@ OtherTypedef TestFunction();
 "
 );
 
-            library = new RemoveRemainingTypedefsTransformation().Transform(library);
+            library = new ResolveTypedefsTransformation().Transform(library);
             library = new TypeReductionTransformation().Transform(library);
 
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
