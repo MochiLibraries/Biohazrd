@@ -171,6 +171,9 @@ namespace Biohazrd.CSharp
                 // Integral C# built-in types are allowed
                 case CSharpBuiltinTypeReference { Type: { IsIntegral: true } }:
                     return base.TransformBitField(context, declaration);
+                // Booleans are supported
+                case CSharpBuiltinTypeReference cSharpBuiltinTypeReference when cSharpBuiltinTypeReference == CSharpBuiltinType.Bool:
+                    return base.TransformBitField(context, declaration);
                 // Integral enums are allowed
                 case TranslatedTypeReference typeReference:
                     if (typeReference.TryResolve(context.Library) is TranslatedEnum { UnderlyingType: CSharpBuiltinTypeReference { Type: { IsIntegral: true } } })

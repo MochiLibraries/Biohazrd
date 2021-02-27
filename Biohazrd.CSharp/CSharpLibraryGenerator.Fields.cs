@@ -92,6 +92,11 @@ namespace Biohazrd.CSharp
                 break;
             }
 
+            // Boolean bitfields require some special treatment
+            bool isBoolBitfield = backingType == CSharpBuiltinType.Bool;
+            if (isBoolBitfield)
+            { backingType = CSharpBuiltinType.Byte; }
+
             if (backingType is null || !backingType.IsIntegral)
             {
                 Fatal(context, declaration, $"Bit field has an invalid type.");
@@ -189,7 +194,9 @@ namespace Biohazrd.CSharp
                 }
 
                 // If the backing type doesn't match the declaration type or it isn't 4 or 8 bytes (IE: it isn't int, uint, long, or ulong) we need to cast the result
-                if (backingType != declaration.Type || (backingType.SizeOf != 4 && backingType.SizeOf != 8))
+                if (isBoolBitfield)
+                { getter = $"({getter}) != 0"; }
+                else if (backingType != declaration.Type || (backingType.SizeOf != 4 && backingType.SizeOf != 8))
                 { getter = $"({declarationTypeString})({getter})"; }
 
                 Writer.WriteLine($"get => {getter};");
@@ -204,7 +211,9 @@ namespace Biohazrd.CSharp
                     // uint shiftedValue = (((uint)value) & 0x00FF) << 16;
                     Writer.Write($"{intermediateBackingTypeString} shiftedValue = (");
 
-                    if (unsignedBackingType != declaration.Type)
+                    if (isBoolBitfield)
+                    { Writer.Write($"(value ? 1U : 0U)"); }
+                    else if (unsignedBackingType != declaration.Type)
                     { Writer.Write($"(({intermediateBackingTypeString})value)"); }
                     else
                     { Writer.Write("value"); }
