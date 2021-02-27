@@ -1,11 +1,9 @@
-﻿using Biohazrd.CSharp;
-using Biohazrd.Tests.Common;
-using Biohazrd.Transformation.Common;
+﻿using Biohazrd.Tests.Common;
 using System.Collections.Immutable;
 using System.Linq;
 using Xunit;
 
-namespace Biohazrd.Transformation.Tests
+namespace Biohazrd.CSharp.Tests
 {
     public sealed class DeduplicateNamesTransformationTests : BiohazrdTestBase
     {

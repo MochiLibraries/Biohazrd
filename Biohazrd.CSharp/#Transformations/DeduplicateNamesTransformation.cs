@@ -1,11 +1,12 @@
-﻿using Biohazrd.Transformation.Infrastructure;
+﻿using Biohazrd.Transformation;
+using Biohazrd.Transformation.Infrastructure;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace Biohazrd.Transformation.Common
+namespace Biohazrd.CSharp
 {
     public sealed class DeduplicateNamesTransformation : TransformationBase
     {
