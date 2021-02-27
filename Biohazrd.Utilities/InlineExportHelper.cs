@@ -6,6 +6,7 @@ using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -23,10 +24,44 @@ namespace Biohazrd.Utilities
         public InlineExportHelper(OutputSession session, string filePath)
             => Writer = session.Open<CppCodeWriter>(filePath);
 
+        public void ForceInclude(string filePath, bool systemInclude = false)
+        {
+            if (Used)
+            { throw new InvalidOperationException("This transformation has already been applied, no more includes can be added."); }
+
+            Writer.Include(filePath, systemInclude);
+        }
+
         protected override TranslatedLibrary PreTransformLibrary(TranslatedLibrary library)
         {
             if (Used)
             { throw new InvalidOperationException("This transformation can only be applied once."); }
+
+            // Ensure that the include files written to the output are in the same order as they were included to build the library
+            // (Some libraries are sensitive to the order their files are included.)
+            Dictionary<string, int> fileIndices = new(library.Files.Length);
+            foreach (TranslatedFile file in library.Files)
+            {
+                Debug.Assert(Path.IsPathFullyQualified(file.FilePath)); // SetIncludeComparer uses fully-qualified paths. TranslatedFile is expected to as well.
+                fileIndices.Add(file.FilePath, fileIndices.Count);
+            }
+
+            Writer.SetIncludeComparer((a, b) =>
+            {
+                int ai;
+                int bi;
+
+                if (!fileIndices.TryGetValue(a, out ai))
+                { ai = Int32.MaxValue; }
+
+                if (!fileIndices.TryGetValue(b, out bi))
+                { bi = Int32.MaxValue; }
+
+                if (ai == bi)
+                { return StringComparer.InvariantCulture.Compare(a, b); }
+                else
+                { return ai.CompareTo(bi); }
+            });
 
             return library;
         }
@@ -287,6 +322,7 @@ namespace Biohazrd.Utilities
 
             Writer.Finish();
             Writer.Dispose(); // We explicitly dispose early so the file is released and accessible by the native compiler if it is invoked by the generator.
+            Used = true;
             return library;
         }
 

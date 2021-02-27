@@ -1,5 +1,8 @@
 ﻿using Biohazrd.Tests.Common;
+using System;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace Biohazrd.OutputGeneration.Tests
@@ -111,14 +114,72 @@ namespace Biohazrd.OutputGeneration.Tests
         }
 
         [Fact]
+        public void IncludesAreSorted_CustomSort()
+        {
+            string baseDirectory = null!;
+            CodeWriterTest
+            (
+@"#include ""C.h""
+#include ""B.h""
+#include ""A.h""
+
+#include <SystemC.h>
+#include <SystemB.h>
+#include <SystemA.h>
+
+// SomeCode
+",
+                session => baseDirectory = Path.GetFullPath(session.BaseOutputDirectory),
+                writer =>
+                {
+                    writer.SetIncludeComparer((a, b) =>
+                    {
+                        // Part of the comparer contract is that all paths are fully qualified
+                        Assert.True(Path.IsPathFullyQualified(a));
+                        Assert.True(Path.IsPathFullyQualified(b));
+
+                        return StringComparer.InvariantCulture.Compare(b, a);
+                    });
+
+                    string driveRelativeBaseDirectory;
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        Debug.Assert(Path.IsPathFullyQualified(baseDirectory));
+
+                        // This test is only possible when the path is running on a local drive
+                        // (IE: Don't try to do this test if we're running out of a network drive.)
+                        if (baseDirectory.Length >= 3 && baseDirectory[1] == Path.VolumeSeparatorChar && baseDirectory[2] == Path.DirectorySeparatorChar)
+                        {
+                            driveRelativeBaseDirectory = baseDirectory.Substring(2); // Strip off drive letter and colon
+                            Debug.Assert(Path.IsPathRooted(driveRelativeBaseDirectory));
+                            Debug.Assert(!Path.IsPathFullyQualified(driveRelativeBaseDirectory));
+                        }
+                        else
+                        { driveRelativeBaseDirectory = baseDirectory; }
+                    }
+                    else
+                    { driveRelativeBaseDirectory = baseDirectory; } // This test is only possible on Windows since only Windows has this concept
+
+                    writer.WriteLine("// SomeCode");
+                    writer.Include("C.h");
+                    writer.Include(Path.Combine(baseDirectory, "A.h"));
+                    writer.Include(Path.Combine(driveRelativeBaseDirectory, "B.h"));
+
+                    writer.Include("SystemC.h", systemInclude: true);
+                    writer.Include(Path.Combine(baseDirectory, "SystemA.h"), systemInclude: true);
+                    writer.Include(Path.Combine(driveRelativeBaseDirectory, "SystemB.h"), systemInclude: true);
+                }
+            );
+        }
+
+        [Fact]
         public void IncludesAreMadeRelative()
         {
             CodeWriterTest
             (
-// https://github.com/InfectedLibraries/Biohazrd/issues/165 will change the directory separator to / here
-$@"#include ""..{Path.DirectorySeparatorChar}Test.h""
+@"#include ""../Test.h""
 
-#include <..{Path.DirectorySeparatorChar}SystemTest.h>
+#include <../SystemTest.h>
 
 // SomeCode
 ",
@@ -156,10 +217,9 @@ $@"#include ""..{Path.DirectorySeparatorChar}Test.h""
 
             Assert.Equal
             (
-// https://github.com/InfectedLibraries/Biohazrd/issues/165 will change the directory separator to / here
-$@"#include ""..{Path.DirectorySeparatorChar}..{Path.DirectorySeparatorChar}Test.h""
+@"#include ""../../Test.h""
 
-#include <..{Path.DirectorySeparatorChar}..{Path.DirectorySeparatorChar}SystemTest.h>
+#include <../../SystemTest.h>
 
 // SomeCode
 ",
@@ -168,7 +228,7 @@ $@"#include ""..{Path.DirectorySeparatorChar}..{Path.DirectorySeparatorChar}Test
             );
         }
 
-        [FutureFact]
+        [Fact]
         [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/165")]
         public void IncludePathsAreNormalizedToForwardSlash1()
         {

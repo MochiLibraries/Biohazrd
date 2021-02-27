@@ -89,6 +89,33 @@ namespace Biohazrd
             // Add all promoted out-of-scope files
             FilesBuilder.AddRange(PromotedOutOfScopeFiles);
 
+            // Use the same sorting for the files as the input
+            // (This is useful if a transformation later on needs to care about include file order.)
+            {
+                Dictionary<string, int> filePathIndices = new(sourceFiles.Count);
+                for (int i = 0; i < sourceFiles.Count; i++)
+                { filePathIndices.Add(sourceFiles[i].FilePath, i); }
+
+                // ImmutableArray<T>.Builder.Sort uses Array.Sort which is not stable, so we need to ensure everything has an index
+                foreach (TranslatedFile file in FilesBuilder)
+                {
+                    if (!filePathIndices.ContainsKey(file.FilePath))
+                    {
+                        Debug.Assert(!file.WasInScope, "Only promoted out-of-scope files should be missing at this point.");
+                        filePathIndices.Add(file.FilePath, filePathIndices.Count);
+                    }
+                }
+
+                int SortComparison(TranslatedFile a, TranslatedFile b)
+                {
+                    int ai = filePathIndices[a.FilePath];
+                    int bi = filePathIndices[b.FilePath];
+                    return ai.CompareTo(bi);
+                }
+
+                FilesBuilder.Sort(SortComparison);
+            }
+
             // Mark ourselves as complete
             ParsingComplete = true;
         }

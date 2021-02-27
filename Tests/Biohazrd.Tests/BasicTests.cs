@@ -201,5 +201,43 @@ struct StructB {};
             Assert.NotNull(library);
             Assert.Empty(library.Declarations);
         }
+
+        [Fact]
+        public void InputFileOrderIsRetained()
+        {
+            TranslatedLibraryBuilder builder = new();
+            builder.AddFile(new SourceFile("C.h")
+            {
+                Contents = @"
+#pragma once
+#include ""A.h""
+struct C { };
+"
+            });
+            builder.AddFile(new SourceFile("A.h")
+            {
+                Contents = @"
+#pragma once
+#include ""B.h""
+struct A { };
+"
+            });
+            builder.AddFile(new SourceFile("B.h")
+            {
+                Contents = @"
+#pragma once
+#include ""B.h""
+struct B { };
+"
+            });
+
+            TranslatedLibrary library = builder.Create();
+
+            Assert.Empty(library.ParsingDiagnostics);
+            Assert.Equal(3, library.Files.Length);
+            Assert.Equal("C.h", Path.GetFileName(library.Files[0].FilePath));
+            Assert.Equal("A.h", Path.GetFileName(library.Files[1].FilePath));
+            Assert.Equal("B.h", Path.GetFileName(library.Files[2].FilePath));
+        }
     }
 }
