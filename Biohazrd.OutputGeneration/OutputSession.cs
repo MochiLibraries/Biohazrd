@@ -22,9 +22,9 @@ namespace Biohazrd.OutputGeneration
 
         private Dictionary<Type, Delegate> Factories = new();
 
-        private Dictionary<string, object> Writers = new();
+        private Dictionary<string, object> Writers = new(StringComparer.OrdinalIgnoreCase);
 
-        private HashSet<string> _FilesWrittenMoreThanOnce = new();
+        private HashSet<string> _FilesWrittenMoreThanOnce = new(StringComparer.OrdinalIgnoreCase);
 
         public IReadOnlyCollection<string> FilesWritten => Writers.Keys;
         public IReadOnlyCollection<string> FilesWrittenMoreThanOnce => _FilesWrittenMoreThanOnce;
