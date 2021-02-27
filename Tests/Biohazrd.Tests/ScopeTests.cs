@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using Biohazrd.Tests.Common;
+using System.IO;
 using System.Linq;
 using Xunit;
 
@@ -226,7 +227,7 @@ int FieldA;
 struct StructA
 {
 int FieldA;
-# include ""B.h""
+#include ""B.h""
 };
 "
             });
@@ -275,7 +276,7 @@ int FieldB;
 extern ""C""
 {
 int FieldA;
-# include ""B.h""
+#include ""B.h""
 };
 "
             });
@@ -305,7 +306,7 @@ int FieldA;
 extern ""C""
 {
 int FieldA;
-# include ""B.h""
+#include ""B.h""
 };
 ",
                 IsInScope = false
@@ -324,6 +325,70 @@ int FieldA;
             Assert.Single(library.Files);
             Assert.Single(library.Declarations);
             Assert.Equal("FieldB", library.Declarations[0].Name);
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/168")]
+        public void OutOfScopeDeclarationInsideInScopeNamespaceDeclarationIsNotInScope()
+        {
+            TranslatedLibraryBuilder builder = new();
+            builder.AddFile(new SourceFile("A.h")
+            {
+                Contents = @"
+namespace NamespaceA
+{
+int GlobalA;
+#include ""B.h""
+};
+"
+            });
+
+            builder.AddFile(new SourceFile("B.h")
+            {
+                Contents = "int GlobalB;",
+                IsInScope = false,
+                IndexDirectly = false
+            });
+
+            TranslatedLibrary library = builder.Create();
+
+            Assert.Empty(library.ParsingDiagnostics);
+            Assert.Single(library.Files);
+            Assert.Single(library.Declarations);
+            Assert.Equal("GlobalA", library.Declarations[0].Name);
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/168")]
+        public void InScopeDeclarationInsideOutOfScopeNamespaceDeclarationIsInScope()
+        {
+            TranslatedLibraryBuilder builder = new();
+            builder.AddFile(new SourceFile("A.h")
+            {
+                Contents = @"
+namespace NamespaceA
+{
+int GlobalA;
+#include ""B.h""
+};
+",
+                IsInScope = false
+            });
+
+            builder.AddFile(new SourceFile("B.h")
+            {
+                Contents = "int GlobalB;",
+                IsInScope = true,
+                IndexDirectly = false
+            });
+
+            TranslatedLibrary library = builder.Create();
+
+            Assert.Empty(library.ParsingDiagnostics);
+            Assert.Single(library.Files);
+            Assert.Single(library.Declarations);
+            Assert.Equal("GlobalB", library.Declarations[0].Name);
+            Assert.Equal("NamespaceA", library.Declarations[0].Namespace);
         }
 
         [Fact]

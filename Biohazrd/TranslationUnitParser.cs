@@ -204,10 +204,10 @@ namespace Biohazrd
 
         private void ProcessCursor(Cursor cursor)
         {
-            // extern "C" declarations are completely ignored in Biohazrd
+            // Namespace and extern "C" declarations are completely ignored in Biohazrd
             // Their effect is already expressed on how they affect the actual declarations, and they cause unintentional scoping problems if we let them go to CreateDeclarations.
-            // Note that this doesn't handle all extern "C" declarations since ones which are nested inside namespaces will be handled by CreateDeclarations.
-            if (cursor is Decl { Kind: CX_DeclKind.CX_DeclKind_LinkageSpec })
+            // Note that this doesn't handle all namespace/extern "C" declarations since ones which are nested inside namespaces will be handled by CreateDeclarations.
+            if (cursor is NamespaceDecl or Decl { Kind: CX_DeclKind.CX_DeclKind_LinkageSpec })
             {
                 foreach (Cursor childCursor in cursor.CursorChildren)
                 { ProcessCursor(childCursor); }
