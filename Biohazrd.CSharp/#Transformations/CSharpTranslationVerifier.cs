@@ -1,6 +1,7 @@
 ﻿using Biohazrd.CSharp.Metadata;
 using Biohazrd.Expressions;
 using Biohazrd.Transformation;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Biohazrd.CSharp
@@ -55,11 +56,45 @@ namespace Biohazrd.CSharp
 
         protected override TransformationResult TransformEnum(TransformationContext context, TranslatedEnum declaration)
         {
+            bool canBeFields = context.IsValidFieldOrMethodContext();
+            bool canBeEnum = declaration.UnderlyingType is CSharpBuiltinTypeReference { Type: { IsValidUnderlyingEnumType: true } };
+
+            // If this enum can't be an enum and can't be loose fields, it becomes loose fields inside a loose declaration wrapper
+            if (!canBeFields && !canBeEnum)
+            {
+                return new SynthesizedLooseDeclarationsTypeDeclaration(declaration.File)
+                {
+                    Name = declaration.Name,
+                    Namespace = declaration.Namespace,
+                    Accessibility = declaration.Accessibility,
+                    Members = ImmutableList.Create<TranslatedDeclaration>
+                    (
+                        declaration with
+                        {
+                            TranslateAsLooseConstants = true,
+                            Diagnostics = declaration.Diagnostics.Add
+                            (
+                                Severity.Warning,
+                                $"Enums can't be translated as  C# enum or as loose constants, and was wrapped in loose declaration container."
+                            )
+                        }
+                    )
+                };
+            }
+            // If this enum will be translated as loose constants, it must be in a valid field context
+            else if (declaration.TranslateAsLooseConstants && !canBeFields)
+            {
+                return declaration with
+                {
+                    TranslateAsLooseConstants = false,
+                    Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Enums outside of a field declaration context cannot be translated as loose constants.")
+                };
+            }
             // If the enum will be translated as a C# enum, the underlying type must be supported by C#.
             // If the type is not supported, we force it to be translated as loose constants and add a warning to it.
-            if (!declaration.TranslateAsLooseConstants && declaration.UnderlyingType is not CSharpBuiltinTypeReference { Type: { IsValidUnderlyingEnumType: true } })
+            else if (!declaration.TranslateAsLooseConstants && !canBeEnum)
             {
-                declaration = declaration with
+                return declaration with
                 {
                     TranslateAsLooseConstants = true,
                     Diagnostics = declaration.Diagnostics.Add
@@ -69,8 +104,8 @@ namespace Biohazrd.CSharp
                     )
                 };
             }
-
-            return base.TransformEnum(context, declaration);
+            else
+            { return declaration; }
         }
 
         protected override TransformationResult TransformEnumConstant(TransformationContext context, TranslatedEnumConstant declaration)
