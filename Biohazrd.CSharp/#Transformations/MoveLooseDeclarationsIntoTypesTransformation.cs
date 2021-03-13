@@ -142,5 +142,17 @@ namespace Biohazrd.CSharp
 
             return declaration;
         }
+
+        protected override TransformationResult TransformUnknownDeclarationType(TransformationContext context, TranslatedDeclaration declaration)
+        {
+            // If this container matches one of the container names for any loose declarations, add them to this record
+            if (declaration is SynthesizedLooseDeclarationsTypeDeclaration looseContainer
+                && LooseDeclarationsLookup.Remove((declaration.Namespace, declaration.Name), out List<TranslatedDeclaration>? looseDeclarations))
+            {
+                return looseContainer with { Members = looseContainer.Members.AddRange(looseDeclarations) };
+            }
+
+            return declaration;
+        }
     }
 }
