@@ -37,7 +37,7 @@ namespace Biohazrd.Tests.Common
         }
 
         private volatile int NextOutputFolderId = 0;
-        protected OutputSession CreateOutputSession([CallerMemberName] string testName = null)
+        protected OutputSession CreateOutputSession([CallerMemberName] string testName = null!)
         {
             if (testName is null)
             { throw new ArgumentNullException(nameof(testName)); }
