@@ -341,5 +341,27 @@ OtherTypedef TestFunction();
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
             Assert.Equal(CXTypeKind.CXType_Int, Assert.IsType<ClangTypeReference>(function.ReturnType).ClangType.Kind);
         }
+
+        [Fact]
+        public void TemplateSpecializationIsResolvedToSpecialization()
+        {
+            TranslatedLibrary library = CreateLibrary
+(@"
+template<typename T> class MyTemplate
+{
+public:
+    T Field;
+};
+
+typedef MyTemplate<int> MySpecialization;
+");
+
+            library = new TypeReductionTransformation().Transform(library);
+
+            TranslatedTypedef typedef = library.FindDeclaration<TranslatedTypedef>("MySpecialization");
+            TranslatedTypeReference specializationReference = Assert.IsAssignableFrom<TranslatedTypeReference>(typedef.UnderlyingType);
+            TranslatedTemplateSpecialization specialization = Assert.IsType<TranslatedTemplateSpecialization>(specializationReference.TryResolve(library));
+            Assert.Equal("MyTemplate<int>", specialization.Name);
+        }
     }
 }

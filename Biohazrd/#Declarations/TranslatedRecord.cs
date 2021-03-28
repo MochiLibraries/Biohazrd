@@ -1,4 +1,5 @@
 ﻿using ClangSharp;
+using ClangSharp.Interop;
 using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ using System.Diagnostics;
 
 namespace Biohazrd
 {
-    public sealed record TranslatedRecord : TranslatedDeclaration
+    public record TranslatedRecord : TranslatedDeclaration
     {
         public ImmutableList<TranslatedDeclaration> Members { get; init; } = ImmutableList<TranslatedDeclaration>.Empty;
 
@@ -96,9 +97,31 @@ namespace Biohazrd
 
             // Process Clang cursor children
             ImmutableList<TranslatedDeclaration>.Builder membersBuilder = ImmutableList.CreateBuilder<TranslatedDeclaration>();
+            IEnumerator<Cursor> children;
+            bool usingRawDeclEnumerator;
+            Decl canonicalDeclaration = record.CanonicalDecl;
 
-            foreach (Cursor cursor in record.CursorChildren)
+            //TODO: Ideally we'd probably use RawDeclEnumerator for everything instead of having the split code path.
+            // However, this would be a pretty fundamental change in how Biohazrd processes records, so for now we restrict it to template specializations since
+            // it's primarily necessary for implicit template specializations, which don't have a libclang cursor representation since they don't have a lexical location.
+            if (record.CursorChildren.Count == 0 && record is ClassTemplateSpecializationDecl)
             {
+                children = new RawDeclEnumerator(record);
+                usingRawDeclEnumerator = true;
+            }
+            else
+            {
+                children = record.CursorChildren.GetEnumerator();
+                usingRawDeclEnumerator = false;
+            }
+
+            foreach (Cursor cursor in children)
+            {
+                // For some reason Clang's raw declaration list has the "same" record declaration present in the list
+                // It's not the same pointer, I'm sure it represents something but I'm unsure what. We just skip it.
+                if (usingRawDeclEnumerator && ((Decl)cursor).CanonicalDecl == canonicalDeclaration)
+                { continue; }
+
                 // We created fields earlier, so now we add them to the member list
                 if (cursor is FieldDecl field)
                 {

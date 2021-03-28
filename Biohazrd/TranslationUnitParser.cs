@@ -59,6 +59,9 @@ namespace Biohazrd
             // Process the translation unit
             ProcessTranslationUnit();
 
+            // Process implicitly-instantiated specialized templates
+            ProcessImplicitlyInstantiatedSpecializedTemplates();
+
             // Process macros
             unsafe
             {
@@ -303,13 +306,13 @@ namespace Biohazrd
                         // This needs to happen first in case some of these checks overlap with cursors which are translated.
                         // (For instance, class template specializations are records.)
                         //---------------------------------------------------------------------------------------------------------
-                        case ClassTemplateSpecializationDecl:
+                        case ClassTemplatePartialSpecializationDecl:
                             return new TranslatedUnsupportedDeclaration
                             (
                                 file,
                                 declaration,
                                 Severity.Warning,
-                                $"Templates specializations are not supported."
+                                $"Partial template specializations are not supported."
                             );
                         case TemplateDecl:
                             return new TranslatedUnsupportedDeclaration
@@ -323,6 +326,16 @@ namespace Biohazrd
                         //---------------------------------------------------------------------------------------------------------
                         // Declarations which we know how to handle
                         //---------------------------------------------------------------------------------------------------------
+                        // Handle explicit template specializations (implicit instantiations are handled by ProcessImplicitlyInstantiatedSpecializedTemplates)
+                        case ClassTemplateSpecializationDecl templateSpecialization:
+                        {
+                            //TODO: This isn't consistent with normal records, but I'm not sure if it really ever happens in practice.
+                            // There should be an implicit instantiation associated with this forward declaration which will be processed later.
+                            if (templateSpecialization.IsCanonicalDecl && templateSpecialization.Definition is null)
+                            { return None; }
+
+                            return new TranslatedTemplateSpecialization(this, file, templateSpecialization);
+                        }
                         // Handle records (classes, structs, and unions)
                         case RecordDecl record:
                         {
@@ -487,6 +500,50 @@ namespace Biohazrd
             { return; }
 
             MacrosBuilder.Add(new TranslatedMacro(file, macroInfo));
+        }
+
+        private unsafe void ProcessImplicitlyInstantiatedSpecializedTemplates()
+        {
+            [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+            static void EnumerateClassTemplateSpecialization(PathogenTemplateSpecializationKind kind, CXCursor cursor, void* userData)
+            {
+                if (kind != PathogenTemplateSpecializationKind.ImplicitInstantiation)
+                { return; }
+
+                //TODO: We should probably handle this more elegantly.
+                // Invalid implicitly-specialized templates can occur if one of the type parameters isn't defined.
+                // In theory we should emit something similar to TranslatedUndefinedRecord, but we need to make sure we only do that if the specialization is invalid for this reason.
+                // An error will be emitted when this happens, so we aren't totally setting up things for confusing errors.
+                // TemplateTests.TemplateInstantiationErrorsAreEmitted can trigger this code path.
+                if (cursor.IsInvalidDeclaration)
+                { return; }
+
+                GCHandle thisHandle = GCHandle.FromIntPtr((IntPtr)userData);
+                TranslationUnitParser parser = Unsafe.As<TranslationUnitParser>(thisHandle.Target)!;
+
+                Cursor rawDecl = parser.FindCursor(cursor);
+                ClassTemplateSpecializationDecl specialization = (ClassTemplateSpecializationDecl)rawDecl;
+                TranslatedFile file = parser.GetTranslatedFile(rawDecl);
+
+                //TODO: Should implicitly instantiated templates be implicitly in-scope if they are referenced in scope?
+                // If so, we need to change how we enumerate the templates. (The ClangSharp.Pathogen extension simply enumerates _every_ referenced template present anywhere.)
+                if (!file.WasInScope)
+                { return; }
+
+                parser.DeclarationsBuilder.Add(new TranslatedTemplateSpecialization(parser, file, specialization));
+            }
+
+            GCHandle thisHandle = default;
+            try
+            {
+                thisHandle = GCHandle.Alloc(this);
+                PathogenExtensions.pathogen_EnumerateAllSpecializedClassTemplates(TranslationUnit.Handle, &EnumerateClassTemplateSpecialization, (void*)GCHandle.ToIntPtr(thisHandle));
+            }
+            finally
+            {
+                if (thisHandle.IsAllocated)
+                { thisHandle.Free(); }
+            }
         }
 
         private bool ResultsFetched = false;

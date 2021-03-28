@@ -104,6 +104,21 @@ namespace Biohazrd.Transformation.Common
                 {
                     return TranslatedTypeReference.Create(recordType.Decl);
                 }
+                case TemplateSpecializationType templateSpecilaization:
+                {
+                    // ClangSharp does not surface Declaration on TemplateSpecializationType, but it is supported by libclang:
+                    // https://github.com/InfectedLibraries/llvm-project/blob/a6d7a83953a20d699566e0299b9b354511d7cbdf/clang/tools/libclang/CXType.cpp#L507-L513
+                    return TranslatedTypeReference.Create((Decl)context.Library.FindClangCursor(templateSpecilaization.Handle.Declaration));
+                }
+                case SubstTemplateTypeParmType templateSubstitution:
+                {
+                    // Note that using the CanonicalType here is fine because template specializations always use canonical types.
+                    // One might think SubstTemplateTypeParmType::getReplacementType might return the non-canonical type, but internally all it does is return the canonical type.
+                    //
+                    // This code is not why typedef information is lost in template specializations, it's intrinsic to how Clang handles templates.
+                    // See https://github.com/InfectedLibraries/Biohazrd/issues/178 for details.
+                    return new ClangTypeReference(templateSubstitution.CanonicalType);
+                }
                 // Don't know how to reduce this type
                 default:
                 {

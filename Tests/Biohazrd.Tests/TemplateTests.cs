@@ -1,4 +1,5 @@
-﻿using Biohazrd.Tests.Common;
+﻿using Biohazrd.CSharp;
+using Biohazrd.Tests.Common;
 using Xunit;
 
 namespace Biohazrd.Tests
@@ -82,6 +83,190 @@ void TestFunction(TestTemplate<int> x);
             // Checking the size the type will fail since it's incomplete
             // (Also no errors will have been emitted earlier since we didn't try to instantiate an undefined template.)
             Assert.True(clangType.ClangType.Handle.SizeOf <= 0);
+        }
+
+        [Fact]
+        public void ExplicitTemplateSpecialization()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+template<typename T> class MyTemplate
+{
+public:
+    T Field;
+
+    T Method(T parameter)
+    {
+        return parameter;
+    }
+
+    struct MyStruct
+    {
+        T NestedField;
+    };
+};
+
+template<> class MyTemplate<int>
+{
+public:
+    int SpecializedField1;
+    int SpecializedField2;
+
+    int SpecializedMethod(int specializedParameter)
+    {
+        return specializedParameter;
+    }
+
+    struct SpecializedStruct
+    {
+        int SpecializedNestedField;
+    };
+};
+"
+            );
+
+            // Reduce types to make them easier to reason about
+            library = new CSharpTypeReductionTransformation().Transform(library);
+            library = new CSharpBuiltinTypeTransformation().Transform(library);
+
+            // Verify the template specialization was translated
+            TranslatedTemplateSpecialization specialization = library.FindDeclaration<TranslatedTemplateSpecialization>("MyTemplate<int>");
+            TranslatedNormalField field1 = specialization.FindDeclaration<TranslatedNormalField>("SpecializedField1");
+            TranslatedNormalField field2 = specialization.FindDeclaration<TranslatedNormalField>("SpecializedField2");
+            TranslatedFunction function = specialization.FindDeclaration<TranslatedFunction>("SpecializedMethod");
+            TranslatedParameter parameter = function.FindDeclaration<TranslatedParameter>("specializedParameter");
+            TranslatedRecord nestedStruct = specialization.FindDeclaration<TranslatedRecord>("SpecializedStruct");
+            TranslatedNormalField nestedField = nestedStruct.FindDeclaration<TranslatedNormalField>("SpecializedNestedField");
+
+            static void CheckType(TypeReference type)
+            {
+                CSharpBuiltinTypeReference cSharpType = Assert.IsType<CSharpBuiltinTypeReference>(type);
+                Assert.Equal(CSharpBuiltinType.Int, cSharpType);
+            }
+
+            CheckType(field1.Type);
+            CheckType(field2.Type);
+            CheckType(function.ReturnType);
+            CheckType(parameter.Type);
+            CheckType(nestedField.Type);
+
+            Assert.Equal(8, specialization.Size);
+            Assert.Equal(0, field1.Offset);
+            Assert.Equal(4, field2.Offset);
+
+            // Verify none of the "unspecialized" members are present
+            Assert.DoesNotContain(specialization, m => m.Name is "Field" or "Method" or "MyStruct");
+        }
+
+        [Fact]
+        public void ImplicitTemplateSpecialization()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+template<typename T> class MyTemplate
+{
+public:
+    T Field1;
+    T Field2;
+
+    T Method(T x)
+    {
+        return x;
+    }
+};
+
+typedef MyTemplate<int> MyTemplateInt;
+typedef MyTemplate<short> MyTemplateShort;
+typedef MyTemplate<char*> MyTemplateCharPtr;
+
+// This function causes Clang to implicitly instantiate MyTemplate<int>, testing that things work in that scenario and not just in the late-instantiation scenario.
+int Test(MyTemplate<int>& t)
+{
+    return t.Field1;
+}
+",
+                targetTriple: "x86_64-pc-win32"
+            );
+
+            // Reduce types to make them easier to reason about
+            library = new CSharpTypeReductionTransformation().Transform(library);
+            library = new CSharpBuiltinTypeTransformation().Transform(library);
+
+            void VerifyTemplate(string typedefName, int typeSize, TypeReference type)
+            {
+                TranslatedTypedef typedef = library.FindDeclaration<TranslatedTypedef>(typedefName);
+                TranslatedTypeReference templateReference = Assert.IsAssignableFrom<TranslatedTypeReference>(typedef.UnderlyingType);
+                TranslatedTemplateSpecialization template = Assert.IsAssignableFrom<TranslatedTemplateSpecialization>(templateReference.TryResolve(library));
+                Assert.Equal(typeSize * 2, template.Size);
+
+                TranslatedNormalField field1 = template.FindDeclaration<TranslatedNormalField>("Field1");
+                TranslatedNormalField field2 = template.FindDeclaration<TranslatedNormalField>("Field2");
+                Assert.Equal(0, field1.Offset);
+                Assert.Equal(typeSize, field2.Offset);
+                Assert.Equal(type, field1.Type);
+                Assert.Equal(type, field2.Type);
+
+                TranslatedFunction method = template.FindDeclaration<TranslatedFunction>("Method");
+                TranslatedParameter parameter = method.FindDeclaration<TranslatedParameter>("x");
+                Assert.Equal(type, method.ReturnType);
+                Assert.Equal(type, parameter.Type);
+
+                //TODO: https://github.com/InfectedLibraries/Biohazrd/issues/179
+                // TranslatedRecord nestedStruct = template.FindDeclaration<TranslatedRecord>("MyStruct");
+                // TranslatedNormalField nestedField = nestedStruct.FindDeclaration<TranslatedNormalField>("NestedField");
+                // Assert.Equal(type, nestedField.Type);
+            }
+
+            VerifyTemplate("MyTemplateInt", 4, CSharpBuiltinType.Int);
+            VerifyTemplate("MyTemplateShort", 2, CSharpBuiltinType.Short);
+            VerifyTemplate("MyTemplateCharPtr", 8, new PointerTypeReference(CSharpBuiltinType.Byte));
+        }
+
+        [FutureFact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/179")]
+        public void ImplicitTemplateSpecialization_NestedRecord()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+template<typename T> class MyTemplate
+{
+public:
+    struct MyStruct
+    {
+        T NestedField;
+    };
+};
+
+typedef MyTemplate<int> MyTemplateInt;
+typedef MyTemplate<short> MyTemplateShort;
+typedef MyTemplate<char*> MyTemplateCharPtr;
+
+// This function causes Clang to implicitly instantiate MyTemplate<int>::MyStruct, testing that things work in that scenario and not just in the late-instantiation scenario.
+int Test(MyTemplate<int>::MyStruct& s)
+{
+    return s.NestedField;
+}
+",
+                targetTriple: "x86_64-pc-win32"
+            );
+
+            // Reduce types to make them easier to reason about
+            library = new CSharpTypeReductionTransformation().Transform(library);
+            library = new CSharpBuiltinTypeTransformation().Transform(library);
+
+            void VerifyTemplate(string typedefName, TypeReference type)
+            {
+                TranslatedTypedef typedef = library.FindDeclaration<TranslatedTypedef>(typedefName);
+                TranslatedTypeReference templateReference = Assert.IsAssignableFrom<TranslatedTypeReference>(typedef.UnderlyingType);
+                TranslatedTemplateSpecialization template = Assert.IsAssignableFrom<TranslatedTemplateSpecialization>(templateReference.TryResolve(library));
+                TranslatedRecord nestedStruct = template.FindDeclaration<TranslatedRecord>("MyStruct");
+                TranslatedNormalField nestedField = nestedStruct.FindDeclaration<TranslatedNormalField>("NestedField");
+                Assert.Equal(type, nestedField.Type);
+            }
+
+            VerifyTemplate("MyTemplateInt", CSharpBuiltinType.Int);
+            VerifyTemplate("MyTemplateShort", CSharpBuiltinType.Short);
+            VerifyTemplate("MyTemplateCharPtr", new PointerTypeReference(CSharpBuiltinType.Byte));
         }
     }
 }
