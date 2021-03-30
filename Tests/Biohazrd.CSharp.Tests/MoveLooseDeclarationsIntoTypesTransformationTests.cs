@@ -31,6 +31,30 @@ namespace Biohazrd.CSharp.Tests
         }
 
         [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/175")]
+        public void Basic_EnumsTranslateAsLooseConstants()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+enum
+{
+    EnumValue1,
+    EnuMValue2
+};
+"
+            );
+
+            TranslatedEnum enumDeclaration = library.FindDeclaration<TranslatedEnum>();
+            Assert.True(enumDeclaration.TranslateAsLooseConstants);
+
+            library = new MoveLooseDeclarationsIntoTypesTransformation().Transform(library);
+            SynthesizedLooseDeclarationsTypeDeclaration container = library.FindDeclaration<SynthesizedLooseDeclarationsTypeDeclaration>();
+            Assert.Equal("A", container.Name); // Transformation uses name of file for default name
+            Assert.Contains(enumDeclaration, container);
+            Assert.DoesNotContain(enumDeclaration, library);
+        }
+
+        [Fact]
         public void NothingToDo()
         {
             TranslatedLibrary library = CreateLibrary(@"struct Test { };");
