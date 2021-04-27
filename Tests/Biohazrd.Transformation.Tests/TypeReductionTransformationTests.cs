@@ -354,7 +354,9 @@ public:
 };
 
 typedef MyTemplate<int> MySpecialization;
-");
+",
+                options: new TranslationOptions() { EnableTemplateSupport = true }
+            );
 
             library = new TypeReductionTransformation().Transform(library);
 

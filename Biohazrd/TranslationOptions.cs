@@ -19,5 +19,12 @@
 
         /// <summary>If true, Biohazrd will process macros which were synthesized by Clang or defined on the command line. (Default is false.)</summary>
         public bool IncludeSynthesizedMacros { get; init; } = false;
+
+        /// <summary>If true, Biohazrd will process supported C++ templates. (Default is false since this feature is experimental and not always desired.)</summary>
+        /// <remarks>
+        /// This only affects if <see cref="TranslatedTemplateSpecialization"/> will appear in the declaration tree.
+        /// Implicitly specialized templates will still be late-instantiated.
+        /// </remarks>
+        public bool EnableTemplateSupport { get; init; } = false;
     }
 }

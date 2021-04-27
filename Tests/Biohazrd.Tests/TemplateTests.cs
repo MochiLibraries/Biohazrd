@@ -6,6 +6,8 @@ namespace Biohazrd.Tests
 {
     public sealed class TemplateTests : BiohazrdTestBase
     {
+        protected override TranslationOptions? DefaultTranslationOptions { get; } = new TranslationOptions() { EnableTemplateSupport = true };
+
         [Fact]
         [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/153")]
         public void TemplateSpecializationWithoutConcreteUseCanBeTranslated()

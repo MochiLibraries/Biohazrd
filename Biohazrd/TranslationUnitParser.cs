@@ -60,7 +60,8 @@ namespace Biohazrd
             ProcessTranslationUnit();
 
             // Process implicitly-instantiated specialized templates
-            ProcessImplicitlyInstantiatedSpecializedTemplates();
+            if (Options.EnableTemplateSupport)
+            { ProcessImplicitlyInstantiatedSpecializedTemplates(); }
 
             // Process macros
             unsafe
@@ -329,6 +330,17 @@ namespace Biohazrd
                         // Handle explicit template specializations (implicit instantiations are handled by ProcessImplicitlyInstantiatedSpecializedTemplates)
                         case ClassTemplateSpecializationDecl templateSpecialization:
                         {
+                            if (!Options.EnableTemplateSupport)
+                            {
+                                return new TranslatedUnsupportedDeclaration
+                                (
+                                    file,
+                                    declaration,
+                                    Severity.Warning,
+                                    $"Class templates are not supported when {nameof(TranslationOptions)}.{nameof(TranslationOptions.EnableTemplateSupport)} is false."
+                                );
+                            }
+
                             //TODO: This isn't consistent with normal records, but I'm not sure if it really ever happens in practice.
                             // There should be an implicit instantiation associated with this forward declaration which will be processed later.
                             if (templateSpecialization.IsCanonicalDecl && templateSpecialization.Definition is null)
