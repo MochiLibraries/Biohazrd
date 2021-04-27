@@ -127,6 +127,41 @@ namespace Biohazrd.OutputGeneration
             // Normalize the file path
             filePath = Path.GetFullPath(filePath);
 
+            // Protect against absurdly long file names
+            // This can rarely happen when template implementation details with super long generated names get handled by Biohazrd
+            // See https://github.com/InfectedLibraries/Biohazrd/issues/180
+            {
+                string fileName = Path.GetFileName(filePath);
+
+                // 255 is a pretty common maximum according to Wikipedia:
+                // https://en.wikipedia.org/wiki/Comparison_of_file_systems#Limits
+                // However in practice many applications seem to have issues opening files with absurdly long names, so we limit things to a semi-arbitrary 150 characters.
+                // We aren't aiming for a strict 150 characters since the disambiguation suffix might add a bit more.
+                const int maximumLength = 150;
+                if (fileName.Length > maximumLength)
+                {
+                    ReadOnlySpan<char> withoutExtension = Path.GetFileNameWithoutExtension(fileName);
+                    ReadOnlySpan<char> extension = Path.GetExtension(fileName);
+
+                    // We can't really truncate the file extension part of the name without changing the meaning of it,
+                    // so there's not anything we can do in this very odd and unlikely scenario.
+                    if (extension.Length >= maximumLength)
+                    { throw new InvalidOperationException($"Tried to create file ({filePath}) with an absurdly long file extension."); }
+
+                    int newLength = withoutExtension.Length;
+
+                    if (newLength > maximumLength)
+                    { newLength = maximumLength; }
+
+                    newLength -= extension.Length;
+
+                    withoutExtension = withoutExtension.Slice(0, newLength);
+
+                    string directoryPath = Path.GetDirectoryName(filePath)!;
+                    filePath = Path.Combine(directoryPath, $"{withoutExtension.ToString()}{extension.ToString()}");
+                }
+            }
+
             // Handle duplicate file paths
             if (Writers.ContainsKey(filePath))
             {
