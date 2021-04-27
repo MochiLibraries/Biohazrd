@@ -127,5 +127,8 @@ namespace Biohazrd.CSharp
                 writer.WriteLineIndented("=> Value.ToString(provider);");
             }
         }
+
+        public override string ToString()
+            => base.ToString();
     }
 }

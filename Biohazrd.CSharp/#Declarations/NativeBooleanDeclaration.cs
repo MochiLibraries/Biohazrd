@@ -107,5 +107,8 @@ namespace Biohazrd.CSharp
                 writer.WriteLineIndented($"=> CompareTo(Unsafe.As<{sanitizedName}, bool>(ref value));");
             }
         }
+
+        public override string ToString()
+            => base.ToString();
     }
 }

@@ -18,5 +18,8 @@ namespace Biohazrd
             IsPrimary = field->IsPrimaryBase != 0;
             Name = "Base";
         }
+
+        public override string ToString()
+            => $"Base {base.ToString()}";
     }
 }
