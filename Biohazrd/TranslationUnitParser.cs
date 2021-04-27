@@ -316,6 +316,8 @@ namespace Biohazrd
                                 $"Partial template specializations are not supported."
                             );
                         case TemplateDecl:
+                        case VarTemplatePartialSpecializationDecl:
+                        case VarTemplateSpecializationDecl:
                             return new TranslatedUnsupportedDeclaration
                             (
                                 file,
