@@ -1,4 +1,5 @@
-﻿using Biohazrd.Tests.Common;
+﻿using Biohazrd.Metadata;
+using Biohazrd.Tests.Common;
 using Biohazrd.Transformation.Common;
 using Xunit;
 
@@ -32,6 +33,8 @@ public:
 
             Assert.False(classA.IsUnnamed);
             Assert.True(anonymousClass.IsUnnamed);
+            Assert.False(classA.Metadata.Has<LazilyGenerated>());
+            Assert.True(anonymousClass.Metadata.Has<LazilyGenerated>());
             Assert.Equal(0, fieldInAnonymousClass.Offset);
             Assert.Equal(4, anonymousClassField.Offset);
             Assert.Equal(8, classA.FindDeclaration<TranslatedNormalField>("AfterField").Offset);

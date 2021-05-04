@@ -1,5 +1,5 @@
-﻿using ClangSharp;
-using ClangSharp.Interop;
+﻿using Biohazrd.Metadata;
+using ClangSharp;
 using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
@@ -39,6 +39,10 @@ namespace Biohazrd
             { Kind = RecordKind.Class; }
             else
             { Kind = RecordKind.Unknown; }
+
+            // If this record is anonymous, implicitly mark it as lazily generated
+            if (IsUnnamed)
+            { Metadata = Metadata.Add<LazilyGenerated>(); }
 
             // Process layout and vtables
             // Normal fields are stored in this dictionary and added as they are encountered in the cursor tree

@@ -19,6 +19,7 @@ The transformations are listed in the order they're typically applied.
 * [`MoveLooseDeclarationsIntoTypesTransformation`](MoveLooseDeclarationsIntoTypesTransformation.md)
 * [`LinkImportsTransformation`](LinkImportsTransformation.md)
 * [`AutoNameUnnamedParametersTransformation`](AutoNameUnnamedParametersTransformation.md)
+* [`StripUnreferencedLazyDeclarationsTransformations`](StripUnreferencedLazyDeclarationsTransformation.md)
 * [`DeduplicateNamesTransformation`](DeduplicateNamesTransformation.md)
 * [`CSharpTranslationVerifier`](CSharpTranslationVerifier.md)
 
