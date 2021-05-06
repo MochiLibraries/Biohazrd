@@ -154,13 +154,13 @@ namespace Biohazrd
                 {
                     membersBuilder.Add(childDeclaration);
 
-                    // If the cursor is an anonymous union, emit the field corresponding to that union
-                    if (childDeclaration is TranslatedRecord { Kind: RecordKind.Union, IsUnnamed: true, Declaration: RecordDecl anonymousUnion })
+                    // If the cursor is an anonymous union that doesn't have an explicit field, emit the implicit backing field corresponding to that union
+                    if (childDeclaration is TranslatedRecord { IsUnnamed: true, Declaration: RecordDecl anonymousUnion })
                     {
                         foreach ((FieldDecl fieldDeclaration, TranslatedNormalField normalField) in normalFields)
                         {
-                            // If the type of this field matches the type of this union, emit the field now.
-                            if (fieldDeclaration.Type == anonymousUnion.TypeForDecl)
+                            // If the field is unnamed and the type of this field matches the type of this union, emit the field now.
+                            if (normalField.IsUnnamed && fieldDeclaration.Type.CanonicalType == anonymousUnion.TypeForDecl.CanonicalType)
                             {
                                 membersBuilder.Add(normalField);
                                 bool success = normalFields.Remove(fieldDeclaration);

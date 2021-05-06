@@ -73,6 +73,21 @@ namespace Biohazrd.Transformation
             return this;
         }
 
+        public TransformationResult AddRange(TransformationResult otherResult)
+        {
+            switch (otherResult.Count)
+            {
+                case 0:
+                    return this;
+                case 1:
+                    Add(otherResult.SingleDeclaration);
+                    return this;
+                default:
+                    AddRange(otherResult.Declarations);
+                    return this;
+            }
+        }
+
         public static implicit operator TransformationResult(TranslatedDeclaration? declaration)
             => new TransformationResult() { NewDeclarationOrDeclarations = declaration };
 

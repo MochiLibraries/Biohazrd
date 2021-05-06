@@ -1,23 +1,25 @@
-`LiftAnonymousUnionFieldsTransformation`
+`LiftAnonymousRecordFieldsTransformation`
 ===================================================================================================
 
-<small>\[[Transformation Source](../../Biohazrd.Transformation/Common/LiftAnonymousUnionFieldsTransformation.cs)\]</small>
+<small>\[[Transformation Source](../../Biohazrd.Transformation/Common/LiftAnonymousRecordFieldsTransformation.cs)\]</small>
 
-**This transformation is deprecated, it has been superseded by [`LiftAnonymousRecordFieldsTransformation`](LiftAnonymousRecordFieldsTransformation.md)**
+When a type contains an anonymous types in C/C++, the C/C++ compiler acts as if the fields of the type were direct members of the containing type with the same offset.
 
-When a type contains an anonymous union in C/C++, the C/C++ compiler acts as if the fields of the union were direct members of the containing type with the same offset.
+This transformation takes these anonyomous type fields lifts them into the containing type so that smilar behavior can be achieved in C#.
 
-This transformation takes these anonyomous union fields lifts them into the containing type so that smilar behavior can be achieved in C#.
+This transformation supports anonymous unions and structs, as well as the non-standard anonymous class feature found in most C++ compilers. This transformation will skip an anonymous type which contains unexpected members (such as methods, since it is not legal to declare them inside of anonymous types.)
 
 ## When this transformation is applicable
 
-This transformation should generally always be used unless you translate anonyomous unions some other way.
+This transformation should generally always be used unless you translate anonyomous types some other way.
 
-The output will still be usable without this transformation, but it will be less natural to work with it.
+The output will still be usable without this transformation, but it will be less natural to work with it and ugly automatically generated names will appear in the API.
 
 ## Using this transformation
 
 This transformation must occur after type reduction, otherwise it can't identify the nested union types.
+
+In order to remove the old internally-created anonymous types, you must run [`StripUnreferencedLazyDeclarationsTransformation`](StripUnreferencedLazyDeclarationsTransformation.md).
 
 ## C++ background
 

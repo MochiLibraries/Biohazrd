@@ -1,9 +1,11 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace Biohazrd.Transformation.Common
 {
+    [Obsolete("This transformation has been superseded by " + nameof(LiftAnonymousRecordFieldsTransformation) + " and " + nameof(StripUnreferencedLazyDeclarationsTransformation) + ".")]
     public sealed class LiftAnonymousUnionFieldsTransformation : TransformationBase
     {
         // The value of this dictionary is not used, it's basically used as a concurrtent HashSet<TranslatedRecord>

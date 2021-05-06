@@ -12,7 +12,7 @@ namespace Biohazrd
     public abstract record TranslatedDeclaration : IEquatable<TranslatedDeclaration>, IEnumerable<TranslatedDeclaration>
     {
         public TranslatedFile File { get; init; }
-        public DeclarationId Id { get; }
+        public DeclarationId Id { get; private init; }
         public ImmutableHashSet<DeclarationId> ReplacedIds { get; private init; } = ImmutableHashSet<DeclarationId>.Empty;
 
         public TranslatedDeclaration Original { get; }
@@ -144,6 +144,18 @@ namespace Biohazrd
 
             return false;
         }
+
+        /// <summary>Do not use, this is an implementation detail of <see cref="TranslatedDeclarationExtensions.CreateUniqueClone{TDeclaration}(TDeclaration)"/>.</summary>
+        internal static TranslatedDeclaration _CreateUniqueClone(TranslatedDeclaration target)
+            => target with
+            {
+                Id = DeclarationId.NewId(),
+                Declaration = null,
+                ReplacedIds = ImmutableHashSet<DeclarationId>.Empty,
+#pragma warning disable CS0618 // Type or member is obsolete
+                SecondaryDeclarations = ImmutableArray<Decl>.Empty
+#pragma warning restore CS0618
+            };
 
         public virtual IEnumerator<TranslatedDeclaration> GetEnumerator()
             => EmptyEnumerator<TranslatedDeclaration>.Instance;
