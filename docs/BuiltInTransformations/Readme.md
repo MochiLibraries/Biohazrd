@@ -21,6 +21,7 @@ The transformations are listed in the order they're typically applied.
 * [`AutoNameUnnamedParametersTransformation`](AutoNameUnnamedParametersTransformation.md)
 * [`StripUnreferencedLazyDeclarationsTransformations`](StripUnreferencedLazyDeclarationsTransformation.md)
 * [`DeduplicateNamesTransformation`](DeduplicateNamesTransformation.md)
+* [`OrganizeOutputFilesByNamespaceTransformation`](OrganizeOutputFilesByNamespaceTransformation.md)
 * [`CSharpTranslationVerifier`](CSharpTranslationVerifier.md)
 
 Note that this order is not necessarilly especially important. Many of these transformations could easily be in a different order, although for some it's important they are where they are. This recommended order is likely to change when [#102](https://github.com/InfectedLibraries/Biohazrd/issues/102) is completed.
