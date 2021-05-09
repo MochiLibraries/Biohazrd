@@ -1,4 +1,5 @@
 ﻿using Biohazrd.CSharp.Infrastructure;
+using Biohazrd.Transformation;
 using ClangSharp.Pathogen;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -50,6 +51,13 @@ namespace Biohazrd.CSharp
                     // If the reference is to a typedef, we write out the underlying type instead
                     else if (referenced is TranslatedTypedef referencedTypedef)
                     { return GetTypeAsString(context, declaration, referencedTypedef.UnderlyingType); }
+                    else if (referenced is ExternallyDefinedTypeDeclaration referencedExternal)
+                    {
+                        if (referencedExternal.Namespace is string referencedNamespace)
+                        { Writer.Using(referencedNamespace); }
+
+                        return referencedExternal.ShouldSanitize ? SanitizeIdentifier(referencedExternal.Name) : referencedExternal.Name;
+                    }
                     // If the reference is to a custom C# declaration, allow it to override how it is referenced.
                     // Note that GetReferenceTypeAsString is allowed to have side-effects (namely adding usings) and still return null to indicate the normal emit logic should run.
                     // As such, this should be the final check before the standard emit logic runs.
@@ -128,6 +136,13 @@ namespace Biohazrd.CSharp
                         functionPointerResult += '>';
                         return functionPointerResult;
                     }
+                }
+                case ExternallyDefinedTypeReference externallyDefinedType:
+                {
+                    if (externallyDefinedType.Namespace is string referencedNamespace)
+                    { Writer.Using(referencedNamespace); }
+
+                    return externallyDefinedType.ShouldSanitize ? SanitizeIdentifier(externallyDefinedType.Name) : externallyDefinedType.Name;
                 }
                 case ICustomCSharpTypeReference customCSharpTypeReference:
                     return customCSharpTypeReference.GetTypeAsString(this, context, declaration);

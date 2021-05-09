@@ -1,6 +1,7 @@
 ﻿using Biohazrd.CSharp.Infrastructure;
 using Biohazrd.OutputGeneration;
 using Biohazrd.OutputGeneration.Metadata;
+using Biohazrd.Transformation;
 using ClangSharp.Pathogen;
 using System;
 using System.Collections.Generic;
@@ -24,6 +25,19 @@ namespace Biohazrd.CSharp
             Writer = session.Open<CSharpCodeWriter>(filePath);
         }
 
+        private static bool HasOutput(TranslatedDeclaration declaration)
+        {
+            switch (declaration)
+            {
+                case ExternallyDefinedTypeDeclaration:
+                    return false;
+                case ICustomCSharpTranslatedDeclaration { HasOutput: false }:
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
         public static ImmutableArray<TranslationDiagnostic> Generate(CSharpGenerationOptions options, OutputSession session, TranslatedLibrary library)
         {
             ImmutableArray<TranslationDiagnostic>.Builder diagnosticsBuilder = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
@@ -36,7 +50,7 @@ namespace Biohazrd.CSharp
             foreach (TranslatedDeclaration declaration in library.Declarations)
             {
                 // Skip declarations with no output
-                if (declaration is ICustomCSharpTranslatedDeclaration cSharpDeclaration && !cSharpDeclaration.HasOutput)
+                if (!HasOutput(declaration))
                 { continue; }
 
                 // Typedefs generally have no output in C#, but they do have some informational output when Clang dumping is enabled
@@ -80,7 +94,7 @@ namespace Biohazrd.CSharp
         protected override void Visit(VisitorContext context, TranslatedDeclaration declaration)
         {
             // Skip declarations with no output
-            if (declaration is ICustomCSharpTranslatedDeclaration cSharpDeclaration && !cSharpDeclaration.HasOutput)
+            if (!HasOutput(declaration))
             {
                 Debug.Assert(context.Parents.Length > 0, "This case should've been handled in Generate for root declarations.");
                 return;

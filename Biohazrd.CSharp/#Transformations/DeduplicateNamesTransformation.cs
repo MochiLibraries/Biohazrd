@@ -102,6 +102,10 @@ namespace Biohazrd.CSharp
             if (declaration is TranslatedFunction)
             { return declaration; }
 
+            // Don't rename externally defined types since they don't actually have a representation in the output
+            if (declaration is ExternallyDefinedTypeDeclaration)
+            { return declaration; }
+
             // Deduplicate this declaration if needed
             if (DeduplicatedNames.TryGetValue(declaration, out string? newName))
             {
