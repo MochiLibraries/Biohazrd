@@ -1,6 +1,7 @@
 ﻿using Biohazrd.CSharp.Metadata;
 using Biohazrd.Expressions;
 using Biohazrd.Transformation;
+using ClangSharp.Pathogen;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -125,6 +126,51 @@ namespace Biohazrd.CSharp
 
             if (declaration.IsVirtual && declaration.Metadata.Has<SetLastErrorFunction>())
             { declaration = declaration.WithWarning("SetLastError is not supported on virtual methods and will be ignored."); }
+
+            // Check for ABI corner cases we don't expect/handle
+            // In theory some of the x86 calling conventions work, but they're untested so let's complain if they get used at the code gen level.
+            if (declaration.FunctionAbi.CallingConvention != PathogenLlvmCallingConventionKind.C)
+            { declaration = declaration.WithWarning($"ABI: LLVM calling convention {declaration.FunctionAbi.CallingConvention} may not be handled correctly."); }
+            else if (declaration.FunctionAbi.EffectiveCallingConvention != PathogenLlvmCallingConventionKind.C)
+            { declaration = declaration.WithWarning($"ABI: Effective LLVM calling convention {declaration.FunctionAbi.EffectiveCallingConvention} may not be handled correctly."); }
+
+            switch (declaration.FunctionAbi.AstCallingConvention)
+            {
+                case PathogenClangCallingConventionKind.C:
+                case PathogenClangCallingConventionKind.X86StdCall:
+                case PathogenClangCallingConventionKind.X86FastCall:
+                case PathogenClangCallingConventionKind.X86ThisCall:
+                case PathogenClangCallingConventionKind.Win64:
+                    break;
+                // Add a warning for anything we don't explicitly recognize
+                default:
+                    declaration = declaration.WithWarning($"ABI: AST calling convention {declaration.FunctionAbi.AstCallingConvention} may not be handled correctly.");
+                    break;
+            }
+
+            if (declaration.FunctionAbi.Flags.HasFlag(PathogenArrangedFunctionFlags.UsesInAlloca))
+            { declaration = declaration.WithWarning($"ABI: Function uses inalloca, which might not be handled correctly."); }
+
+            if (declaration.FunctionAbi.Flags.HasFlag(PathogenArrangedFunctionFlags.HasExtendedParameterInfo))
+            { declaration = declaration.WithWarning($"ABI: Function has extended parameter info, which might not be handled correctly."); }
+
+            if (declaration.FunctionAbi.ReturnInfo.Kind is PathogenArgumentKind.Expand or PathogenArgumentKind.CoerceAndExpand)
+            { declaration = declaration.WithWarning($"ABI: Function return value passing kind is {declaration.FunctionAbi.ReturnInfo.Kind}, which might not be handled correctly."); }
+
+            for (int i = 0; i < declaration.FunctionAbi.ArgumentCount; i++)
+            {
+                if (declaration.FunctionAbi.Arguments[i].Kind is PathogenArgumentKind.Expand or PathogenArgumentKind.CoerceAndExpand)
+                {
+                    string parameterDescription;
+
+                    if (declaration.IsInstanceMethod)
+                    { parameterDescription = i == 0 ? "this pointer parameter" : $"parameter #{i - 1}"; }
+                    else
+                    { parameterDescription = $"parameter #{i}"; }
+
+                    declaration = declaration.WithWarning($"ABI: Function {parameterDescription} passing kind is {declaration.FunctionAbi.Arguments[i].Kind}, which might not be handled correctly.");
+                }
+            }
 
             return base.TransformFunction(context, declaration);
         }

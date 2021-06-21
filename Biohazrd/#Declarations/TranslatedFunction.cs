@@ -11,10 +11,12 @@ namespace Biohazrd
 {
     public sealed record TranslatedFunction : TranslatedDeclaration
     {
+        public PathogenArrangedFunction FunctionAbi { get; }
+
         public CallingConvention CallingConvention { get; init; }
 
         public TypeReference ReturnType { get; init; }
-        public bool ReturnByReference { get; init; }
+        public bool ReturnByReference => FunctionAbi.ReturnInfo.Kind == PathogenArgumentKind.Indirect;
         public ImmutableArray<TranslatedParameter> Parameters { get; init; }
 
         public bool IsInstanceMethod { get; init; }
@@ -29,7 +31,7 @@ namespace Biohazrd
         public string DllFileName { get; init; } = "TODO.dll";
         public string MangledName { get; init; }
 
-        internal TranslatedFunction(TranslatedFile file, FunctionDecl function)
+        internal TranslatedFunction(TranslationUnitParser parsingContext, TranslatedFile file, FunctionDecl function)
             : base(file, function)
         {
             using (CXString mangling = function.Handle.Mangling)
@@ -38,22 +40,6 @@ namespace Biohazrd
             ReturnType = new ClangTypeReference(function.ReturnType);
             IsInline = function.IsInlined;
             SpecialFunctionKind = SpecialFunctionKind.None;
-
-            // Enumerate parameters
-            ImmutableArray<TranslatedParameter>.Builder parametersBuilder = ImmutableArray.CreateBuilder<TranslatedParameter>(function.Parameters.Count);
-
-            foreach (ParmVarDecl parameter in function.Parameters)
-            { parametersBuilder.Add(new TranslatedParameter(file, parameter)); }
-
-            Parameters = parametersBuilder.MoveToImmutable();
-
-            // Get the function's calling convention
-            string errorMessage;
-            CXCallingConv clangCallingConvention = function.GetCallingConvention();
-            CallingConvention = clangCallingConvention.ToDotNetCallingConvention(out errorMessage);
-
-            if (errorMessage is not null)
-            { throw new InvalidOperationException(errorMessage); }
 
             // Set method-specific properties
             if (function is CXXMethodDecl method)
@@ -72,8 +58,52 @@ namespace Biohazrd
                 IsConst = false;
             }
 
-            // Determine if return value must be passed by reference
-            ReturnByReference = function.ReturnType.MustBePassedByReference(isForInstanceMethodReturnValue: IsInstanceMethod);
+            // Arrange the function call
+            {
+                PathogenCodeGenerator? codeGenerator = null;
+                try
+                {
+                    codeGenerator = parsingContext.CodeGeneratorPool.Rent();
+                    FunctionAbi = new PathogenArrangedFunction(codeGenerator, function);
+                }
+                finally
+                {
+                    if (codeGenerator is not null)
+                    { parsingContext.CodeGeneratorPool.Return(codeGenerator); }
+                }
+
+                // Assert the arranged function matches our expectations
+                int expectedArgumentCount = function.Parameters.Count;
+
+                if (IsInstanceMethod)
+                { expectedArgumentCount++; }
+
+                Debug.Assert(FunctionAbi.ArgumentCount == expectedArgumentCount);
+
+                Debug.Assert(IsInstanceMethod == FunctionAbi.Flags.HasFlag(PathogenArrangedFunctionFlags.IsInstanceMethod));
+            }
+
+            // Enumerate parameters
+            ImmutableArray<TranslatedParameter>.Builder parametersBuilder = ImmutableArray.CreateBuilder<TranslatedParameter>(function.Parameters.Count);
+            {
+                int parameterIndex = IsInstanceMethod ? 1 : 0;
+
+                foreach (ParmVarDecl parameter in function.Parameters)
+                {
+                    parametersBuilder.Add(new TranslatedParameter(file, parameter, FunctionAbi.Arguments[parameterIndex]));
+                    parameterIndex++;
+                }
+            }
+
+            Parameters = parametersBuilder.MoveToImmutable();
+
+            // Get the function's calling convention
+            string errorMessage;
+            CXCallingConv clangCallingConvention = function.GetCallingConvention();
+            CallingConvention = clangCallingConvention.ToDotNetCallingConvention(out errorMessage);
+
+            if (errorMessage is not null)
+            { throw new InvalidOperationException(errorMessage); }
 
             // Handle operator overloads
             ref PathogenOperatorOverloadInfo operatorOverloadInfo = ref function.GetOperatorOverloadInfo();

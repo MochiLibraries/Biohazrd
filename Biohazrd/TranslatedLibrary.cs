@@ -13,6 +13,7 @@ namespace Biohazrd
     public sealed record TranslatedLibrary : IEnumerable<TranslatedDeclaration>
     {
         private readonly TranslationUnitAndIndex TranslationUnitAndIndex;
+        private readonly CodeGeneratorPool CodeGeneratorPool;
 
         public ImmutableList<TranslatedDeclaration> Declarations { get; init; }
         public ImmutableArray<TranslatedMacro> Macros { get; }
@@ -24,6 +25,7 @@ namespace Biohazrd
         internal TranslatedLibrary
         (
             TranslationUnitAndIndex translationUnitAndIndex,
+            CodeGeneratorPool codeGeneratorPool,
             ImmutableArray<TranslatedFile> files,
             ImmutableArray<TranslationDiagnostic> parsingDiagnostics,
             ImmutableList<TranslatedDeclaration> declarations,
@@ -31,6 +33,7 @@ namespace Biohazrd
         )
         {
             TranslationUnitAndIndex = translationUnitAndIndex;
+            CodeGeneratorPool = codeGeneratorPool;
             Declarations = declarations;
             Macros = macros;
             Files = files;

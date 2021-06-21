@@ -237,7 +237,7 @@ namespace Biohazrd
             { parsingDiagnostics = stl1300Workaround.Diagnostics.AddRange(parsingDiagnostics); }
 
             // Create the library
-            return new TranslatedLibrary(translationUnitAndIndex, files, parsingDiagnostics, declarations, macros);
+            return new TranslatedLibrary(translationUnitAndIndex, processor.CodeGeneratorPool, files, parsingDiagnostics, declarations, macros);
         }
 
         /// <summary>Creates a constant evaluator for evaluating macros and arbitrary C++ expressions.</summary>

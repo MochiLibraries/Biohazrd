@@ -19,6 +19,8 @@ namespace Biohazrd
         private readonly TranslationUnit TranslationUnit;
         private readonly TranslationOptions Options;
 
+        internal CodeGeneratorPool CodeGeneratorPool { get; }
+
         private readonly ImmutableArray<TranslationDiagnostic>.Builder ParsingDiagnosticsBuilder = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
 
         // path => path, this is a dictionary so we can use the canonical name provided to this library rather than whatever Clang gives us.
@@ -39,6 +41,8 @@ namespace Biohazrd
         {
             TranslationUnit = translationUnit;
             Options = options;
+
+            CodeGeneratorPool = new CodeGeneratorPool(TranslationUnit);
 
             // We treat file paths are case-insensitive (see https://github.com/InfectedLibraries/Biohazrd/issues/1)
             // This is technically only valid on case-insensitive file systems, but in practice it's uncommon for two files to have the same case-insensitive name even on systems which support it.
@@ -375,7 +379,7 @@ namespace Biohazrd
                             if (!function.IsCanonicalDecl)
                             { return None; }
 
-                            return new TranslatedFunction(file, function);
+                            return new TranslatedFunction(this, file, function);
                         }
                         // Handle enumerations
                         case EnumDecl enumDeclaration:

@@ -58,6 +58,7 @@ namespace Biohazrd
                 _ => AccessModifier.Public // The access specifier is invalid for declarations which aren't members of a record, so they are translated as public.
             };
 
+        [Obsolete("This function is not always accurate, use TranslatedFunction.FunctionAbi instead.")]
         internal static bool RecordMustBePassedByReference(this CXCursor cursor, bool isForInstanceMethodReturnValue)
         {
             if (!cursor.IsDeclaration || cursor.DeclKind < CX_DeclKind.CX_DeclKind_FirstRecord || cursor.DeclKind > CX_DeclKind.CX_DeclKind_LastRecord)
@@ -93,9 +94,11 @@ namespace Biohazrd
             }
         }
 
+        [Obsolete("This function is not always accurate, use TranslatedFunction.FunctionAbi instead.")]
         internal static bool MustBePassedByReference(this RecordDecl record, bool isForInstanceMethodReturnValue)
             => record.Handle.RecordMustBePassedByReference(isForInstanceMethodReturnValue);
 
+        [Obsolete("This function is not always accurate, use TranslatedFunction.FunctionAbi instead.")]
         public static bool MustBePassedByReference(this ClangType type, bool isForInstanceMethodReturnValue)
         {
             switch (type)

@@ -21,15 +21,12 @@ namespace Biohazrd
         public long Size { get; init; }
 
         public RecordKind Kind { get; init; }
-        public bool MustBePassedByReference { get; init; }
 
         internal unsafe TranslatedRecord(TranslationUnitParser parsingContext, TranslatedFile file, RecordDecl record)
             : base(file, record)
         {
             if (!record.Handle.IsDefinition)
             { throw new ArgumentException("Only defining records can be translated!"); }
-
-            MustBePassedByReference = record.MustBePassedByReference(isForInstanceMethodReturnValue: false);
 
             if (record.IsStruct)
             { Kind = RecordKind.Struct; }

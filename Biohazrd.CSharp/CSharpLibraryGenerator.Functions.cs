@@ -1,4 +1,5 @@
 ﻿using Biohazrd.CSharp.Metadata;
+using ClangSharp.Pathogen;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -10,6 +11,7 @@ namespace Biohazrd.CSharp
     {
         private ref struct EmitFunctionContext
         {
+            public bool NeedsTrampoline { get; }
             public string DllImportName { get; }
             public TypeReference? ThisType { get; }
             public string ThisParameterName => "this";
@@ -17,9 +19,12 @@ namespace Biohazrd.CSharp
 
             public EmitFunctionContext(VisitorContext context, TranslatedFunction declaration)
             {
-                // When this function is an instance method, we add a suffix to the P/Invoke method to ensure they don't conflict with other methods.
+                // We emit a trampoline for functions which are instance methods or return via reference to hide those ABI semantics
+                NeedsTrampoline = declaration.IsInstanceMethod || declaration.ReturnByReference;
+
+                // When this function is uses a trampoline, we add a suffix to the P/Invoke method to ensure they don't conflict with other methods.
                 // (For instance, when there's a SomeClass::Method() method in addition to a SomeClass::Method(SomeClass*) method.)
-                DllImportName = declaration.IsInstanceMethod ? $"{declaration.Name}_PInvoke" : declaration.Name;
+                DllImportName = NeedsTrampoline ? $"{declaration.Name}_PInvoke" : declaration.Name;
 
                 // ThisType is the type of `this` for instance methods.
                 if (!declaration.IsInstanceMethod)
@@ -43,7 +48,7 @@ namespace Biohazrd.CSharp
             { EmitFunctionDllImport(context, emitContext, declaration); }
 
             // Emit the trampoline
-            if (declaration.IsInstanceMethod)
+            if (emitContext.NeedsTrampoline)
             { EmitFunctionTrampoline(context, emitContext, declaration); }
         }
 
@@ -90,8 +95,8 @@ namespace Biohazrd.CSharp
             { Writer.WriteLine("[return: MarshalAs(UnmanagedType.I1)]"); }
 
             // Write out the function signature
-            // Instance methods are accessed via trampoline, so we translate the DllImport as private.
-            AccessModifier accessibility = declaration.IsInstanceMethod ? AccessModifier.Private : declaration.Accessibility;
+            // The P/Invokes for functions accessed via trampoline are emitted as private.
+            AccessModifier accessibility = emitContext.NeedsTrampoline ? AccessModifier.Private : declaration.Accessibility;
             Writer.Write($"{accessibility.ToCSharpKeyword()} static extern ");
 
             // If the return value is passed by reference, the return type is the return buffer pointer
@@ -107,7 +112,7 @@ namespace Biohazrd.CSharp
 
         private void EmitFunctionTrampoline(VisitorContext context, EmitFunctionContext emitContext, TranslatedFunction declaration)
         {
-            if (emitContext.ThisType is null)
+            if (!emitContext.NeedsTrampoline)
             { throw new ArgumentException("A function trampoline is not valid in this context.", nameof(emitContext)); }
 
             Writer.EnsureSeparation();
@@ -184,6 +189,8 @@ namespace Biohazrd.CSharp
 
             // Emit the method signature
             Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} unsafe ");
+            if (!declaration.IsInstanceMethod)
+            { Writer.Write("static "); }
             WriteType(context, declaration, declaration.ReturnType);
             Writer.Write($" {SanitizeIdentifier(declaration.Name)}(");
             EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineParameters);
@@ -204,15 +211,27 @@ namespace Biohazrd.CSharp
             // Emit the dispatch
             using (Writer.Block())
             {
-                Writer.Write($"fixed (");
-                WriteType(context, declaration, emitContext.ThisType);
-                Writer.WriteLine($" {SanitizeIdentifier(emitContext.ThisParameterName)} = &this)");
+                bool hasThis;
+                if (emitContext.ThisType is not null)
+                {
+                    hasThis = true;
+                    Debug.Assert(declaration.IsInstanceMethod);
+
+                    Writer.Write($"fixed (");
+                    WriteType(context, declaration, emitContext.ThisType!);
+                    Writer.WriteLine($" {SanitizeIdentifier(emitContext.ThisParameterName)} = &this)");
+                }
+                else
+                {
+                    hasThis = false;
+                    Debug.Assert(!declaration.IsInstanceMethod);
+                }
 
                 bool hasReturnValue = declaration.ReturnType is not VoidTypeReference;
 
                 if (hasReturnValue && declaration.ReturnByReference)
                 {
-                    using (Writer.Block())
+                    void EmitFunctionBodyWithReturnByReference(EmitFunctionContext emitContext)
                     {
                         WriteType(context, declaration, declaration.ReturnType);
                         Writer.WriteLine($" {SanitizeIdentifier(emitContext.ReturnBufferParameterName)};");
@@ -223,10 +242,21 @@ namespace Biohazrd.CSharp
 
                         Writer.WriteLine($"return {SanitizeIdentifier(emitContext.ReturnBufferParameterName)};");
                     }
+
+                    if (hasThis)
+                    {
+                        // If we have a fixed statement for the this pointer, wrap the return buffer logic with a block
+                        using (Writer.Block())
+                        { EmitFunctionBodyWithReturnByReference(emitContext); }
+                    }
+                    else
+                    { EmitFunctionBodyWithReturnByReference(emitContext); }
                 }
                 else
                 {
-                    Writer.Write("{ ");
+                    // If we have a fixed statement for the this pointer, write out the curly braces for it
+                    if (hasThis)
+                    { Writer.Write("{ "); }
 
                     if (hasReturnValue)
                     { Writer.Write("return "); }
@@ -235,7 +265,8 @@ namespace Biohazrd.CSharp
                     EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments, thisTypeCast);
                     Writer.Write(");");
 
-                    Writer.WriteLine(" }");
+                    if (hasThis)
+                    { Writer.WriteLine(" }"); }
                 }
             }
         }
@@ -268,27 +299,7 @@ namespace Biohazrd.CSharp
             // Write out the this/retbuf parameters
             if (writeImplicitParameters)
             {
-                // Write out the this pointer
-                if (emitContext.ThisType is not null)
-                {
-                    if (writeTypes)
-                    {
-                        WriteType(context, declaration, emitContext.ThisType);
-                        Writer.Write(' ');
-                    }
-                    else if (thisCastType is not null)
-                    {
-                        Writer.Write('(');
-                        WriteType(context, declaration, thisCastType);
-                        Writer.Write(')');
-                    }
-
-                    Writer.WriteIdentifier(emitContext.ThisParameterName);
-                    first = false;
-                }
-
-                // Write out the return buffer parameter
-                if (declaration.ReturnByReference)
+                void WriteOutReturnBuffer(EmitFunctionContext emitContext)
                 {
                     if (!first)
                     { Writer.Write(", "); }
@@ -307,6 +318,36 @@ namespace Biohazrd.CSharp
                     Writer.WriteIdentifier(emitContext.ReturnBufferParameterName);
                     first = false;
                 }
+
+                // Write out before-this return buffer
+                if (declaration.ReturnByReference && !declaration.FunctionAbi.ReturnInfo.Flags.HasFlag(PathogenArgumentFlags.IsSRetAfterThis))
+                { WriteOutReturnBuffer(emitContext); }
+
+                // Write out the this pointer
+                if (emitContext.ThisType is not null)
+                {
+                    if (!first)
+                    { Writer.Write(", "); }
+
+                    if (writeTypes)
+                    {
+                        WriteType(context, declaration, emitContext.ThisType);
+                        Writer.Write(' ');
+                    }
+                    else if (thisCastType is not null)
+                    {
+                        Writer.Write('(');
+                        WriteType(context, declaration, thisCastType);
+                        Writer.Write(')');
+                    }
+
+                    Writer.WriteIdentifier(emitContext.ThisParameterName);
+                    first = false;
+                }
+
+                // Write out after-this return buffer
+                if (declaration.ReturnByReference && declaration.FunctionAbi.ReturnInfo.Flags.HasFlag(PathogenArgumentFlags.IsSRetAfterThis))
+                { WriteOutReturnBuffer(emitContext); }
             }
 
             // Write out parameters
