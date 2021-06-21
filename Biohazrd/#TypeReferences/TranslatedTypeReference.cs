@@ -6,6 +6,8 @@ namespace Biohazrd
     /// <remarks>
     /// The strategy used to resolve this type reference depends on the specific implementation.
     /// It is possible for the resolution to fail in some situations. (EG: When the referenced declaration was removed from the library after this reference was created.)
+    ///
+    /// For references which are not logically types, use <see cref="DeclarationReference" /> instead.
     /// </remarks>
     public abstract record TranslatedTypeReference : TypeReference
     {
