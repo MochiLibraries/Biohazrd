@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using ClangType = ClangSharp.Type;
@@ -13,7 +14,10 @@ namespace Biohazrd
     public sealed record TranslatedLibrary : IEnumerable<TranslatedDeclaration>
     {
         private readonly TranslationUnitAndIndex TranslationUnitAndIndex;
-        private readonly CodeGeneratorPool CodeGeneratorPool;
+
+        /// <summary>[Advanced users only] The Clang code generator pool associated with this library.</summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public CodeGeneratorPool CodeGeneratorPool { get; }
 
         public ImmutableList<TranslatedDeclaration> Declarations { get; init; }
         public ImmutableArray<TranslatedMacro> Macros { get; }

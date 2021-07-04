@@ -98,6 +98,9 @@ namespace Biohazrd.CSharp
                 }
                 case FunctionPointerTypeReference functionPointer:
                 {
+                    if (!functionPointer.IsCallable)
+                    { return "void*"; }
+
                     string errorMessage;
                     CallingConvention callingConvention = functionPointer.CallingConvention.ToDotNetCallingConvention(out errorMessage);
 
@@ -108,6 +111,7 @@ namespace Biohazrd.CSharp
                     }
                     else
                     {
+                        bool haveFunctionAbi = functionPointer.FunctionAbi is not null;
                         string? callingConventionString = callingConvention switch
                         {
                             CallingConvention.Cdecl => "unmanaged[Cdecl]",
@@ -124,15 +128,29 @@ namespace Biohazrd.CSharp
                         }
 
                         string functionPointerResult = $"delegate* {callingConventionString}<";
+                        string returnType = GetTypeAsString(context, declaration, functionPointer.ReturnType);
 
+                        // If the return value is passed by reference, we need to add the implicit return buffer parameter and return the buffer pointer
+                        if (haveFunctionAbi && functionPointer.FunctionAbi!.ReturnInfo.Kind == PathogenArgumentKind.Indirect)
+                        {
+                            returnType += '*';
+                            functionPointerResult += $"{returnType}, ";
+                        }
+
+                        int abiIndex = 0;
                         foreach (TypeReference parameterType in functionPointer.ParameterTypes)
                         {
                             functionPointerResult += GetTypeAsString(context, declaration, parameterType);
+
+                            // Handle parameters implicitly passed by reference
+                            if (haveFunctionAbi && functionPointer.FunctionAbi!.Arguments[abiIndex].Kind == PathogenArgumentKind.Indirect)
+                            { functionPointerResult += '*'; }
+
                             functionPointerResult += ", ";
+                            abiIndex++;
                         }
 
-                        functionPointerResult += GetTypeAsString(context, declaration, functionPointer.ReturnType);
-
+                        functionPointerResult += returnType;
                         functionPointerResult += '>';
                         return functionPointerResult;
                     }

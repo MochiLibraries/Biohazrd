@@ -1,5 +1,7 @@
 ﻿using ClangSharp;
 using ClangSharp.Interop;
+using ClangSharp.Pathogen;
+using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace Biohazrd.Transformation.Common
@@ -92,9 +94,7 @@ namespace Biohazrd.Transformation.Common
                 }
                 case FunctionProtoType functionProtoType:
                 {
-                    // Clang represents function pointers as PointerType -> FunctionProtoType, so FunctionProtoType does not actually represent a pointer.
-                    // These two types are flattened in a second post-transform pass.
-                    return new FunctionPointerTypeReference(functionProtoType, isNotActuallyAPointer: true);
+                    return HandleFunctionProtoType(context, functionProtoType);
                 }
                 case EnumType enumType:
                 {
@@ -127,6 +127,59 @@ namespace Biohazrd.Transformation.Common
             }
         }
 
+        private TypeTransformationResult HandleFunctionProtoType(in TypeTransformationContext context, FunctionProtoType functionType)
+        {
+            TypeTransformationResult result = VoidTypeReference.Instance;
+
+            // Arrange the function pointer to compute its ABI
+            PathogenArrangedFunction? functionAbi;
+
+            if (!functionType.IsCallable(out ImmutableArray<string> uncallableDiagnostics))
+            {
+                string uncallableMessage = "Function pointer is not callable:";
+
+                switch (uncallableDiagnostics.Length)
+                {
+                    case 0:
+                        Debug.Fail($"IsCallable should always return at least one diagnostic upon failure.");
+                        uncallableMessage += " An internal error ocurred";
+                        break;
+                    case 1:
+                        uncallableMessage += $" {uncallableDiagnostics[0]}";
+                        break;
+                    default:
+                        foreach (string diagnostic in uncallableDiagnostics)
+                        { uncallableMessage += $"\n* {diagnostic}"; }
+                        break;
+                }
+
+                functionAbi = null;
+                // We only emit a warning because the function pointer can be safely replaced with void* so we don't want to remove the field/parameter its associated with.
+                result = result.AddDiagnostic(Severity.Warning, uncallableMessage);
+            }
+            else
+            {
+                Debug.Assert(uncallableDiagnostics.IsDefaultOrEmpty);
+
+                PathogenCodeGenerator? codeGenerator = null;
+                try
+                {
+                    codeGenerator = context.Library.CodeGeneratorPool.Rent();
+                    functionAbi = new PathogenArrangedFunction(codeGenerator, functionType);
+                }
+                finally
+                {
+                    if (codeGenerator is not null)
+                    { context.Library.CodeGeneratorPool.Return(codeGenerator); }
+                }
+            }
+
+            // Clang represents function pointers as PointerType -> FunctionProtoType, so FunctionProtoType does not actually represent a pointer.
+            // These two types are flattened in a second post-transform pass.
+            // See https://github.com/InfectedLibraries/Biohazrd/issues/115 for details.
+            return result.WithType(new FunctionPointerTypeReference(functionAbi, functionType, isNotActuallyAPointer: true));
+        }
+
         private FlattenFunctionPointerTransformation FlattenFunctionPointerPass = new();
         protected override TranslatedLibrary PostTransformLibrary(TranslatedLibrary library)
         {
@@ -140,6 +193,8 @@ namespace Biohazrd.Transformation.Common
             {
                 // Clang represents function pointers as PointerType -> FunctionProtoType
                 // It's fairly uncommon to have a function type that isn't a function pointer type, so we flatten the two
+                // We don't try to handle this in the PointerType branch above because that misses situations like PointerType -> TypeDefType -> FunctionProtoType
+                // See https://github.com/InfectedLibraries/Biohazrd/issues/115 for details.
                 if (type.Inner is FunctionPointerTypeReference { IsNotActuallyAPointer: true } functionPointerType)
                 {
                     return functionPointerType with

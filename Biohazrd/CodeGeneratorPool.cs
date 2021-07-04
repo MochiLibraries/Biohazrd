@@ -2,12 +2,14 @@
 using ClangSharp.Pathogen;
 using System;
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading;
 
 namespace Biohazrd
 {
-    internal sealed class CodeGeneratorPool : IDisposable
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public sealed class CodeGeneratorPool : IDisposable
     {
         private readonly TranslationUnit TranslationUnit;
 
@@ -15,7 +17,7 @@ namespace Biohazrd
         private readonly ConcurrentDictionary<PathogenCodeGenerator, bool> AllGenerators = new();
         private readonly ConcurrentBag<PathogenCodeGenerator> FreeGenerators = new();
 
-        public CodeGeneratorPool(TranslationUnit translationUnit)
+        internal CodeGeneratorPool(TranslationUnit translationUnit)
             => TranslationUnit = translationUnit;
 
         public PathogenCodeGenerator Rent()
