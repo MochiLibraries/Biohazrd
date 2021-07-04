@@ -3,7 +3,6 @@ using Biohazrd.OutputGeneration;
 using Biohazrd.OutputGeneration.Metadata;
 using Biohazrd.Transformation;
 using ClangSharp.Pathogen;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;

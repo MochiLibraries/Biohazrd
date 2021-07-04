@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <XunitAssertsRoot>../../external/assert.xunit/</XunitAssertsRoot>
-    <DefineConstants>$(DefineConstants);XUNIT_NULLABLE</DefineConstants>
+    <DefineConstants>$(DefineConstants);XUNIT_NULLABLE;XUNIT_SPAN</DefineConstants>
     <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 

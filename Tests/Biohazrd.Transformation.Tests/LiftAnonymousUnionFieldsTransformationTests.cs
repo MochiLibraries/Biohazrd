@@ -1,10 +1,12 @@
 ﻿using Biohazrd.CSharp;
 using Biohazrd.Tests.Common;
 using Biohazrd.Transformation.Common;
+using System;
 using Xunit;
 
 namespace Biohazrd.Transformation.Tests
 {
+    [Obsolete(nameof(LiftAnonymousUnionFieldsTransformation) + " has been superseded by " + nameof(LiftAnonymousRecordFieldsTransformation) + " and " + nameof(StripUnreferencedLazyDeclarationsTransformation) + ".")]
     public sealed class LiftAnonymousUnionFieldsTransformationTests : BiohazrdTestBase
     {
         private void AssertNoUnions(TranslatedLibrary library)
