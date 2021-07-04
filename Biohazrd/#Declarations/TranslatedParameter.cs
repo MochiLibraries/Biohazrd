@@ -7,10 +7,12 @@ namespace Biohazrd
     public sealed record TranslatedParameter : TranslatedDeclaration
     {
         public TypeReference Type { get; init; }
+        /// <remarks>This property is always <c>false</c> when the parent function is uncallable. (IE: <see cref="TranslatedFunction.IsCallable"/> returns <c>false</c>.)</remarks>
         public bool ImplicitlyPassedByReference => AbiInfo.Kind == PathogenArgumentKind.Indirect;
 
         public ConstantValue? DefaultValue { get; init; }
 
+        /// <remarks>This property is undefined when the parent function is uncallable. (IE: <see cref="TranslatedFunction.IsCallable"/> returns <c>false</c>.)</remarks>
         public PathogenArgumentInfo AbiInfo { get; }
 
         internal unsafe TranslatedParameter(TranslatedFile file, ParmVarDecl parameter, PathogenArgumentInfo abiInfo)

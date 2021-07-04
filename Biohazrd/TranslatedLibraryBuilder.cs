@@ -183,6 +183,12 @@ namespace Biohazrd
                     // As such, we do this to fully define all implicitly-defined fully specified templates across the entire translation unit.
                     // We want to do this earlier rather than later since it ends up mutating the translation unit, which ClangSharp tends to dislike since it assumes it's immutable.
                     // See https://github.com/InfectedLibraries/Biohazrd/issues/153 for details.
+                    //
+                    // Note that it is intentional that this is done even when TranslationOptions.EnableTemplateSupport is disabled because without doing so causes some Clang APIs to behave
+                    // erratically because Clang doesn't normally access them for implicitly-instantiated templates which didn't need to be instantiated.
+                    //
+                    // This probably matters less now because TranslatedFunction will implicitly instantiate templates when checking if it is callable, but we want to do it here nice and early
+                    // to avoid the translation unit mutation issues mentioned above.
                     {
                         PathogenTemplateInstantiationMetrics metrics = PathogenExtensions.pathogen_InstantiateAllFullySpecializedClassTemplates(translationUnitHandle);
 

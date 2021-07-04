@@ -11,12 +11,30 @@ namespace Biohazrd
 {
     public sealed record TranslatedFunction : TranslatedDeclaration
     {
-        public PathogenArrangedFunction FunctionAbi { get; }
+        /// <remarks>Will be <c>null</c> when <see cref="IsCallable"/> is <c>false</c>.</remarks>
+        public PathogenArrangedFunction? FunctionAbi { get; }
+
+        /// <summary>Whether or not the function is callable</summary>
+        /// <remarks>
+        /// An example of an uncallable function would be a function returning an undefined type, for example the <c>TestMethod1</c> and <c>TestMethod2</c> below are
+        /// uncallable since <c>MyStruct</c> is forward-declared but never defined:
+        /// 
+        /// <code>
+        /// struct MyStruct;
+        /// MyStruct TestMethod1();       // IsCallable = false, FunctionAbi = null
+        /// void TestMethod2(MyStruct s); // IsCallable = false, FunctionAbi = null
+        /// void TestMetod3(MyStruct* s); // IsCallable = true,  FunctionAbi = non-null
+        /// </code>
+        /// </remarks>
+        public bool IsCallable => FunctionAbi is not null;
 
         public CallingConvention CallingConvention { get; init; }
 
         public TypeReference ReturnType { get; init; }
-        public bool ReturnByReference => FunctionAbi.ReturnInfo.Kind == PathogenArgumentKind.Indirect;
+        /// <remarks>
+        /// Since it is impossible to determine whether a return is done by reference when a function is uncallable, this is always <c>false</c> when <see cref="IsCallable"/> is <c>false</c>.
+        /// </remarks>
+        public bool ReturnByReference => FunctionAbi is null ? false : FunctionAbi.ReturnInfo.Kind == PathogenArgumentKind.Indirect;
         public ImmutableArray<TranslatedParameter> Parameters { get; init; }
 
         public bool IsInstanceMethod { get; init; }
@@ -31,7 +49,7 @@ namespace Biohazrd
         public string DllFileName { get; init; } = "TODO.dll";
         public string MangledName { get; init; }
 
-        internal TranslatedFunction(TranslationUnitParser parsingContext, TranslatedFile file, FunctionDecl function)
+        internal unsafe TranslatedFunction(TranslationUnitParser parsingContext, TranslatedFile file, FunctionDecl function)
             : base(file, function)
         {
             using (CXString mangling = function.Handle.Mangling)
@@ -58,8 +76,32 @@ namespace Biohazrd
                 IsConst = false;
             }
 
-            // Arrange the function call
+            // If possible, arrange the function call
+            if (!function.IsCallable(out ImmutableArray<string> uncallableDiagnostics))
             {
+                string uncallableMessage = "Function is not callable:";
+
+                switch (uncallableDiagnostics.Length)
+                {
+                    case 0:
+                        Debug.Fail($"IsCallable should always return at least one diagnostic upon failure.");
+                        uncallableMessage += " An internal error ocurred";
+                        break;
+                    case 1:
+                        uncallableMessage += $" {uncallableDiagnostics[0]}";
+                        break;
+                    default:
+                        foreach (string diagnostic in uncallableDiagnostics)
+                        { uncallableMessage += $"\n* {diagnostic}"; }
+                        break;
+                }
+
+                Diagnostics = Diagnostics.Add(Severity.Error, uncallableMessage);
+            }
+            else
+            {
+                Debug.Assert(uncallableDiagnostics.IsDefaultOrEmpty);
+
                 PathogenCodeGenerator? codeGenerator = null;
                 try
                 {
@@ -90,7 +132,7 @@ namespace Biohazrd
 
                 foreach (ParmVarDecl parameter in function.Parameters)
                 {
-                    parametersBuilder.Add(new TranslatedParameter(file, parameter, FunctionAbi.Arguments[parameterIndex]));
+                    parametersBuilder.Add(new TranslatedParameter(file, parameter, FunctionAbi?.Arguments[parameterIndex] ?? default));
                     parameterIndex++;
                 }
             }

@@ -127,6 +127,16 @@ namespace Biohazrd.CSharp
             if (declaration.IsVirtual && declaration.Metadata.Has<SetLastErrorFunction>())
             { declaration = declaration.WithWarning("SetLastError is not supported on virtual methods and will be ignored."); }
 
+            // Skip ABI checks if the function is uncallable
+            if (declaration.FunctionAbi is null)
+            {
+                // Ensure the declaration has an error
+                if (!declaration.Diagnostics.Any(d => d.IsError))
+                { declaration = declaration.WithError("Function is missing ABI information and as such is not callable."); }
+
+                return declaration;
+            }
+
             // Check for ABI corner cases we don't expect/handle
             // In theory some of the x86 calling conventions work, but they're untested so let's complain if they get used at the code gen level.
             if (declaration.FunctionAbi.CallingConvention != PathogenLlvmCallingConventionKind.C)
@@ -134,7 +144,7 @@ namespace Biohazrd.CSharp
             else if (declaration.FunctionAbi.EffectiveCallingConvention != PathogenLlvmCallingConventionKind.C)
             { declaration = declaration.WithWarning($"ABI: Effective LLVM calling convention {declaration.FunctionAbi.EffectiveCallingConvention} may not be handled correctly."); }
 
-            switch (declaration.FunctionAbi.AstCallingConvention)
+            switch (declaration.FunctionAbi!.AstCallingConvention)
             {
                 case PathogenClangCallingConventionKind.C:
                 case PathogenClangCallingConventionKind.X86StdCall:
@@ -148,16 +158,16 @@ namespace Biohazrd.CSharp
                     break;
             }
 
-            if (declaration.FunctionAbi.Flags.HasFlag(PathogenArrangedFunctionFlags.UsesInAlloca))
+            if (declaration.FunctionAbi!.Flags.HasFlag(PathogenArrangedFunctionFlags.UsesInAlloca))
             { declaration = declaration.WithWarning($"ABI: Function uses inalloca, which might not be handled correctly."); }
 
-            if (declaration.FunctionAbi.Flags.HasFlag(PathogenArrangedFunctionFlags.HasExtendedParameterInfo))
+            if (declaration.FunctionAbi!.Flags.HasFlag(PathogenArrangedFunctionFlags.HasExtendedParameterInfo))
             { declaration = declaration.WithWarning($"ABI: Function has extended parameter info, which might not be handled correctly."); }
 
-            if (declaration.FunctionAbi.ReturnInfo.Kind is PathogenArgumentKind.Expand or PathogenArgumentKind.CoerceAndExpand)
+            if (declaration.FunctionAbi!.ReturnInfo.Kind is PathogenArgumentKind.Expand or PathogenArgumentKind.CoerceAndExpand)
             { declaration = declaration.WithWarning($"ABI: Function return value passing kind is {declaration.FunctionAbi.ReturnInfo.Kind}, which might not be handled correctly."); }
 
-            for (int i = 0; i < declaration.FunctionAbi.ArgumentCount; i++)
+            for (int i = 0; i < declaration.FunctionAbi!.ArgumentCount; i++)
             {
                 if (declaration.FunctionAbi.Arguments[i].Kind is PathogenArgumentKind.Expand or PathogenArgumentKind.CoerceAndExpand)
                 {

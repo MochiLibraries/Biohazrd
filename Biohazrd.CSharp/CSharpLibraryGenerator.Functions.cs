@@ -41,6 +41,12 @@ namespace Biohazrd.CSharp
 
         protected override void VisitFunction(VisitorContext context, TranslatedFunction declaration)
         {
+            if (!declaration.IsCallable)
+            {
+                Fatal(context, declaration, $"{declaration.Name} is missing ABI information and cannot be called.");
+                return;
+            }
+
             EmitFunctionContext emitContext = new(context, declaration);
 
             // Emit the DllImport
@@ -282,6 +288,9 @@ namespace Biohazrd.CSharp
         {
             if (thisCastType is not null && mode != EmitParameterListMode.TrampolineArguments)
             { throw new ArgumentException("Emitting a this cast is only possible for trampoline arguments.", nameof(thisCastType)); }
+
+            if (declaration.FunctionAbi is null)
+            { throw new ArgumentException("Cannot emit a parameter list for an uncallable function since they lack ABI information.", nameof(declaration)); }
 
             bool first = true;
 

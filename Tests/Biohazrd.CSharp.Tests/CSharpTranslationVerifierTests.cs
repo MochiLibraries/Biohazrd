@@ -1,4 +1,5 @@
 ﻿using Biohazrd.Tests.Common;
+using Biohazrd.Transformation;
 using System.Collections.Immutable;
 using Xunit;
 
@@ -6,6 +7,12 @@ namespace Biohazrd.CSharp.Tests
 {
     public sealed class CSharpTranslationVerifierTests : BiohazrdTestBase
     {
+        private class StripDeclarationDiagnosticsTransformation : TransformationBase
+        {
+            protected override TransformationResult TransformDeclaration(TransformationContext context, TranslatedDeclaration declaration)
+                => declaration with { Diagnostics = ImmutableArray<TranslationDiagnostic>.Empty };
+        }
+
         [Fact]
         [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/120")]
         public void Enum_DoNotAllowLooseInGlobalScope()
@@ -204,6 +211,39 @@ enum : wchar_t
                 Assert.Equal(AccessModifier.Internal, looseContainer.Accessibility);
                 Assert.True(translatedEnum.TranslateAsLooseConstants);
                 Assert.NotEmpty(translatedEnum.Diagnostics);
+            }
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/134")]
+        public void Function_UncallableFunctionsAreHandled()
+        {
+            // Uncallable functions are handled naturally since they will usually have errors attached, this test sanity-checks that the verifier handles them properly and that
+            // they have an error added if none is present.
+            TranslatedLibrary library = CreateLibrary
+            (@"
+struct MyStruct;
+MyStruct Test();
+"
+            );
+
+            // Strip off the errors added by the translation stage
+            library = new StripDeclarationDiagnosticsTransformation().Transform(library);
+
+            // Assert preconditions
+            {
+                TranslatedFunction translatedFunction = library.FindDeclaration<TranslatedFunction>();
+                Assert.False(translatedFunction.IsCallable);
+                Assert.DoesNotContain(translatedFunction.Diagnostics, d => d.IsError);
+            }
+
+            // Transform and validate
+            library = new CSharpBuiltinTypeTransformation().Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+            {
+                TranslatedFunction translatedFunction = library.FindDeclaration<TranslatedFunction>();
+                Assert.False(translatedFunction.IsCallable);
+                Assert.Contains(translatedFunction.Diagnostics, d => d.IsError);
             }
         }
     }
