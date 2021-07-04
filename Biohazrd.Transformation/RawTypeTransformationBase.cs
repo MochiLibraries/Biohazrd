@@ -49,7 +49,6 @@ namespace Biohazrd.Transformation
                 TranslatedBaseField baseFieldDeclaration => TransformBaseFieldTypeReferences(context.Add(declaration), baseFieldDeclaration),
                 TranslatedNormalField normalFieldDeclaration => TransformNormalFieldTypeReferences(context.Add(declaration), normalFieldDeclaration),
                 TranslatedTypedef typedefDeclaration => TransformTypedefTypeReferences(context.Add(declaration), typedefDeclaration),
-                TranslatedVTableEntry vTableEntryDeclaration => TransformVTableEntryTypeReferences(context.Add(declaration), vTableEntryDeclaration),
                 TranslatedDeclaration => declaration
             };
 

@@ -3,6 +3,7 @@ using ClangSharp.Pathogen;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp
@@ -127,7 +128,6 @@ namespace Biohazrd.CSharp
             // (We do this first so we can change our emit if the method is broken.)
             string? methodAccess = null;
             string? methodAccessFailure = null;
-            TypeReference? thisTypeCast = null;
 
             if (!declaration.IsVirtual)
             { methodAccess = SanitizeIdentifier(emitContext.DllImportName); }
@@ -140,13 +140,15 @@ namespace Biohazrd.CSharp
                 { methodAccessFailure = "Class has no vTable pointer."; }
                 else if (record.VTable is null)
                 { methodAccessFailure = "Class has no virtual method table."; }
+                else if (declaration.Declaration is null)
+                { methodAccessFailure = "Virtual method has no associated Clang declaration."; }
                 else
                 {
                     TranslatedVTableEntry? vTableEntry = null;
 
                     foreach (TranslatedVTableEntry entry in record.VTable.Entries)
                     {
-                        if (entry.MethodDeclaration == declaration.Declaration)
+                        if (entry.Info.MethodDeclaration == declaration.Declaration.Handle)
                         {
                             vTableEntry = entry;
                             break;
@@ -156,17 +158,7 @@ namespace Biohazrd.CSharp
                     if (vTableEntry is null)
                     { methodAccessFailure = "Could not find entry in virtual method table."; }
                     else
-                    {
-                        methodAccess = $"{SanitizeIdentifier(record.VTableField.Name)}->{SanitizeIdentifier(vTableEntry.Name)}";
-
-                        // Determine if we need to cast the this pointer
-                        // (This happens if a virtual method is lifted from a base type to a child.)
-                        if (vTableEntry.Type is FunctionPointerTypeReference vTableFunctionPointer
-                            && vTableFunctionPointer.ParameterTypes.Length > 0
-                            && vTableFunctionPointer.ParameterTypes[0] is PointerTypeReference { Inner: TypeReference vTableThis } vTableThisPointer
-                            && (vTableThis is not TranslatedTypeReference vTableThisTranslated || !ReferenceEquals(vTableThisTranslated.TryResolve(context.Library), context.ParentDeclaration)))
-                        { thisTypeCast = vTableThisPointer; }
-                    }
+                    { methodAccess = $"{SanitizeIdentifier(record.VTableField.Name)}->{SanitizeIdentifier(vTableEntry.Name)}"; }
                 }
             }
 
@@ -243,7 +235,7 @@ namespace Biohazrd.CSharp
                         Writer.WriteLine($" {SanitizeIdentifier(emitContext.ReturnBufferParameterName)};");
 
                         Writer.Write($"{methodAccess}(");
-                        EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments, thisTypeCast);
+                        EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments);
                         Writer.WriteLine(");");
 
                         Writer.WriteLine($"return {SanitizeIdentifier(emitContext.ReturnBufferParameterName)};");
@@ -268,7 +260,7 @@ namespace Biohazrd.CSharp
                     { Writer.Write("return "); }
 
                     Writer.Write($"{methodAccess}(");
-                    EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments, thisTypeCast);
+                    EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments);
                     Writer.Write(");");
 
                     if (hasThis)
@@ -277,25 +269,56 @@ namespace Biohazrd.CSharp
             }
         }
 
+        private void EmitFunctionPointerForVTable(VisitorContext context, EmitFunctionContext emitContext, TranslatedFunction declaration)
+        {
+            string? callingConventionString = declaration.CallingConvention switch
+            {
+                CallingConvention.Cdecl => "unmanaged[Cdecl]",
+                CallingConvention.StdCall => "unmanaged[Stdcall]",
+                CallingConvention.ThisCall => "unmanaged[Thiscall]",
+                CallingConvention.FastCall => "unmanaged[Fastcall]",
+                _ => null
+            };
+
+            if (callingConventionString is null)
+            {
+                Fatal(context, declaration, $"The {declaration.CallingConvention} convention is not supported.");
+                Writer.Write("void*");
+                return;
+            }
+
+            Writer.Write($"delegate* {callingConventionString}<");
+
+            EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.VTableFunctionPointerParameters);
+
+            Writer.Write(", ");
+
+            if (declaration.ReturnByReference)
+            { WriteTypeAsReference(context, declaration, declaration.ReturnType); }
+            else
+            { WriteType(context, declaration, declaration.ReturnType); }
+
+            Writer.Write('>');
+        }
+
         private enum EmitParameterListMode
         {
             DllImportParameters,
             TrampolineParameters,
             TrampolineArguments,
+            VTableFunctionPointerParameters,
         }
 
-        private void EmitFunctionParameterList(VisitorContext context, EmitFunctionContext emitContext, TranslatedFunction declaration, EmitParameterListMode mode, TypeReference? thisCastType = null)
+        private void EmitFunctionParameterList(VisitorContext context, EmitFunctionContext emitContext, TranslatedFunction declaration, EmitParameterListMode mode)
         {
-            if (thisCastType is not null && mode != EmitParameterListMode.TrampolineArguments)
-            { throw new ArgumentException("Emitting a this cast is only possible for trampoline arguments.", nameof(thisCastType)); }
-
             if (declaration.FunctionAbi is null)
             { throw new ArgumentException("Cannot emit a parameter list for an uncallable function since they lack ABI information.", nameof(declaration)); }
 
             bool first = true;
 
-            bool writeImplicitParameters = mode == EmitParameterListMode.DllImportParameters || mode == EmitParameterListMode.TrampolineArguments;
-            bool writeTypes = mode == EmitParameterListMode.DllImportParameters || mode == EmitParameterListMode.TrampolineParameters;
+            bool writeImplicitParameters = mode is EmitParameterListMode.DllImportParameters or EmitParameterListMode.TrampolineArguments or EmitParameterListMode.VTableFunctionPointerParameters;
+            bool writeTypes = mode is EmitParameterListMode.DllImportParameters or EmitParameterListMode.TrampolineParameters or EmitParameterListMode.VTableFunctionPointerParameters;
+            bool writeNames = mode is EmitParameterListMode.DllImportParameters or EmitParameterListMode.TrampolineArguments or EmitParameterListMode.TrampolineParameters;
             bool writeDefautValues = mode switch
             {
                 EmitParameterListMode.DllImportParameters => !declaration.IsInstanceMethod, // We only emit the defaults on the trampoline.
@@ -321,10 +344,18 @@ namespace Biohazrd.CSharp
                     if (writeTypes)
                     {
                         WriteType(context, declaration, declaration.ReturnType);
-                        Writer.Write(' ');
+
+                        //TODO: When fixing https://github.com/InfectedLibraries/Biohazrd/issues/196, use WriteTypeAsReference instead.
+                        if (mode == EmitParameterListMode.VTableFunctionPointerParameters)
+                        { Writer.Write('*'); }
+
+                        if (writeNames)
+                        { Writer.Write(' '); }
                     }
 
-                    Writer.WriteIdentifier(emitContext.ReturnBufferParameterName);
+                    if (writeNames)
+                    { Writer.WriteIdentifier(emitContext.ReturnBufferParameterName); }
+
                     first = false;
                 }
 
@@ -341,16 +372,14 @@ namespace Biohazrd.CSharp
                     if (writeTypes)
                     {
                         WriteType(context, declaration, emitContext.ThisType);
-                        Writer.Write(' ');
-                    }
-                    else if (thisCastType is not null)
-                    {
-                        Writer.Write('(');
-                        WriteType(context, declaration, thisCastType);
-                        Writer.Write(')');
+
+                        if (writeNames)
+                        { Writer.Write(' '); }
                     }
 
-                    Writer.WriteIdentifier(emitContext.ThisParameterName);
+                    if (writeNames)
+                    { Writer.WriteIdentifier(emitContext.ThisParameterName); }
+
                     first = false;
                 }
 
@@ -380,10 +409,12 @@ namespace Biohazrd.CSharp
                         WriteType(parameterContext, parameter, parameter.Type);
                     }
 
-                    Writer.Write(' ');
+                    if (writeNames)
+                    { Writer.Write(' '); }
                 }
 
-                Writer.WriteIdentifier(parameter.Name);
+                if (writeNames)
+                { Writer.WriteIdentifier(parameter.Name); }
 
                 if (writeDefautValues && parameter.DefaultValue is not null)
                 { Writer.Write($" = {GetConstantAsString(parameterContext, parameter, parameter.DefaultValue, parameter.Type)}"); }

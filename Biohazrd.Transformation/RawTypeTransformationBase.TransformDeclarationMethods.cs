@@ -113,21 +113,5 @@
             else
             { return declaration; }
         }
-
-        private TransformationResult TransformVTableEntryTypeReferences(TransformationContext context, TranslatedVTableEntry declaration)
-        {
-            TypeTransformationResult result = TransformTypeRecursively(context, declaration.Type);
-
-            if (result.IsChange(declaration.Type))
-            {
-                return declaration with
-                {
-                    Type = result.TypeReference,
-                    Diagnostics = declaration.Diagnostics.AddRange(result.Diagnostics)
-                };
-            }
-            else
-            { return declaration; }
-        }
     }
 }

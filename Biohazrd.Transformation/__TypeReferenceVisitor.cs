@@ -49,13 +49,6 @@ namespace Biohazrd.Transformation
             base.VisitTypedef(context, declaration);
         }
 
-        protected override void VisitVTableEntry(VisitorContext context, TranslatedVTableEntry declaration)
-        {
-            VisitTypeReference(context, declaration, declaration.Type);
-            base.VisitVTableEntry(context, declaration);
-        }
-
-
         private void VisitTypeReference(VisitorContext parentDeclarationContext, TranslatedDeclaration parentDeclaration, TypeReference typeReference)
             => VisitTypeReference(parentDeclarationContext.Add(parentDeclaration), ImmutableArray<TypeReference>.Empty, typeReference);
 

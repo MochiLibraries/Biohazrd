@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using ClangSharp;
+using System.Linq;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp
@@ -82,11 +83,19 @@ namespace Biohazrd.CSharp
 
                     // For function pointers, write out the signature of the method as a documentation comment
                     //TODO: This could/should reference the translated method if there is one.
-                    if (entry.IsFunctionPointer && entry.MethodDeclaration is not null)
-                    { Writer.WriteLine($"/// <summary>Virtual method pointer for `{entry.MethodDeclaration}`</summary>"); }
+                    if (entry.IsFunctionPointer)
+                    { Writer.WriteLine($"/// <summary>Virtual method pointer for `{entry.Info.MethodDeclaration}`</summary>"); }
 
                     Writer.Write($"{entry.Accessibility.ToCSharpKeyword()} ");
-                    WriteType(context.Add(entry), entry, entry.Type);
+
+                    if (entry.IsFunctionPointer && entry.MethodReference?.TryResolve(context.Library) is TranslatedFunction associatedFunction)
+                    {
+                        EmitFunctionContext emitContext = new(context, associatedFunction);
+                        EmitFunctionPointerForVTable(context, emitContext, associatedFunction);
+                    }
+                    else
+                    { WriteType(context.Add(entry), entry, VoidTypeReference.PointerInstance); }
+
                     Writer.WriteLine($" {SanitizeIdentifier(entry.Name)};");
                 }
             }
@@ -96,7 +105,7 @@ namespace Biohazrd.CSharp
             => FatalContext(context, declaration, $"w/ {declaration.Entries.Length} entries");
 
         protected override void VisitVTableEntry(VisitorContext context, TranslatedVTableEntry declaration)
-            => FatalContext(context, declaration, declaration.MethodDeclaration is not null ? $"({declaration.Info.Kind} to {declaration.MethodDeclaration})" : $"({declaration.Info.Kind})");
+            => FatalContext(context, declaration, $"({declaration.Info.Kind} to {declaration.Info.MethodDeclaration})");
 
         protected override void VisitSynthesizedLooseDeclarationsType(VisitorContext context, SynthesizedLooseDeclarationsTypeDeclaration declaration)
         {
