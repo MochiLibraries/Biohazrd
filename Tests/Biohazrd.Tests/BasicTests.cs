@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Biohazrd.Tests
 {
-    public sealed class BasicTests
+    public sealed class BasicTests : BiohazrdTestBase
     {
         private void SmokeTestAssert(TranslatedLibrary library, string? fileName, string structName, string fieldName)
         {
@@ -238,6 +238,22 @@ struct B { };
             Assert.Equal("C.h", Path.GetFileName(library.Files[0].FilePath));
             Assert.Equal("A.h", Path.GetFileName(library.Files[1].FilePath));
             Assert.Equal("B.h", Path.GetFileName(library.Files[2].FilePath));
+        }
+
+        [Fact]
+        public void TranslateEvenWithParsingErrorsFalse()
+        {
+            TranslatedLibrary library = CreateLibraryBuilder("struct BrokenStruct { int x; }", options: new() { TranslateEvenWithParsingErrors = false }).Create();
+            Assert.Contains(library.ParsingDiagnostics, d => d.IsError && d.IsFromClang);
+            Assert.Empty(library.Declarations);
+        }
+
+        [Fact]
+        public void TranslateEvenWithParsingErrorsTrue()
+        {
+            TranslatedLibrary library = CreateLibraryBuilder("struct BrokenStruct { int x; }", options: new() { TranslateEvenWithParsingErrors = true }).Create();
+            Assert.Contains(library.ParsingDiagnostics, d => d.IsError && d.IsFromClang);
+            Assert.NotEmpty(library.Declarations);
         }
     }
 }

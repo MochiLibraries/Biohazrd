@@ -26,5 +26,14 @@
         /// Implicitly specialized templates will still be late-instantiated.
         /// </remarks>
         public bool EnableTemplateSupport { get; init; } = false;
+
+        /// <summary>If true, Biohazrd will still attempt to perform translation even when Clang returns parsing errors. (Default is false since this is usually a bad idea.)</summary>
+        /// <remarks>
+        /// Biohazrd generally expects a well-formed translation unit from Clang.
+        /// When errors are present, the translation unit is not always well-formed and depending on the error it might even be completely nonsensical.
+        /// As such, when errors are present Biohazrd generally doesn't even attempt translation.
+        /// This option can be used to disable this behavior at the expense of sanity and stability.
+        /// </remarks>
+        public bool TranslateEvenWithParsingErrors { get; init; } = false;
     }
 }

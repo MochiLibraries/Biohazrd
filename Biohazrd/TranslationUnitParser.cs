@@ -151,7 +151,7 @@ namespace Biohazrd
 
             // If there's errors, don't try to process the cursors
             // Clang will still emit a best-effort cursor tree when there's errors, but they might not be coherent.
-            if (hasErrors)
+            if (hasErrors && !Options.TranslateEvenWithParsingErrors)
             { return; }
 
             // Process cursors
