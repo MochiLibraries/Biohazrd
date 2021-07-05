@@ -306,7 +306,7 @@ extern ""C"" void AnotherFunction();
             MsvcTools.Lib("/NOLOGO", $"/OUT:{libFileName}", $"{nameof(SymbolResolvesToExport)}.obj");
 
             // Create and transform library
-            LinkImportsTransformation transformation = new();
+            LinkImportsTransformation transformation = new() { ErrorOnMissing = false };
             transformation.AddLibrary(libFileName);
             TranslatedLibrary library = CreateLibrary(@"extern ""C"" void TestFunction();");
             library = transformation.Transform(library);
@@ -327,10 +327,7 @@ extern ""C"" void AnotherFunction();
             MsvcTools.Lib("/NOLOGO", $"/OUT:{libFileName}", $"{nameof(SymbolResolvesToExport_ErrorOnMissing)}.obj");
 
             // Create and transform library
-            LinkImportsTransformation transformation = new()
-            {
-                ErrorOnMissing = true
-            };
+            LinkImportsTransformation transformation = new() { ErrorOnMissing = true };
             transformation.AddLibrary(libFileName);
             TranslatedLibrary library = CreateLibrary(@"extern ""C"" void TestFunction();");
             library = transformation.Transform(library);

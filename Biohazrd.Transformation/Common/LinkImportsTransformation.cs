@@ -13,9 +13,9 @@ namespace Biohazrd.Transformation.Common
     {
         private readonly Dictionary<string, SymbolEntry> Imports = new();
 
-        private bool _TrackVerboseImportInformation = false;
+        private bool _TrackVerboseImportInformation = true;
 
-        /// <summary>Enables tracking verbose import information at the expense of consuming more memory.</summary>
+        /// <summary>Enables tracking verbose import information at the expense of consuming more memory. Enabled by default.</summary>
         public bool TrackVerboseImportInformation
         {
             get => _TrackVerboseImportInformation;
@@ -28,7 +28,7 @@ namespace Biohazrd.Transformation.Common
             }
         }
 
-        /// <summary>If true (the default), a warning will be issued if a symbol is ambiguous.</summary>
+        /// <summary>If true a warning will be issued if a symbol is ambiguous. Enabled by default.</summary>
         /// <remarks>
         /// A symbol always resolves to the first library where an import appears.
         ///
@@ -36,13 +36,13 @@ namespace Biohazrd.Transformation.Common
         /// </remarks>
         public bool WarnOnAmbiguousSymbols { get; set; } = true;
 
-        /// <summary>If true, an error will be issued for symbols which cannot be resolved.</summary>
+        /// <summary>If true an error will be issued for symbols which cannot be resolved. Enabled by default.</summary>
         /// <remarks>
         /// This does not apply to virtual methods because they're generally not exported. If you have advanced needs and expect virtual methods to be exported, enable <see cref="ErrorOnMissingVirtualMethods"/>.
         /// </remarks>
-        public bool ErrorOnMissing { get; set; }
+        public bool ErrorOnMissing { get; set; } = true;
 
-        /// <summary>If true, an error will be issued for virtual methods which cannot be resolved.</summary>
+        /// <summary>If true, an error will be issued for virtual methods which cannot be resolved. Disabled by default.</summary>
         /// <remarks>You generally do not want to enable this option unless you have advanced needs for virtual methods to be exported.</remarks>
         public bool ErrorOnMissingVirtualMethods { get; set; }
 
