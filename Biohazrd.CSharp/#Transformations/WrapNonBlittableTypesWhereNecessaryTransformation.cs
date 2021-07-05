@@ -66,8 +66,17 @@ namespace Biohazrd.CSharp
             if (context.Parent is PointerTypeReference)
             { return type; }
 
+            // If the type is for a virtual method return value, we always wrap non-blittable types since these types will be used for the vtable pointer
+            // See https://github.com/InfectedLibraries/Biohazrd/issues/200 for details
+            if (context.ParentDeclaration is TranslatedFunction { IsVirtual: true })
+            { }
+            // Same for parameters of virtual methods
+            //TODO: C# 10: Use list pattern syntax: context.ParentDeclarations is [.., TranslatedParameter, TranslatedFunction { IsVirtual: True }]
+            else if (context.ParentDeclaration is TranslatedParameter
+                && context.ParentDeclarations.Length >= 2 && context.ParentDeclarations[context.ParentDeclarations.Length - 2] is TranslatedFunction { IsVirtual: true })
+            { }
             // If the parent type reference isn't a function pointer, Blittablebool/BlittableChar should not be necessary
-            if (!context.Parents.Any(t => t is FunctionPointerTypeReference))
+            else if (!context.Parents.Any(t => t is FunctionPointerTypeReference))
             { return type; }
 
             if (type.Type == CSharpBuiltinType.Bool)

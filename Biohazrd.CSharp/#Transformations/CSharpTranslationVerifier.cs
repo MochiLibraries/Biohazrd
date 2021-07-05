@@ -229,6 +229,11 @@ namespace Biohazrd.CSharp
                                     return TypeCanHaveDefaultInCSharp(library, typedef.UnderlyingType);
                                 case TranslatedEnum:
                                     return true;
+                                // NativeBoolean and NativeChar will become bool/char on the trampoline surface and should not appear in places where trampolines aren't generated since
+                                // they end up using MarshalAs instead.
+                                case NativeBooleanDeclaration:
+                                case NativeCharDeclaration:
+                                    return true;
                             }
                         }
 

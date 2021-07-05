@@ -18,7 +18,19 @@ namespace Biohazrd.CSharp
                 case IntegerConstant integerConstant:
                 {
                     // Bools come through as integer types
-                    if (targetType is CSharpBuiltinTypeReference cSharpTypeReference && cSharpTypeReference.Type == CSharpBuiltinType.Bool)
+                    static bool IsBooleanType(VisitorContext context, TypeReference targetType)
+                    {
+                        if (targetType is CSharpBuiltinTypeReference cSharpTypeReference && cSharpTypeReference.Type == CSharpBuiltinType.Bool)
+                        { return true; }
+                        // NativeBoolean is used for virtual methods which end up getting wrapped by trampolines which use bool so emitting them as true/false contants are valid in that context
+                        // See https://github.com/InfectedLibraries/Biohazrd/issues/200 for details.
+                        else if (targetType is TranslatedTypeReference translatedTypeReference && translatedTypeReference.TryResolve(context.Library) is NativeBooleanDeclaration)
+                        { return true; }
+                        else
+                        { return false; }
+                    }
+
+                    if (IsBooleanType(context, targetType))
                     {
                         if (integerConstant.Value == 0)
                         { return "false"; }

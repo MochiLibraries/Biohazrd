@@ -189,7 +189,7 @@ namespace Biohazrd.CSharp
             Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} unsafe ");
             if (!declaration.IsInstanceMethod)
             { Writer.Write("static "); }
-            WriteType(context, declaration, declaration.ReturnType);
+            WriteTypeForTrampoline(context, declaration, declaration.ReturnType);
             Writer.Write($" {SanitizeIdentifier(declaration.Name)}(");
             EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineParameters);
             Writer.WriteLine(')');
@@ -406,7 +406,10 @@ namespace Biohazrd.CSharp
                         if (mode == EmitParameterListMode.DllImportParameters && parameter.Type.IsCSharpType(CSharpBuiltinType.Bool))
                         { Writer.Write("[MarshalAs(UnmanagedType.I1)] "); }
 
-                        WriteType(parameterContext, parameter, parameter.Type);
+                        if (mode == EmitParameterListMode.TrampolineParameters)
+                        { WriteTypeForTrampoline(parameterContext, parameter, parameter.Type); }
+                        else
+                        { WriteType(parameterContext, parameter, parameter.Type); }
                     }
 
                     if (writeNames)
@@ -467,6 +470,26 @@ namespace Biohazrd.CSharp
             }
 
             Writer.WriteLine(")]");
+        }
+
+        private void WriteTypeForTrampoline(VisitorContext context, TranslatedDeclaration declaration, TypeReference type)
+        {
+            // For trampolines we want to hide the semantics of NativeBoolean/NativeChar so we silently replace them with their actual C# type
+            // See https://github.com/InfectedLibraries/Biohazrd/issues/200 for details.
+            if (type is TranslatedTypeReference typeReference)
+            {
+                switch (typeReference.TryResolve(context.Library))
+                {
+                    case NativeBooleanDeclaration:
+                        WriteType(context, declaration, CSharpBuiltinType.Bool);
+                        return;
+                    case NativeCharDeclaration:
+                        WriteType(context, declaration, CSharpBuiltinType.Char);
+                        return;
+                }
+            }
+
+            WriteType(context, declaration, type);
         }
 
         protected override void VisitParameter(VisitorContext context, TranslatedParameter declaration)
