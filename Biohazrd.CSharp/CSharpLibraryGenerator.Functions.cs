@@ -186,7 +186,7 @@ namespace Biohazrd.CSharp
             }
 
             // Emit the method signature
-            Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} unsafe ");
+            Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} ");
             if (!declaration.IsInstanceMethod)
             { Writer.Write("static "); }
             WriteTypeForTrampoline(context, declaration, declaration.ReturnType);
