@@ -11,7 +11,7 @@ Essentially this transformation acts like a linker. It uses the same `.lib` file
 
 This transformation is primarily intended for scenarios when the native code is spread througout multiple DLLs and it's non-trivial to simply assign the same DLL file name to all symbols in the library. However it's always valid to use this transformation and it can help diagnose issues where Biohazrd translates a symbol which isn't actually exported.
 
-Note: This transformation does not know about or support `InlineReferenceFileGenerator` yet.
+Note: This transformation does not natively handle anything exported by `InlineExportHelper` yet.
 
 ## Interacting with this transformation
 

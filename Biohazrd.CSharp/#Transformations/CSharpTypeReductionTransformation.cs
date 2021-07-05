@@ -15,22 +15,14 @@ namespace Biohazrd.CSharp
         private ConcurrentDictionary<(ClangType Type, long ElementCount), ConstantArrayTypeDeclaration> ConstantArrayTypes = new();
         private ConcurrentBag<ConstantArrayTypeDeclaration> NewConstantArrayTypes = new();
         private object ConstantArrayTypeCreationLock = new();
-
-        private int _ConstantArrayTypesCreated;
-
-        // Previously consumers of this transformation had to manually re-run this transformation as a workaround for
-        // https://github.com/InfectedLibraries/Biohazrd/issues/64
-        // Instead we now do this ourselves using PostTransformLibrary, which was added in
-        // https://github.com/InfectedLibraries/Biohazrd/issues/54
-        [Obsolete("This transformation no longer requires being manually re-run to resolve constant arrays.")]
-        public int ConstantArrayTypesCreated => _ConstantArrayTypesCreated;
+        private int ConstantArrayTypesCreated;
 
         protected override TranslatedLibrary PreTransformLibrary(TranslatedLibrary library)
         {
             Debug.Assert(ConstantArrayTypes.Count == 0 && NewConstantArrayTypes.Count == 0, "There should not be any constant array types at this point.");
             ConstantArrayTypes.Clear();
             NewConstantArrayTypes.Clear();
-            _ConstantArrayTypesCreated = 0;
+            ConstantArrayTypesCreated = 0;
 
             // We only look for constant array type declarations at the root of the library since that's were we add them
             foreach (ConstantArrayTypeDeclaration existingDeclaration in library.Declarations.OfType<ConstantArrayTypeDeclaration>())
@@ -49,7 +41,7 @@ namespace Biohazrd.CSharp
                 Declarations = library.Declarations.AddRange(NewConstantArrayTypes.OrderBy(t => t.Name))
             };
 
-            _ConstantArrayTypesCreated = NewConstantArrayTypes.Count;
+            ConstantArrayTypesCreated = NewConstantArrayTypes.Count;
             ConstantArrayTypes.Clear();
             NewConstantArrayTypes.Clear();
 
@@ -60,7 +52,7 @@ namespace Biohazrd.CSharp
         {
             // Persistently run the transformation to ensure nested constant arrays are generated
             // (This is a workaround for https://github.com/InfectedLibraries/Biohazrd/issues/64)
-            library = _ConstantArrayTypesCreated > 0 ? Transform(library) : base.__HACK__PostPostTransformLibrary(library);
+            library = ConstantArrayTypesCreated > 0 ? Transform(library) : base.__HACK__PostPostTransformLibrary(library);
 
             // Final pass to fix up function pointer parameters
             library = new FunctionPointerParameterFixupPassTransformation().Transform(library);

@@ -36,7 +36,7 @@ If you're extending this type to add support for a type class Biohazrd doesn't s
 * `auto` and `decltype` are converted to their inferred types.
 * For `typedef` types:
   * If their `typedef` declaration resolves within the `TranslatedLibrary` they are converted to a [`TranslatedTypeReference`](../BuiltInTypeReferences/TranslatedTypeReference.md) pointing to that declaration.
-    * We check if it resolves first the `typedef` might have been [deleted](RemoveRemainingTypedefsTransformation.md).
+    * We check if it resolves first the `typedef` might have been deleted.
     * We don't warn if it resolves to a `TranslatedTypedef` in case it is replaced with something else later on. (It may be desireable to do `typedef` replacement after type reduction when you need to work with multiple types.)
   * Otherwise, the type is replaced with its underlying type.
     * This is done because it is assumed that you removed the `typedef` since it will not be meaningful in your interop library.

@@ -14,7 +14,6 @@ The transformations are listed in the order they're typically applied.
 * [`CSharpTypeReductionTransformation`](CSharpTypeReductionTransformation.md)
 * [`CSharpBuiltinTypeTransformation`](CSharpBuiltinTypeTransformation.md)
 * [`LiftAnonymousRecordFieldsTransformation`](LiftAnonymousRecordFieldsTransformation.md)
-* [`KludgeUnknownClangTypesIntoBuiltinTypesTransformation`](KludgeUnknownClangTypesIntoBuiltinTypesTransformation.md)
 * [`WrapNonBlittableTypesWhereNecessaryTransformation`](WrapNonBlittableTypesWhereNecessaryTransformation.md)
 * [`MoveLooseDeclarationsIntoTypesTransformation`](MoveLooseDeclarationsIntoTypesTransformation.md)
 * [`LinkImportsTransformation`](LinkImportsTransformation.md)

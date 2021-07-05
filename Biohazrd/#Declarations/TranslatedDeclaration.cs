@@ -65,7 +65,7 @@ namespace Biohazrd
         }
 
         public Decl? Declaration { get; init; }
-        public ImmutableArray<Decl> SecondaryDeclarations { get; [Obsolete("Use ReplacedDeclarations instead")] init; } = ImmutableArray<Decl>.Empty;
+        public ImmutableArray<Decl> SecondaryDeclarations { get; /* To modify this property use ReplacedDeclarations */ private init; } = ImmutableArray<Decl>.Empty;
 
         public ImmutableArray<TranslationDiagnostic> Diagnostics { get; init; } = ImmutableArray<TranslationDiagnostic>.Empty;
 
@@ -91,9 +91,7 @@ namespace Biohazrd
                 }
 
                 ReplacedIds = replacedIds.ToImmutable();
-#pragma warning disable CS0618 // Type or member is obsolete
                 SecondaryDeclarations = secondaryDeclarations.MoveToImmutableSafe();
-#pragma warning restore CS0618
             }
         }
 
@@ -152,9 +150,7 @@ namespace Biohazrd
                 Id = DeclarationId.NewId(),
                 Declaration = null,
                 ReplacedIds = ImmutableHashSet<DeclarationId>.Empty,
-#pragma warning disable CS0618 // Type or member is obsolete
                 SecondaryDeclarations = ImmutableArray<Decl>.Empty
-#pragma warning restore CS0618
             };
 
         public virtual IEnumerator<TranslatedDeclaration> GetEnumerator()
