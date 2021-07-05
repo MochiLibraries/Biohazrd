@@ -99,19 +99,6 @@ namespace Biohazrd.CSharp
                 return;
             }
 
-            // Dump Clang information
-            if (Options.DumpClangInfo && declaration.Declaration is not null)
-            {
-                Writer.EnsureSeparation();
-                Writer.WriteLineLeftAdjusted($"#region {declaration.Declaration.CursorKindDetailed()} {declaration.Name} Dump");
-
-                using (Writer.Prefix("// "))
-                { ClangSharpInfoDumper.Dump(Writer, declaration.Declaration, Options.DumpOptions); }
-
-                Writer.WriteLineLeftAdjusted("#endregion");
-                Writer.NoSeparationNeededBeforeNextLine();
-            }
-
             // Emit the namespace (if at root) and declaration
             string? namespaceName = declaration.Namespace;
             if (context.Parents.Length > 0)
@@ -119,6 +106,19 @@ namespace Biohazrd.CSharp
 
             using (Writer.Namespace(namespaceName))
             {
+                // Dump Clang information
+                if (Options.DumpClangInfo && declaration.Declaration is not null)
+                {
+                    Writer.EnsureSeparation();
+                    Writer.WriteLineLeftAdjusted($"#region {declaration.Declaration.CursorKindDetailed()} {declaration.Name} Dump");
+
+                    using (Writer.Prefix("// "))
+                    { ClangSharpInfoDumper.Dump(Writer, declaration.Declaration, Options.DumpOptions); }
+
+                    Writer.WriteLineLeftAdjusted("#endregion");
+                    Writer.NoSeparationNeededBeforeNextLine();
+                }
+
                 if (declaration is ICustomCSharpTranslatedDeclaration customDeclaration)
                 { customDeclaration.GenerateOutput(this, context, Writer); }
                 else
