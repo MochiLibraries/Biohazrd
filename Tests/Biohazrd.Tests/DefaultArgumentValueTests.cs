@@ -1,4 +1,4 @@
-﻿using Biohazrd.Expressions;
+using Biohazrd.Expressions;
 using Biohazrd.Tests.Common;
 using System;
 using Xunit;
@@ -276,6 +276,30 @@ void Function(bool x = Test() || true);"
         }
 
         //===========================================================================================================================================
+        // Utilities for working with quiet vs signaling NaNs
+        //===========================================================================================================================================
+        // The exact definitions for qNaN vs sNaN are implementation-defined. Thankfully Intel and ARM use the same definitions.
+        //
+        // The Intel developer's manual Volume 1 §4.8.3.4 defines the difference between quiet and signal NaNs as follows:
+        // https://software.intel.com/content/www/us/en/develop/articles/intel-sdm.html#three-volume
+        // "A QNaN is a NaN with the most significant fraction bit set; an SNaN is a NaN with the most significant fraction bit clear."
+        //
+        // ARM defines it in IEEE 754 standard implementation choices:
+        // https://developer.arm.com/documentation/ddi0274/h/programmer-s-model/compliance-with-the-ieee-754-standard/ieee-754-standard-implementation-choices
+        // "A most significant fraction bit of zero indicates a Signaling NaN (SNaN). A most significant fraction bit of one indicates a Quiet NaN (QNaN)."
+        static bool GetQuietNanBit(uint bitPattern)
+        {
+            bitPattern &= 0b0___0000_0000___1000000_00000000_00000000u;
+            return bitPattern != 0u;
+        }
+
+        static bool GetQuietNanBit(ulong bitPattern)
+        {
+            bitPattern &= 0b0___000_0000_0000___10_0000000000_0000000000_0000000000_0000000000_0000000000ul;
+            return bitPattern != 0ul;
+        }
+
+        //===========================================================================================================================================
         //  ______ _             _     _______        _       
         // |  ____| |           | |   |__   __|      | |      
         // | |__  | | ___   __ _| |_     | | ___  ___| |_ ___ 
@@ -319,14 +343,20 @@ void Function(bool x = Test() || true);"
             Assert.Equal(123.456f, constant.Value);
         }
 
-        private void AbnormalFloatTest(string prefix, string parameterValue, float expectedValue, Func<float, bool>? sanityTest, uint bitPattern)
+        private void AbnormalFloatTest(string prefix, string parameterValue, float expectedValue, Func<float, bool>? sanityTest, Action<uint> bitPatternTest)
         {
             FloatConstant floatConstant = CompileAndGetDefaultArgumentValue<FloatConstant>(prefix, $"float x = {parameterValue}");
+
             Assert.Equal(expectedValue, floatConstant.Value);
+
             if (sanityTest is not null)
             { Assert.True(sanityTest(floatConstant.Value)); }
-            Assert.Equal(bitPattern, (uint)BitConverter.SingleToInt32Bits(floatConstant.Value));
+
+            bitPatternTest((uint)BitConverter.SingleToInt32Bits(floatConstant.Value));
         }
+
+        private void AbnormalFloatTest(string prefix, string parameterValue, float expectedValue, Func<float, bool>? sanityTest, uint bitPattern)
+            => AbnormalFloatTest(prefix, parameterValue, expectedValue, sanityTest, actualBitPattern => Assert.Equal(bitPattern, actualBitPattern));
 
         private void AbnormalFloatTest(string parameterValue, float expectedValue, Func<float, bool>? sanityTest, uint bitPattern)
             => AbnormalFloatTest("", parameterValue, expectedValue, sanityTest, bitPattern);
@@ -386,7 +416,7 @@ void Function(bool x = Test() || true);"
 
         [Fact]
         public void Float_Nan_Signaling4()
-            => AbnormalFloatTest("#include <limits>", "std::numeric_limits<float>::signaling_NaN()", Single.NaN, Single.IsNaN, 0x7F80_0001);
+            => AbnormalFloatTest("#include <limits>", "std::numeric_limits<float>::signaling_NaN()", Single.NaN, Single.IsNaN, bits => Assert.False(GetQuietNanBit(bits)));
 
         [FutureFact] // Needs C++20
         public void Float_Nan_Signaling5()
@@ -520,14 +550,19 @@ void Function(bool x = Test() || true);"
             Assert.Equal((double)123.456f, constant.Value);
         }
 
-        private void AbnormalDoubleTest(string prefix, string parameterValue, double expectedValue, Func<double, bool>? sanityTest, ulong bitPattern)
+        private void AbnormalDoubleTest(string prefix, string parameterValue, double expectedValue, Func<double, bool>? sanityTest, Action<ulong> bitPatternTest)
         {
             DoubleConstant doubleConstant = CompileAndGetDefaultArgumentValue<DoubleConstant>(prefix, $"double x = {parameterValue}");
             Assert.Equal(expectedValue, doubleConstant.Value);
+            
             if (sanityTest is not null)
             { Assert.True(sanityTest(doubleConstant.Value)); }
-            Assert.Equal(bitPattern, (ulong)BitConverter.DoubleToInt64Bits(doubleConstant.Value));
+
+            bitPatternTest((ulong)BitConverter.DoubleToInt64Bits(doubleConstant.Value));
         }
+
+        private void AbnormalDoubleTest(string prefix, string parameterValue, double expectedValue, Func<double, bool>? sanityTest, ulong bitPattern)
+            => AbnormalDoubleTest(prefix, parameterValue, expectedValue, sanityTest, actualBitPattern => Assert.Equal(bitPattern, actualBitPattern));
 
         private void AbnormalDoubleTest(string parameterValue, double expectedValue, Func<double, bool>? sanityTest, ulong bitPattern)
             => AbnormalDoubleTest("", parameterValue, expectedValue, sanityTest, bitPattern);
@@ -587,7 +622,7 @@ void Function(bool x = Test() || true);"
 
         [Fact]
         public void Double_Nan_Signaling4()
-            => AbnormalDoubleTest("#include <limits>", "std::numeric_limits<double>::signaling_NaN()", Double.NaN, Double.IsNaN, 0x7FF0_0000_0000_0001);
+            => AbnormalDoubleTest("#include <limits>", "std::numeric_limits<double>::signaling_NaN()", Double.NaN, Double.IsNaN, bits => Assert.False(GetQuietNanBit(bits)));
 
         [FutureFact] // Needs C++20
         public void Double_Nan_Signaling5()
