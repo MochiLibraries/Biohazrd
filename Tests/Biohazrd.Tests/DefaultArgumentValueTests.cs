@@ -1,4 +1,4 @@
-using Biohazrd.Expressions;
+﻿using Biohazrd.Expressions;
 using Biohazrd.Tests.Common;
 using System;
 using Xunit;
@@ -233,6 +233,15 @@ void Function
 
                 Assert.Equal(expectedvalues[i], (parameter.Name, value));
             }
+        }
+
+        [Fact]
+        public void StringTest_Unicode()
+        {
+            TranslatedLibrary library = CreateLibrary(@"void Test(const wchar_t* x = L""こんにち, world!"");");
+            TranslatedParameter parameter = library.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x");
+            StringConstant stringConstant = Assert.IsAssignableFrom<StringConstant>(parameter.DefaultValue);
+            Assert.Equal("こんにち, world!", stringConstant.Value);
         }
 
         [Fact]
