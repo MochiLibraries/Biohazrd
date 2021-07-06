@@ -65,6 +65,9 @@ namespace Biohazrd
 
         private __HACK__Stl1300Workaround()
         {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            { return; }
+
             try
             {
                 Debug.WriteLine($"{DebugPrefix}Applying STL#1300 workaround, see https://github.com/InfectedLibraries/Biohazrd/issues/98 for details.");
