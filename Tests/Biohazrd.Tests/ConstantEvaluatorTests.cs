@@ -304,5 +304,105 @@ namespace Biohazrd.Tests
             ImmutableArray<ConstantEvaluationResult> results = evaluator.EvaluateBatch(Array.Empty<string>());
             Assert.Empty(results);
         }
+
+        [Fact]
+        public void StringConstant_Ascii()
+        {
+            TranslatedLibraryBuilder builder = CreateLibraryBuilder(@"#define TEST ""Hello, world!""");
+            TranslatedLibraryConstantEvaluator evaluator = builder.CreateConstantEvaluator();
+            ConstantEvaluationResult result = evaluator.Evaluate("TEST");
+            Assert.Empty(result.Diagnostics);
+            StringConstant value = Assert.IsType<StringConstant>(result.Value);
+            Assert.Equal("Hello, world!", value.Value);
+        }
+
+        [Fact]
+        public void StringConstant_AsciiBad()
+        {
+            TranslatedLibraryBuilder builder = CreateLibraryBuilder(@"#define TEST ""こんにちは, world!""");
+            TranslatedLibraryConstantEvaluator evaluator = builder.CreateConstantEvaluator();
+            ConstantEvaluationResult result = evaluator.Evaluate("TEST");
+            Assert.Empty(result.Diagnostics);
+            StringConstant value = Assert.IsType<StringConstant>(result.Value);
+            // The number of question marks depends on the encoding that Biohazrd uses for the virtual file.
+            // As such, we don't care about the exact number of question marks, just that there's at least 5 of them for each of the kana
+            Assert.Matches(@"^\?{5,}, world!$", value.Value);
+        }
+
+        private const ulong TestStringUtf8Length = (5 * 3) + 9 + (1 * 4) + 1; // 5 hiragana characters + 9 basic latin characters + 1 gothic character + 1 null terminator
+        private const ulong TestStringUtf16Length = (14 + 2 + 1) * 2; // 14 characters + 1 gothic character + 1 null terminator
+        private const ulong TestStringUtf32Length = 16 * 4; // 15 characters + 1 null terminator
+        private void StringConstant_UnicodeTest(string prefix, ulong expectedLength, string? targetTriple = null)
+        {
+            TranslatedLibraryBuilder builder = CreateLibraryBuilder($@"#define TEST {prefix}""こんにちは, world! 𐍊""", targetTriple: targetTriple);
+            TranslatedLibraryConstantEvaluator evaluator = builder.CreateConstantEvaluator();
+            ImmutableArray<ConstantEvaluationResult> results = evaluator.EvaluateBatch(new[] { "TEST", "sizeof(TEST)" });
+            Assert.True(results.All(r => r.Diagnostics.IsEmpty));
+            Assert.Equal(2, results.Length);
+            StringConstant value = Assert.IsType<StringConstant>(results[0].Value);
+            Assert.Equal("こんにちは, world! 𐍊", value.Value);
+            IntegerConstant size = Assert.IsType<IntegerConstant>(results[1].Value);
+            Assert.Equal(expectedLength, size.Value);
+        }
+
+        [Theory]
+        [InlineData("x86_64-pc-win32", TestStringUtf16Length)]
+        [InlineData("x86_64-pc-linux", TestStringUtf32Length)]
+        // xcore uses UTF8 for wchar_t
+        // https://github.com/InfectedLibraries/llvm-project/blob/d9c68a325b7710b93f36f02f9c58588b3bbfcd15/clang/lib/Basic/Targets/XCore.h#L37
+        [InlineData("xcore", TestStringUtf8Length)]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/203")]
+        public void StringConstant_WChar(string targetTriple, uint expectedLength)
+            => StringConstant_UnicodeTest("L", expectedLength, targetTriple);
+
+        [Fact]
+        public void StringConstant_Utf8()
+            => StringConstant_UnicodeTest("u8", TestStringUtf8Length);
+
+        [Fact]
+        public void StringConstant_Utf16()
+        => StringConstant_UnicodeTest("u", TestStringUtf16Length);
+
+        [Fact]
+        public void StringConstant_Utf32()
+            => StringConstant_UnicodeTest("U", TestStringUtf32Length);
+
+        private void CharConstantTest(string constant, ulong expectedValue, int expectedSize, string? targetTriple = null, Action<TranslatedLibraryBuilder>? builderExtra = null)
+        {
+            TranslatedLibraryBuilder builder = CreateLibraryBuilder($@"#define TEST {constant}", targetTriple: targetTriple);
+            builderExtra?.Invoke(builder);
+            TranslatedLibraryConstantEvaluator evaluator = builder.CreateConstantEvaluator();
+            ConstantEvaluationResult result = evaluator.Evaluate("TEST");
+            Assert.Empty(result.Diagnostics);
+            IntegerConstant value = Assert.IsType<IntegerConstant>(result.Value);
+            Assert.Equal(expectedValue, value.Value);
+            Assert.Equal(expectedSize * 8, value.SizeBits);
+        }
+
+        [Fact]
+        public void CharConstant_Ascii()
+            => CharConstantTest("'X'", 0x58, 1);
+
+        [Theory]
+        [InlineData("x86_64-pc-win32", 2, "人", 0x4EBA)]
+        [InlineData("x86_64-pc-linux", 4, "𐍊", 0x1034A)]
+        // xcore uses UTF8 for wchar_t
+        // https://github.com/InfectedLibraries/llvm-project/blob/d9c68a325b7710b93f36f02f9c58588b3bbfcd15/clang/lib/Basic/Targets/XCore.h#L37
+        [InlineData("xcore", 1, "X", 0x58)]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/203")]
+        public void CharConstant_WChar(string targetTriple, int expectedSize, string character, ulong expectedValue)
+            => CharConstantTest($"L'{character}'", expectedValue, expectedSize, targetTriple);
+
+        [Fact]
+        public void CharConstant_Utf8()
+            => CharConstantTest("u8'X'", 0x58, 1, builderExtra: b => b.AddCommandLineArgument("--std=c++20"));
+
+        [Fact]
+        public void CharConstant_Utf16()
+            => CharConstantTest("u'人'", 0x4EBA, 2);
+
+        [Fact]
+        public void CharConstant_Utf32()
+            => CharConstantTest("U'𐍊'", 0x1034A, 4);
     }
 }

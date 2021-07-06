@@ -1,4 +1,4 @@
-using Biohazrd.Expressions;
+﻿using Biohazrd.Expressions;
 using Biohazrd.Tests.Common;
 using System;
 using Xunit;
@@ -67,7 +67,7 @@ void FunctionWithDefaultArguments
     DefaultArgumentsTestEnum2 enumParam2 = DefaultArgumentsTestEnum2::W,
     const char* str2 = ""Hello, world!"",
     const char* str3 = ""Hello, "" ""world?"",
-    const wchar_t* utf16 = L""こんにち, world!"",
+    const wchar_t* utf16 = L""こんにちは, world!"",
     const char* str4 = GlobalConstant,
     int notDefaultableInCSharp = Add(3226, 0xC0FFEE)
 );"
@@ -164,8 +164,8 @@ void FunctionWithDefaultArguments
                 new StringConstant("Hello, world!"),
                 // const char* str3 = ""Hello, "" ""world?"",
                 new StringConstant("Hello, world?"),
-                // const wchar_t* utf16 = L""こんにち, world!"",
-                new StringConstant("こんにち, world!"),
+                // const wchar_t* utf16 = L""こんにちは, world!"",
+                new StringConstant("こんにちは, world!"),
                 // const char* str4 = GlobalConstant,
                 null, // Even though this default is constant-ish, Clang does not consider this to be a constant so we don't either
                 // int notDefaultableInCSharp = Add(3226, 0xC0FFEE)
@@ -206,10 +206,10 @@ void FunctionWithDefaultArguments
 void Function
 (
     const char* ascii = ""Hello, world!"",
-    const wchar_t* wide = L""👩🏻‍💻 こんにち, world!"",
-    const char* utf8 = u8""👩🏻‍💻 こんにち, world!"",
-    const char16_t* utf16 = u""👩🏻‍💻 こんにち, world!"",
-    const char32_t* utf32 = U""👩🏻‍💻 こんにち, world!""
+    const wchar_t* wide = L""👩🏻‍💻 こんにちは, world!"",
+    const char* utf8 = u8""👩🏻‍💻 こんにちは, world!"",
+    const char16_t* utf16 = u""👩🏻‍💻 こんにちは, world!"",
+    const char32_t* utf32 = U""👩🏻‍💻 こんにちは, world!""
 );"
             );
 
@@ -217,10 +217,10 @@ void Function
             (string ParameterName, string Value)[] expectedvalues = new[]
             {
                 ("ascii", "Hello, world!"),
-                ("wide", "👩🏻‍💻 こんにち, world!"),
-                ("utf8", "👩🏻‍💻 こんにち, world!"),
-                ("utf16", "👩🏻‍💻 こんにち, world!"),
-                ("utf32", "👩🏻‍💻 こんにち, world!")
+                ("wide", "👩🏻‍💻 こんにちは, world!"),
+                ("utf8", "👩🏻‍💻 こんにちは, world!"),
+                ("utf16", "👩🏻‍💻 こんにちは, world!"),
+                ("utf32", "👩🏻‍💻 こんにちは, world!")
             };
 
             Assert.Equal(expectedvalues.Length, function.Parameters.Length);
@@ -233,6 +233,19 @@ void Function
 
                 Assert.Equal(expectedvalues[i], (parameter.Name, value));
             }
+        }
+
+        [Theory]
+        [InlineData("x86_64-pc-win32")] // wchar_t is UTF16
+        [InlineData("x86_64-pc-linux")] // wchar_t is UTF32
+        [InlineData("xcore")] // wchar_t is UTF8 https://github.com/InfectedLibraries/llvm-project/blob/d9c68a325b7710b93f36f02f9c58588b3bbfcd15/clang/lib/Basic/Targets/XCore.h#L37
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/203")]
+        public void StringTest_WChar(string targetTriple)
+        {
+            TranslatedLibrary library = CreateLibrary(@"void Test(const wchar_t* x = L""こんにちは, world! 𐍊"");", targetTriple: targetTriple);
+            TranslatedParameter parameter = library.FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x");
+            StringConstant stringConstant = Assert.IsAssignableFrom<StringConstant>(parameter.DefaultValue);
+            Assert.Equal("こんにちは, world! 𐍊", stringConstant.Value);
         }
 
         [Fact]
@@ -300,9 +313,9 @@ void Function(bool x = Test() || true);"
         }
 
         //===========================================================================================================================================
-        //  ______ _             _     _______        _       
-        // |  ____| |           | |   |__   __|      | |      
-        // | |__  | | ___   __ _| |_     | | ___  ___| |_ ___ 
+        //  ______ _             _     _______        _
+        // |  ____| |           | |   |__   __|      | |
+        // | |__  | | ___   __ _| |_     | | ___  ___| |_ ___
         // |  __| | |/ _ \ / _` | __|    | |/ _ \/ __| __/ __|
         // | |    | | (_) | (_| | |_     | |  __/\__ \ |_\__ \
         // |_|    |_|\___/ \__,_|\__|    |_|\___||___/\__|___/
@@ -507,9 +520,9 @@ void Function(bool x = Test() || true);"
             => AbnormalFloatTest("#include <limits>", "std::numeric_limits<float>::max()", Single.MaxValue, null, 0x7F7F_FFFF);
 
         //===========================================================================================================================================
-        //  _____              _     _        _______        _       
-        // |  __ \            | |   | |      |__   __|      | |      
-        // | |  | | ___  _   _| |__ | | ___     | | ___  ___| |_ ___ 
+        //  _____              _     _        _______        _
+        // |  __ \            | |   | |      |__   __|      | |
+        // | |  | | ___  _   _| |__ | | ___     | | ___  ___| |_ ___
         // | |  | |/ _ \| | | | '_ \| |/ _ \    | |/ _ \/ __| __/ __|
         // | |__| | (_) | |_| | |_) | |  __/    | |  __/\__ \ |_\__ \
         // |_____/ \___/ \__,_|_.__/|_|\___|    |_|\___||___/\__|___/
@@ -554,7 +567,7 @@ void Function(bool x = Test() || true);"
         {
             DoubleConstant doubleConstant = CompileAndGetDefaultArgumentValue<DoubleConstant>(prefix, $"double x = {parameterValue}");
             Assert.Equal(expectedValue, doubleConstant.Value);
-            
+
             if (sanityTest is not null)
             { Assert.True(sanityTest(doubleConstant.Value)); }
 
