@@ -15,9 +15,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: ['windows-latest', 'ubuntu-latest']
         configuration: ['Debug', 'Release']
-    name: Build and Test ${{matrix.configuration}}
-    runs-on: windows-latest
+    name: Build and Test ${{matrix.configuration}} ${{matrix.os}}
+    runs-on: ${{matrix.os}}
     steps:
       # ----------------------------------------------------------------------- Checkout
       - name: Checkout
@@ -37,6 +38,14 @@ jobs:
 
       - name: Build
         run: dotnet build --no-restore --configuration ${{matrix.configuration}}
+
+      # ----------------------------------------------------------------------- Download libclang-pathogen runtime
+      #TODO: https://github.com/InfectedLibraries/ClangSharp.Pathogen/issues/1
+      - name: Download libclang-pathogen Runtime
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          wget --quiet https://infectedlibraries.net/temp/libclang-pathogen.tar.gz -O - | tar -xz
+          echo "BIOHAZRD_CUSTOM_LIBCLANG_PATHOGEN_RUNTIME=`readlink -f libclang-pathogen.so`" >> $GITHUB_ENV
 
       # ----------------------------------------------------------------------- Test
       - name: Test
