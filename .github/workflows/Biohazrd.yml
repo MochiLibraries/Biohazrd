@@ -15,9 +15,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: ['windows-latest', 'ubuntu-latest']
         configuration: ['Debug', 'Release']
-    name: Build and Test ${{matrix.configuration}}
-    runs-on: windows-latest
+    name: Build and Test ${{matrix.configuration}} ${{matrix.os}}
+    runs-on: ${{matrix.os}}
     steps:
       # ----------------------------------------------------------------------- Checkout
       - name: Checkout

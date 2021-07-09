@@ -1,4 +1,4 @@
-﻿using ClangSharp;
+using ClangSharp;
 using ClangSharp.Interop;
 using ClangSharp.Pathogen;
 using System;
@@ -130,6 +130,11 @@ namespace Biohazrd
 
         public unsafe TranslatedLibrary Create()
         {
+            if (Environment.GetEnvironmentVariable("BIOHAZRD_CUSTOM_LIBCLANG_PATHOGEN_RUNTIME") is string customNativeRuntime)
+            {
+                LibClangSharpResolver.OverrideNativeRuntime(customNativeRuntime);
+            }
+
             LibClangSharpResolver.VerifyResolverWasUsed();
             ImmutableArray<TranslationDiagnostic>.Builder miscDiagnostics = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
 
