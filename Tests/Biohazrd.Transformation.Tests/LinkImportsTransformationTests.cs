@@ -8,6 +8,9 @@ using Xunit;
 
 namespace Biohazrd.Transformation.Tests
 {
+    // Note that all tests within this file are marked as Windows-only not because LinkImportsTransformation is Windows-only, but
+    // because they rely on being able to invoke the MSVC librarian to generate static libraries for testing.
+    // (Unfortunately lld's MSVC linker mode cannot imitate the librarian.)
     [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/119")]
     public sealed class LinkImportsTransformationTests : BiohazrdTestBase
     {
@@ -20,6 +23,15 @@ namespace Biohazrd.Transformation.Tests
         /// </remarks>
         private void CreateImportLib(LinkImportsTransformation? transformation, string libName, params string[] exports)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                Assert.Skip
+                (
+                    "This test can only be executed on Windows." +
+                    " (NOTE: Dynamic skipping does not actually work in xunit v2. If you're reading this failure message mark the test with [WindowsFact].)"
+                );
+            }
+
             libName += ".lib";
 
             List<string> arguments = new()
@@ -44,7 +56,7 @@ namespace Biohazrd.Transformation.Tests
         private void CreateImportLib(string libName, params string[] exports)
             => CreateImportLib(null, libName, exports);
 
-        [Fact]
+        [WindowsFact]
         public void NormalSymbolTest()
         {
             LinkImportsTransformation transformation = new();
@@ -58,7 +70,7 @@ namespace Biohazrd.Transformation.Tests
             Assert.Empty(function.Diagnostics);
         }
 
-        [Fact]
+        [WindowsFact]
         public void NormalSymbolTest_GlobalVariable()
         {
             LinkImportsTransformation transformation = new();
@@ -72,7 +84,7 @@ namespace Biohazrd.Transformation.Tests
             Assert.Empty(staticField.Diagnostics);
         }
 
-        [Fact]
+        [WindowsFact]
         public void OrdinalSymbolTest()
         {
             LinkImportsTransformation transformation = new();
@@ -90,7 +102,7 @@ namespace Biohazrd.Transformation.Tests
             Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("resolved to ordinal"));
         }
 
-        [Fact]
+        [WindowsFact]
         public void MangledCppSymbolTest()
         {
             LinkImportsTransformation transformation = new();
@@ -104,7 +116,7 @@ namespace Biohazrd.Transformation.Tests
             Assert.Equal(testFunctionMangled, function.MangledName);
         }
 
-        [Fact]
+        [WindowsFact]
         public void MultipleSymbolTest()
         {
             LinkImportsTransformation transformation = new();
@@ -126,7 +138,7 @@ extern ""C"" void AnotherFunction();
             Assert.Equal("AnotherFunction", anotherFunction.MangledName);
         }
 
-        [Fact]
+        [WindowsFact]
         public void MultipleLibraries()
         {
             LinkImportsTransformation transformation = new();
@@ -149,7 +161,7 @@ extern ""C"" void AnotherFunction();
             Assert.Equal("AnotherFunction", anotherFunction.MangledName);
         }
 
-        [Fact]
+        [WindowsFact]
         public void MergedImportLibraryTest()
         {
             CreateImportLib($"{nameof(MergedImportLibraryTest)}_0", "TestFunction");
@@ -182,7 +194,7 @@ extern ""C"" void AnotherFunction();
             Assert.Equal("AnotherFunction", anotherFunction.MangledName);
         }
 
-        [Fact]
+        [WindowsFact]
         public void AmbiguousSymbolResolvesToFirst()
         {
             LinkImportsTransformation transformation = new();
@@ -196,7 +208,7 @@ extern ""C"" void AnotherFunction();
             Assert.Equal("TestFunction", function.MangledName);
         }
 
-        [Fact]
+        [WindowsFact]
         public void WarnOnAmbiguousSymbols_False()
         {
             LinkImportsTransformation transformation = new()
@@ -215,7 +227,7 @@ extern ""C"" void AnotherFunction();
             Assert.Empty(function.Diagnostics);
         }
 
-        [Fact]
+        [WindowsFact]
         public void WarnOnAmbiguousSymbols_True()
         {
             LinkImportsTransformation transformation = new()
@@ -234,7 +246,7 @@ extern ""C"" void AnotherFunction();
             Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("was ambiguous"));
         }
 
-        [Fact]
+        [WindowsFact]
         public void WarnOnAmbiguousSymbols_NoWarningWhenSameImport()
         {
             LinkImportsTransformation transformation = new()
@@ -261,7 +273,7 @@ extern ""C"" void AnotherFunction();
             Assert.Empty(function.Diagnostics);
         }
 
-        [Fact]
+        [WindowsFact]
         public void ErrorOnMissing_False()
         {
             LinkImportsTransformation transformation = new()
@@ -278,7 +290,7 @@ extern ""C"" void AnotherFunction();
             Assert.Empty(function.Diagnostics);
         }
 
-        [Fact]
+        [WindowsFact]
         public void ErrorOnMissing_True()
         {
             LinkImportsTransformation transformation = new()
@@ -295,7 +307,7 @@ extern ""C"" void AnotherFunction();
             Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Error && d.Message.Contains("Could not resolve"));
         }
 
-        [Fact]
+        [WindowsFact]
         public void SymbolResolvesToExport()
         {
             // Create static library
@@ -316,7 +328,7 @@ extern ""C"" void AnotherFunction();
             Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("No import sources found"));
         }
 
-        [Fact]
+        [WindowsFact]
         public void SymbolResolvesToExport_ErrorOnMissing()
         {
             // Create static library
@@ -337,7 +349,7 @@ extern ""C"" void AnotherFunction();
             Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Error && d.Message.Contains("No import sources found"));
         }
 
-        [Fact]
+        [WindowsFact]
         public void CodeResolvesToDataSymbol()
         {
             LinkImportsTransformation transformation = new();
@@ -351,7 +363,7 @@ extern ""C"" void AnotherFunction();
             Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("resolved to non-code symbol"));
         }
 
-        [Fact]
+        [WindowsFact]
         public void DataResolvesToCodeSymbol()
         {
             LinkImportsTransformation transformation = new();
@@ -365,7 +377,7 @@ extern ""C"" void AnotherFunction();
             Assert.Contains(staticField.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("resolved to a code symbol"));
         }
 
-        [Fact]
+        [WindowsFact]
         public void TrackVerboseImportInformation_False()
         {
             LinkImportsTransformation transformation = new()
@@ -391,7 +403,7 @@ extern ""C"" void AnotherFunction();
             Assert.DoesNotContain($"{nameof(TrackVerboseImportInformation_False)}_1.lib", diagnostic.Message);
         }
 
-        [Fact]
+        [WindowsFact]
         public void TrackVerboseImportInformation_True()
         {
             LinkImportsTransformation transformation = new()
@@ -417,7 +429,7 @@ extern ""C"" void AnotherFunction();
             Assert.Contains($"{nameof(TrackVerboseImportInformation_True)}_1.lib", diagnostic.Message);
         }
 
-        [Fact]
+        [WindowsFact]
         public void TrackVerboseImportInformation_MustBeSetBeforeAddingAnyLibraries()
         {
             LinkImportsTransformation transformation = new();
@@ -425,7 +437,7 @@ extern ""C"" void AnotherFunction();
             Assert.Throws<InvalidOperationException>(() => transformation.TrackVerboseImportInformation = true);
         }
 
-        [Fact]
+        [WindowsFact]
         [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/136")]
         public void VirtualMethod_NoErrorOnMissing()
         {
@@ -450,7 +462,7 @@ public:
             Assert.ReferenceEqual(methodBeforeTransformation, methodAfterTransformation);
         }
 
-        [Fact]
+        [WindowsFact]
         [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/136")]
         public void VirtualMethod_ErrorOnMissing()
         {
