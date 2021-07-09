@@ -11,6 +11,8 @@ namespace Biohazrd.Tests
         {
             TranslatedLibrary library = CreateLibrary
             (@"
+#include <stddef.h> // Required for size_t on non-Windows platforms
+
 void LooseFunction();
 void* operator new(size_t, void*);
 
@@ -45,6 +47,8 @@ public:
         {
             TranslatedLibrary library = CreateLibrary
             (@"
+#include <stddef.h> // Required for size_t on non-Windows platforms
+
 inline void LooseFunction() { }
 inline void* operator new(size_t, void*) { return nullptr; }
 
@@ -75,7 +79,7 @@ public:
         }
 
         [Fact]
-        public void IsInline_ForceInline()
+        public void IsInline_MsvcForceInline()
         {
             TranslatedLibrary library = CreateLibrary
             (@"
@@ -92,7 +96,45 @@ public:
     __forceinline operator bool() { return false; }
     __forceinline static void MyStaticMethod() { }
 };
-"
+",
+                targetTriple: "x86_64-pc-win32"
+            );
+
+            int functionCount = 0;
+            foreach (TranslatedDeclaration declaration in library.EnumerateRecursively())
+            {
+                if (declaration is not TranslatedFunction function)
+                { continue; }
+
+                functionCount++;
+                Assert.True(function.IsInline);
+            }
+
+            Assert.Equal(8, functionCount);
+        }
+
+        [LinuxFact] // The stddef.h will fail on Windows.
+        public void IsInline_GccAlwaysInline()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#include <stddef.h> // Required for size_t on non-Windows platforms
+
+__attribute__((always_inline)) inline void LooseFunction() { }
+__attribute__((always_inline)) inline void* operator new(size_t, void*) { return nullptr; }
+
+class MyClass
+{
+public:
+    __attribute__((always_inline)) inline MyClass() { }
+    __attribute__((always_inline)) inline void MyMethod() { }
+    __attribute__((always_inline)) inline ~MyClass() { }
+    __attribute__((always_inline)) inline bool operator ==(MyClass&) { return true; }
+    __attribute__((always_inline)) inline operator bool() { return false; }
+    __attribute__((always_inline)) inline static void MyStaticMethod() { }
+};
+",
+                targetTriple: "x86_64-pc-linux"
             );
 
             int functionCount = 0;
@@ -113,6 +155,8 @@ public:
         {
             TranslatedLibrary library = CreateLibrary
             (@"
+#include <stddef.h> // Required for size_t on non-Windows platforms
+
 void LooseFunction() { }
 void* operator new(size_t, void*) { return nullptr; }
 
