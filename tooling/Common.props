@@ -1,0 +1,28 @@
+<Project>
+  <!-- Default configuration and platform when not present -->
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
+  </PropertyGroup>
+  <!-- Build to central folders instead of scattering bin and obj throughout the solution tree -->
+  <PropertyGroup>
+    <!--
+      We include the project file extension by default to avoid unexpected collisions, but drop it for C# and C++ projects since we don't expect them to collide.
+    -->
+    <ThisProjectOutputSubdirectory>$(MSBuildProjectFile)</ThisProjectOutputSubdirectory>
+    <ThisProjectOutputSubdirectory Condition="'$(MSBuildProjectExtension)' == '.csproj'">$(MSBuildProjectName)</ThisProjectOutputSubdirectory>
+    <ThisProjectOutputSubdirectory Condition="'$(MSBuildProjectExtension)' == '.vcxproj'">$(MSBuildProjectName)</ThisProjectOutputSubdirectory>
+
+    <_ProjectTreeRoot>$(MSBuildThisFileDirectory)../</_ProjectTreeRoot>
+
+    <BaseOutputPath>$(_ProjectTreeRoot)bin/$(Configuration)-$(Platform)/</BaseOutputPath>
+    <OutputPath>$(BaseOutputPath)$(ThisProjectOutputSubdirectory)/</OutputPath>
+    <OutputDir>$(OutputPath)</OutputDir>
+
+    <BaseIntermediateOutputPath>$(_ProjectTreeRoot)obj/$(ThisProjectOutputSubdirectory)/</BaseIntermediateOutputPath>
+    <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(Configuration)-$(Platform)/</IntermediateOutputPath>
+
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+</Project>

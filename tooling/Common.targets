@@ -1,0 +1,18 @@
+<Project>
+  <!-- Verify each intermediate output directory is only used for a single project -->
+  <PropertyGroup>
+    <_RelativeProjectPathFilePath>$(BaseIntermediateOutputPath)RelativeProjectPath.txt</_RelativeProjectPathFilePath>
+    <_ProjectPathRelativeToIntermediateDirectory>$([MSBuild]::MakeRelative($(BaseIntermediateOutputPath), $(MSBuildProjectFullPath)))</_ProjectPathRelativeToIntermediateDirectory>
+  </PropertyGroup>
+  <Target Name="VerifyNoIntermediateDirCollisions" BeforeTargets="ResolvePackageAssets;Build">
+    <WriteLinesToFile File="$(_RelativeProjectPathFilePath)" Lines="$(_ProjectPathRelativeToIntermediateDirectory)" Condition="!Exists('$(_RelativeProjectPathFilePath)')" />
+    <ReadLinesFromFile File="$(_RelativeProjectPathFilePath)">
+      <Output TaskParameter="Lines" ItemName="_ReadProjectPathRelativeToIntermediateDirectory" />
+    </ReadLinesFromFile>
+    <Error Condition="'%(_ReadProjectPathRelativeToIntermediateDirectory.Identity)' != '$(_ProjectPathRelativeToIntermediateDirectory)'"
+      Text="Intermediate output directory collision between '%(_ReadProjectPathRelativeToIntermediateDirectory.Identity)' and '$(_ProjectPathRelativeToIntermediateDirectory)'" />
+  </Target>
+  <Target Name="CleanUpRelativeProjectPathFilePath" AfterTargets="Clean">
+    <Delete Files="$(_RelativeProjectPathFilePath)" />
+  </Target>
+</Project>
