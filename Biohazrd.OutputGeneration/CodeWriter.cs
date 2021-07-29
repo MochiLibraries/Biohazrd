@@ -28,7 +28,10 @@ namespace Biohazrd.OutputGeneration
             FilePath = filePath;
 
             // We don't need this until we're marked as finished, but we open it right away to lock the file.
-            _Writer = new StreamWriter(FilePath);
+            // We explicitly open our own FileStream because StreamWriter will specify FileShare.Read, and we'd prefer to avoid having others potentially
+            // trying to read a file we're still in the process of writing out.
+            FileStream stream = new(FilePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            _Writer = new StreamWriter(stream, leaveOpen: false);
         }
 
         public void WriteLineLeftAdjusted(string value)

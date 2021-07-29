@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Biohazrd.Tests.Common;
+using System;
 using System.IO;
 using Xunit;
 
@@ -121,6 +122,7 @@ namespace Biohazrd.OutputGeneration.Tests
         }
 
         [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/207")]
         public void ExplicitFinishDoesNotAllowEarlyRead()
         {
             FillCodeWriterAndGetCode
