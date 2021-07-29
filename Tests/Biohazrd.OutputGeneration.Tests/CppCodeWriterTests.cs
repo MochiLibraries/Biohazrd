@@ -228,7 +228,7 @@ namespace Biohazrd.OutputGeneration.Tests
             );
         }
 
-        [Fact]
+        [WindowsFact]
         [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/165")]
         public void IncludePathsAreNormalizedToForwardSlash1()
         {

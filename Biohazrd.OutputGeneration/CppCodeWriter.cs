@@ -73,7 +73,7 @@ namespace Biohazrd.OutputGeneration
             // Get the path relative to our output file
             filePath = Path.GetRelativePath(FileDirectoryPath, filePath);
 
-            // Use forward slashes
+            // Use forward slashes so the generated file is portable
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             { filePath = filePath.Replace('\\', '/'); }
 
