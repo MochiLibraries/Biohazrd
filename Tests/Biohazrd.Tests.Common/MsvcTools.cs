@@ -8,10 +8,12 @@ namespace Biohazrd.Tests.Common
 {
     public static partial class MsvcTools
     {
+        private static MsvcLocator MsvcLocator = new();
+
         private static void RunTool(string fileName, params string[] arguments)
         {
-            LocateVisualStudio();
-            string fullPath = Path.Combine(MsvcToolchainRoot, fileName);
+            string msvcToolchainRoot = MsvcLocator.LocateVisualStudio();
+            string fullPath = Path.Combine(msvcToolchainRoot, fileName);
 
             if (!File.Exists(fullPath))
             { throw new FailException($"Could not find required MSVC tool '{fileName}' at '{fullPath}'"); }
