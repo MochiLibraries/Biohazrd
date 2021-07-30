@@ -1,10 +1,12 @@
 ﻿using Biohazrd.Transformation.Infrastructure;
 using Kaisa;
+using LibObjectFile.Elf;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace Biohazrd.Transformation.Common
@@ -46,10 +48,117 @@ namespace Biohazrd.Transformation.Common
         /// <remarks>You generally do not want to enable this option unless you have advanced needs for virtual methods to be exported.</remarks>
         public bool ErrorOnMissingVirtualMethods { get; set; }
 
+        private static ReadOnlySpan<byte> ElfFileSignature => new byte[] { 0x7F, 0x45, 0x4C, 0x46 }; // 0x7F "ELF"
+        private static ReadOnlySpan<byte> WindowsArchiveSignature => new byte[] { 0x21, 0x3C, 0x61, 0x72, 0x63, 0x68, 0x3E, 0xA };// "!<arch>\n"
+        private static int LongestSignatureLength => WindowsArchiveSignature.Length;
         public void AddLibrary(string filePath)
         {
             using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read);
-            Archive library = new(stream);
+
+            // Determine if the library is an ELF shared library or a Windows archive file
+            Span<byte> header = stackalloc byte[LongestSignatureLength];
+            if (stream.Read(header) != header.Length)
+            { throw new ArgumentException("The specified file is too small to be a library.", nameof(filePath)); }
+
+            stream.Position = 0;
+
+            if (header.StartsWith(WindowsArchiveSignature))
+            {
+                Archive library = new(stream);
+
+                // Enumerate all import and export symbols from the package
+                foreach (ArchiveMember member in library.ObjectFiles)
+                {
+                    if (member is ImportArchiveMember importMember)
+                    {
+                        SymbolImportExportInfo info = new(importMember);
+                        GetOrCreateSymbolEntry(importMember.Symbol).AddImport(filePath, info);
+                    }
+                    else if (member is CoffArchiveMember coffMember)
+                    {
+                        foreach (CoffSymbol coffSymbol in coffMember.Symbols)
+                        { GetOrCreateSymbolEntry(coffSymbol.Name).AddExport(filePath); }
+                    }
+                } 
+            }
+            else if (header.StartsWith(ElfFileSignature))
+            {
+                ElfReaderOptions options = new() { ReadOnly = true };
+                ElfObjectFile elf = ElfObjectFile.Read(stream, options);
+
+                // Determine the name to use for the import
+                // In theory we could strip off the lib prefix and .so suffix here, however that will remove information required for loading the library via NativeLibrary.Load(string)
+                // If we want to strip these we should handle it in the output stage instead (that way it's consistent across the entire library too.)
+                string libraryFileName = Path.GetFileName(filePath);
+
+                // Find the .dynsym table
+                // (We do not bother with the symbol hash table because we'll most likely end up needing nearly every symbol as it is and it simplifies our architecture.)
+                const string sectionName = ".dynsym";
+                ElfSymbolTable? symbolTable = elf.Sections.OfType<ElfSymbolTable>().FirstOrDefault(s => s.Name == sectionName);
+
+                if (symbolTable is null)
+                { throw new ArgumentException($"The specified ELF file does not contain a '{sectionName}' section."); }
+
+                // See https://refspecs.linuxbase.org/elf/gabi4+/ch4.symtab.html for details on what the symbol table entires mean
+                // Note that the spec is not very specific about what is and isn't allowed in the dynamic symbol table, so we're probably overly defensive here
+                // In general we ignore symbols which have OS and architecture-specific types or binding since we can't safely understand what they're for.
+                foreach (ElfSymbol symbol in symbolTable.Entries)
+                {
+                    // Ignore unnamed symbols
+                    if (String.IsNullOrEmpty(symbol.Name))
+                    { continue; }
+
+                    // Ignore symbols which are not publically accessible
+                    // (Default effectively means public)
+                    if (symbol.Visibility != ElfSymbolVisibility.Default && symbol.Visibility != ElfSymbolVisibility.Protected)
+                    { continue; }
+
+                    // Ignore symbols which are undefined
+                    if (symbol.Section.IsSpecial && symbol.Section.SpecialIndex == ElfNative.SHN_UNDEF)
+                    { continue; }
+
+                    // Ignore symbols which are not functions or objects (variables)
+                    if (symbol.Type != ElfSymbolType.Function && symbol.Type != ElfSymbolType.Object)
+                    { continue; }
+
+                    // Ignore symbols which are not global or weak
+                    // Note that we do not actually differentiate between global and weak symbols, the distinction only matters for static linking
+                    // See https://www.bottomupcs.com/libraries_and_the_linker.xhtml#d0e10440
+                    if (symbol.Bind != ElfSymbolBind.Global && symbol.Bind != ElfSymbolBind.Weak)
+                    { continue; }
+
+                    // Determine the import type of the symbol based on its section
+                    ImportType importType;
+                    switch (symbol.Section.Section?.Name)
+                    {
+                        case ".text":
+                            importType = ImportType.Code;
+                            break;
+                        case ".rodata":
+                            importType = ImportType.Const;
+                            break;
+                        case ".data":
+                        case ".bss":
+                            importType = ImportType.Data;
+                            break;
+                        case null when symbol.Section.IsSpecial:
+                            Debug.Fail($"ELF symbol from special section '{symbol.Section}'");
+                            continue;
+                        default:
+                            if (symbol.Section.Section?.Name is not null)
+                            { Debug.Fail($"ELF symbol from unrecognized section '{symbol.Section.Section.Name}'"); }
+                            else
+                            { Debug.Fail($"ELF symbol from unnamed/null section."); }
+                            continue;
+                    }
+
+                    // Add the symbol to our lookup
+                    SymbolImportExportInfo info = new(libraryFileName, symbol, importType);
+                    GetOrCreateSymbolEntry(symbol.Name).AddImport(filePath, info);
+                }
+            }
+            else
+            { throw new ArgumentException("The specified file does not appear to be in a compatible format.", nameof(filePath)); }
 
             SymbolEntry GetOrCreateSymbolEntry(string symbol)
             {
@@ -60,21 +169,6 @@ namespace Biohazrd.Transformation.Common
                     Imports.Add(symbol, symbolEntry);
                 }
                 return symbolEntry;
-            }
-
-            // Enumerate all import and export symbols from the package
-            foreach (ArchiveMember member in library.ObjectFiles)
-            {
-                if (member is ImportArchiveMember importMember)
-                {
-                    SymbolImportExportInfo info = new(importMember);
-                    GetOrCreateSymbolEntry(importMember.Symbol).AddImport(filePath, info);
-                }
-                else if (member is CoffArchiveMember coffMember)
-                {
-                    foreach (CoffSymbol coffSymbol in coffMember.Symbols)
-                    { GetOrCreateSymbolEntry(coffSymbol.Name).AddExport(filePath); }
-                }
             }
         }
 
@@ -106,7 +200,9 @@ namespace Biohazrd.Transformation.Common
 
                     foreach ((string library, SymbolImportExportInfo info) in symbolEntry.Sources)
                     {
-                        if (info.IsImport)
+                        if (info.IsFromElf)
+                        { builder.Append($"\n    '{library}'"); } // The library and the DllFileName are the same for ELF sources, avoid printing the redundant info.
+                        else if (info.IsImport)
                         { builder.Append($"\n    '{library}': Import from '{info.DllFileName}'"); }
                         else
                         { builder.Append($"\n    '{library}': Statically-linked export'"); }
@@ -273,6 +369,7 @@ namespace Biohazrd.Transformation.Common
             public ImportNameType ImportNameType { get; }
             public string? DllFileName { get; }
             public ushort OrdinalOrHint { get; }
+            public bool IsFromElf { get; }
 
             public SymbolImportExportInfo(ImportArchiveMember importMember)
             {
@@ -281,6 +378,17 @@ namespace Biohazrd.Transformation.Common
                 ImportNameType = importMember.ImportHeader.NameType;
                 DllFileName = importMember.Dll;
                 OrdinalOrHint = importMember.ImportHeader.OrdinalOrHint;
+                IsFromElf = false;
+            }
+
+            public SymbolImportExportInfo(string libraryFileName, ElfSymbol symbol, ImportType importType)
+            {
+                IsImport = true;
+                ImportNameType = ImportNameType.Name; // ELFs do not have ordinal members
+                DllFileName = libraryFileName;
+                OrdinalOrHint = 0;
+                ImportType = importType;
+                IsFromElf = true;
             }
 
             public bool IsEquivalentTo(SymbolImportExportInfo other)

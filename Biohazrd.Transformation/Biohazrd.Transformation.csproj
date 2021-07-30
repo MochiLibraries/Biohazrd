@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="Kaisa" Version="0.0.1" />
+    <PackageReference Include="LibObjectFile" Version="0.3.5" />
   </ItemGroup>
 
   <ItemGroup>
