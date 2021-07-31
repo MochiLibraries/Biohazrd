@@ -6,6 +6,7 @@ Biohazrd incorporates third-party libraries licensed as follows.
 - [ClangSharp.Pathogen](#clangsharppathogen)
 - [Kaisa the Sharp Librarian](#kaisa-the-sharp-librarian)
 - [LibObjectFile](#libobjectfile)
+- [Microsoft Visual Studio Setup Software Development Kit](#microsoft-visual-studio-setup-software-development-kit)
 - [The LLVM Project](#the-llvm-project)
 
 <!-- /TOC -->
@@ -110,6 +111,10 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+# Microsoft Visual Studio Setup Software Development Kit
+
+The Visual Studio Setup SDK is licensed under the license terms found at https://go.microsoft.com/fwlink/?linkid=831109.
 
 # The LLVM Project
 
