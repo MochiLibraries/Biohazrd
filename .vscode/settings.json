@@ -1,0 +1,10 @@
+{
+  // This must match our EditorConfig
+  // (We need this because the EditorConfig for VS Code extension does not support enforcing the charset.)
+  "files.encoding": "utf8bom",
+  "files.exclude": {
+    ".vs/": true,
+    "bin/": true,
+    "obj/": true
+  }
+}
