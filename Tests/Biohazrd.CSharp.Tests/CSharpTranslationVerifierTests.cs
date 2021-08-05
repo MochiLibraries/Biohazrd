@@ -93,7 +93,10 @@ struct MyStruct
         C
     };
 };
-"
+",
+                // 32-bit wchar_t is not currently supported so we need to use Windows
+                // https://github.com/InfectedLibraries/Biohazrd/issues/45
+                targetTriple: "x86_64-pc-win32"
             );
 
             // Assert preconditions
@@ -129,7 +132,10 @@ enum : wchar_t
     B,
     C
 };
-"
+",
+                // 32-bit wchar_t is not currently supported so we need to use Windows
+                // https://github.com/InfectedLibraries/Biohazrd/issues/45
+                targetTriple: "x86_64-pc-win32"
             );
 
             // Assert preconditions
@@ -167,7 +173,10 @@ enum : wchar_t
     B,
     C
 };
-"
+",
+                // 32-bit wchar_t is not currently supported so we need to use Windows
+                // https://github.com/InfectedLibraries/Biohazrd/issues/45
+                targetTriple: "x86_64-pc-win32"
             );
 
             // Fill in some missing information on the enum

@@ -1,6 +1,5 @@
 ﻿using ClangSharp.Pathogen;
 using System.Text;
-using System.Runtime.InteropServices;
 
 namespace Biohazrd.Expressions
 {
@@ -50,11 +49,13 @@ namespace Biohazrd.Expressions
                     PathogenStringConstantKind encodingKind = (PathogenStringConstantKind)info.SubKind;
                     PathogenConstantString* rawStringValue = (PathogenConstantString*)info.Value;
 
+                    // Strip off the wchar_t bit if present since we don't care how the string was originally declared
+                    if (encodingKind.HasFlag(PathogenStringConstantKind.WideCharBit))
+                    { encodingKind &= ~PathogenStringConstantKind.WideCharBit; }
+
                     Encoding? encoding = encodingKind switch
                     {
                         PathogenStringConstantKind.Ascii => Encoding.ASCII,
-                        //TODO: Need to query the actual width rather than relying on the OS the generator is running under.
-                        PathogenStringConstantKind.WideChar => !RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? Encoding.UTF32 : Encoding.Unicode,
                         PathogenStringConstantKind.Utf8 => Encoding.UTF8,
                         PathogenStringConstantKind.Utf16 => Encoding.Unicode,
                         PathogenStringConstantKind.Utf32 => Encoding.UTF32,
