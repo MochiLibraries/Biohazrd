@@ -16,6 +16,16 @@ namespace Biohazrd.CSharp
             if (clangType is not BuiltinType)
             { return type; }
 
+            static CSharpBuiltinType? GetTypeFromSize(ClangType type, bool isSigned)
+                => type.Handle.SizeOf switch
+                {
+                    1 => isSigned ? CSharpBuiltinType.SByte : CSharpBuiltinType.Byte,
+                    2 => isSigned ? CSharpBuiltinType.Short : CSharpBuiltinType.UShort,
+                    4 => isSigned ? CSharpBuiltinType.Int : CSharpBuiltinType.UInt,
+                    8 => isSigned ? CSharpBuiltinType.Long : CSharpBuiltinType.ULong,
+                    _ => null
+                };
+
             CSharpBuiltinType? cSharpType = clangType.Kind switch
             {
                 CXType_Bool => CSharpBuiltinType.Bool,
@@ -26,20 +36,20 @@ namespace Biohazrd.CSharp
                 CXType_Char_S => CSharpBuiltinType.Byte, // char (with -fsigned-char)
                 CXType_Char_U => CSharpBuiltinType.Byte, // char (with -fno-signed-char)
                 CXType_Char16 => CSharpBuiltinType.Char, // char16_t
-                CXType_WChar => CSharpBuiltinType.Char, // wchar_t
+                CXType_WChar when (clangType.Handle.SizeOf == 2) => CSharpBuiltinType.Char, // wchar_t
 
                 // Unsigned integer types
                 CXType_UChar => CSharpBuiltinType.Byte, // unsigned char / uint8_t
                 CXType_UShort => CSharpBuiltinType.UShort,
                 CXType_UInt => CSharpBuiltinType.UInt,
-                CXType_ULong => CSharpBuiltinType.UInt,
+                CXType_ULong => GetTypeFromSize(clangType, false),
                 CXType_ULongLong => CSharpBuiltinType.ULong,
 
                 // Signed integer types
                 CXType_SChar => CSharpBuiltinType.SByte, // signed char / int8_t
                 CXType_Short => CSharpBuiltinType.Short,
                 CXType_Int => CSharpBuiltinType.Int,
-                CXType_Long => CSharpBuiltinType.Int,
+                CXType_Long => GetTypeFromSize(clangType, true),
                 CXType_LongLong => CSharpBuiltinType.Long,
 
                 // Floating point types
