@@ -21,6 +21,8 @@ namespace Biohazrd.Utilities
         private volatile int NextTrampolineId = 0;
         private readonly CppCodeWriter Writer;
 
+        public bool __ItaniumExportMode = false;
+
         public InlineExportHelper(OutputSession session, string filePath)
             => Writer = session.Open<CppCodeWriter>(filePath);
 
@@ -159,8 +161,11 @@ namespace Biohazrd.Utilities
             if (FunctionsExportedViaFunctionPointer.Count > 0)
             {
                 // Instruct the linker to export the symbols
-                foreach (TranslatedFunction function in FunctionsExportedViaFunctionPointer)
-                { Writer.WriteLine($"#pragma comment(linker, \"/export:{function.MangledName}\")"); }
+                if (!__ItaniumExportMode)
+                {
+                    foreach (TranslatedFunction function in FunctionsExportedViaFunctionPointer)
+                    { Writer.WriteLine($"#pragma comment(linker, \"/export:{function.MangledName}\")"); }
+                }
 
                 Writer.EnsureSeparation();
 
@@ -168,6 +173,9 @@ namespace Biohazrd.Utilities
                 Writer.WriteLine($"namespace {dummyNamespaceName}");
                 using (Writer.Block())
                 {
+                    if (__ItaniumExportMode)
+                    { Writer.WriteLineLeftAdjusted("#pragma GCC visibility push(hidden)"); }
+
                     for (int i = 0; i < FunctionsExportedViaFunctionPointer.Count; i++)
                     {
                         TranslatedFunction function = FunctionsExportedViaFunctionPointer[i];
@@ -212,6 +220,9 @@ namespace Biohazrd.Utilities
                         WriteOutNamespaceAndType(functionDecl);
                         Writer.WriteLine($"{functionDecl};");
                     }
+
+                    if (__ItaniumExportMode)
+                    { Writer.WriteLineLeftAdjusted("#pragma GCC visibility pop"); }
                 }
             }
 
@@ -241,6 +252,11 @@ namespace Biohazrd.Utilities
                 Writer.WriteLine($"extern \"C\" namespace {dummyNamespaceName}");
                 using (Writer.Block())
                 {
+                    //TODO: We should use a call strategy for Itanium instead
+                    // See https://github.com/InfectedLibraries/Biohazrd/issues/209
+                    if (__ItaniumExportMode)
+                    { Writer.WriteLineLeftAdjusted("#pragma GCC visibility push(default)"); }
+
                     foreach (TranslatedFunction function in FunctionsExportedViaTrampoline)
                     {
                         Debug.Assert(function.Declaration is FunctionDecl);
@@ -258,7 +274,8 @@ namespace Biohazrd.Utilities
                         { Writer.Include(function.File.FilePath); }
 
                         Writer.EnsureSeparation();
-                        Writer.Write("__declspec(dllexport) ");
+                        if (!__ItaniumExportMode)
+                        { Writer.Write("__declspec(dllexport) "); }
 
                         // Write return type
                         if (functionDecl is CXXConstructorDecl)
@@ -317,6 +334,9 @@ namespace Biohazrd.Utilities
 
                         Writer.WriteLine("); }");
                     }
+
+                    if (__ItaniumExportMode)
+                    { Writer.WriteLineLeftAdjusted("#pragma GCC visibility pop"); }
                 }
             }
 
