@@ -270,5 +270,23 @@ namespace Biohazrd.OutputGeneration.Tests
             Assert.True(Path.GetFileName(file1).Length < 256);
             Assert.True(Path.GetFileName(file2).Length < 256);
         }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/212")]
+        public void FileLogUsesForwardSlashes()
+        {
+            string fileLogPath;
+
+            using (OutputSession outputSession = CreateOutputSession())
+            {
+                outputSession.Open<StreamWriter>(Path.Combine("Folder", "Test.txt")).WriteLine("Test");
+                fileLogPath = Path.Combine(outputSession.BaseOutputDirectory, "FilesWritten.txt");
+            }
+
+            Assert.True(File.Exists(fileLogPath));
+            string fileLog = File.ReadAllText(fileLogPath);
+            Assert.DoesNotContain('\\', fileLog);
+            Assert.Contains('/', fileLog);
+        }
     }
 }

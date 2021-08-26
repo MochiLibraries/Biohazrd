@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace Biohazrd.OutputGeneration
 {
@@ -250,6 +251,10 @@ namespace Biohazrd.OutputGeneration
 
                     // Make the path relative to the output directory
                     string relativePath = Path.GetRelativePath(BaseOutputDirectory, writtenFilePath);
+
+                    // Use forward slashes so the generated file is portable
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    { relativePath = relativePath.Replace('\\', '/'); }
 
                     // Add the file to the log
                     fileLog.WriteLine(relativePath);
