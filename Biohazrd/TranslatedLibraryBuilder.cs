@@ -1,4 +1,4 @@
-using ClangSharp;
+﻿using ClangSharp;
 using ClangSharp.Interop;
 using ClangSharp.Pathogen;
 using System;
@@ -17,6 +17,22 @@ namespace Biohazrd
         private readonly List<SourceFileInternal> Files = new();
 
         public TranslationOptions Options { get; set; } = new();
+
+        public TranslatedLibraryBuilder()
+        {
+            // On non-Windows platforms we need to provide the Clang resource directory.
+            // This specifies the version copied to our output directory by ClangSharp.Pathogen.Runtime.
+            // (One Windows the same files come from the UCRT instead.)
+            // See https://github.com/InfectedLibraries/Biohazrd/issues/201 for more details
+            string resourceDirectoryPath = Path.Combine(AppContext.BaseDirectory, "clang-resources");
+            if (!OperatingSystem.IsWindows())
+            {
+                if (!Directory.Exists(resourceDirectoryPath) || !File.Exists(Path.Combine(resourceDirectoryPath, "include", "stddef.h")))
+                { throw new DirectoryNotFoundException("Clang resources directory not found."); }
+                
+                AddCommandLineArguments("-resource-dir", resourceDirectoryPath);
+            }
+        }
 
         public void AddFile(SourceFile sourceFile)
         {
