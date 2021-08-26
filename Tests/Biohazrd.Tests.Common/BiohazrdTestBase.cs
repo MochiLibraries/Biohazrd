@@ -21,11 +21,6 @@ namespace Biohazrd.Tests.Common
                 Contents = cppCode
             });
 
-            //TODO: Figure out a better way to deal with this
-            // https://github.com/InfectedLibraries/Biohazrd/issues/201
-            if (OperatingSystem.IsLinux())
-            { builder.AddCommandLineArguments("-isystem/usr/lib/llvm-10/lib/clang/10.0.0/include/"); }
-
             if (targetTriple is not null)
             { builder.AddCommandLineArgument($"--target={targetTriple}"); }
 

@@ -255,5 +255,21 @@ struct B { };
             Assert.Contains(library.ParsingDiagnostics, d => d.IsError && d.IsFromClang);
             Assert.NotEmpty(library.Declarations);
         }
+
+        [Fact]
+        [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/201")]
+        public void ClangFindsSystemIncludes()
+        {
+            // On Windows stddef.h will be found from the UCRT.
+            // On Linux it needs to come from the Clang resource directory.
+            TranslatedLibrary library = CreateLibrary
+            (
+                @"
+#include <stddef.h>
+size_t Test();
+"
+            );
+            library.FindDeclaration<TranslatedFunction>("Test");
+        }
     }
 }
