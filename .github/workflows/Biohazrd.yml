@@ -8,8 +8,6 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   DOTNET_GENERATE_ASPNET_CERTIFICATE: false
   ContinuousIntegrationBuild: true
-  # Workaround for https://github.com/InfectedLibraries/Biohazrd/issues/176 until we have time for a proper fix.
-  VCToolsInstallDir: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC\14.25.28610\
 jobs:
   build-and-test:
     strategy:

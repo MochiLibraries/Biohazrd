@@ -17,7 +17,7 @@ namespace Biohazrd
             MangledName = variable.Handle.Mangling.ToString();
 
             // Static variables outside of records should always be public.
-            if (variable.CursorParent is not RecordDecl)
+            if (variable.SemanticParentCursor is not RecordDecl)
             { Accessibility = AccessModifier.Public; }
         }
 

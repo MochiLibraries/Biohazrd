@@ -26,7 +26,7 @@ namespace Biohazrd
             else
             {
                 HasExplicitValue = true;
-                IsHexValue = integerLiteral.Value.StartsWith("0x", StringComparison.InvariantCultureIgnoreCase);
+                IsHexValue = integerLiteral.ValueString.StartsWith("0x", StringComparison.InvariantCultureIgnoreCase);
             }
         }
 

@@ -128,7 +128,7 @@ namespace Biohazrd.Utilities
                 {
                     // We can't use a trampoline function to call an abstract constructor, a different approach is necessary here.
                     // https://github.com/InfectedLibraries/Biohazrd/issues/14
-                    if (functionDecl.CursorParent is CXXRecordDecl { IsAbstract: true })
+                    if (functionDecl.SemanticParentCursor is CXXRecordDecl { IsAbstract: true })
                     {
                         return declaration with { Diagnostics = declaration.Diagnostics.Add(Severity.Warning, "Constructor needs to be exported to be accessible, but it is abstract.") };
                     }
@@ -265,7 +265,7 @@ namespace Biohazrd.Utilities
 
                         if (functionDecl is CXXMethodDecl)
                         {
-                            parentRecord = functionDecl.CursorParent as RecordDecl;
+                            parentRecord = functionDecl.SemanticParentCursor as RecordDecl;
                             Debug.Assert(parentRecord is not null);
                         }
 
@@ -348,10 +348,10 @@ namespace Biohazrd.Utilities
 
         private void WriteOutNamespaceAndType(Cursor cursor)
         {
-            if (cursor is TranslationUnitDecl || cursor.CursorParent is null)
+            if (cursor is TranslationUnitDecl || cursor.SemanticParentCursor is null)
             { return; }
 
-            WriteOutNamespaceAndType(cursor.CursorParent);
+            WriteOutNamespaceAndType(cursor.SemanticParentCursor);
 
             switch (cursor)
             {
