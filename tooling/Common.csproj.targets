@@ -1,5 +1,59 @@
 <Project>
+  <!-- Automatically expose internals to tests -->
   <ItemGroup Condition="'$(IsTestProject)' != 'true'">
     <InternalsVisibleTo Include="$(MSBuildProjectName).Tests" />
   </ItemGroup>
+
+  <!-- Determine package versions -->
+  <PropertyGroup Condition="'$(ContinuousIntegrationBuild)' != 'true'">
+    <DevVersion Condition="'$(DevVersion)' == ''">0</DevVersion>
+    <Version>0.0.0-dev$(DevVersion)</Version>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(ContinuousIntegrationBuild)' == 'true'">
+    <Version>$(CiBuildVersion)</Version>
+  </PropertyGroup>
+
+  <Target Name="EnsureCiBuildsHaveVersion" BeforeTargets="Build;Pack" Condition="'$(ContinuousIntegrationBuild)' == 'true' and '$(CiBuildVersion)' == ''">
+    <Error Text="ContinuousIntegrationBuild is enabled without specifying version number!" />
+  </Target>
+  
+  <!-- Use the informational version (which includes the Git revision) for the package version -->
+  <Target Name="UseInformationalVersionForPackageVersion" BeforeTargets="GenerateNuspec;_GetOutputItemsFromPack" DependsOnTargets="AddSourceRevisionToInformationalVersion">
+    <Error Text="SourceRevisionId is missing." Condition="'$(ContinuousIntegrationBuild)' == 'true' and '$(SourceRevisionId)' == ''" />
+    <PropertyGroup>
+      <PackageVersion>$(InformationalVersion)</PackageVersion>
+    </PropertyGroup>
+  </Target>
+
+  <!-- Add common package description blurb to all packages -->
+  <PropertyGroup>
+    <CommonPackageDescription>A framework for automatically generating bindings for C/C++ libraries.</CommonPackageDescription>
+    <PackageDescription Condition="'$(PackageDescription)' != ''">$(CommonPackageDescription)&#10;&#10;$(PackageDescription)</PackageDescription>
+    <PackageDidNotSpecifyCustomDescription Condition="'$(PackageDescription)' == ''">true</PackageDidNotSpecifyCustomDescription>
+    <PackageDescription Condition="'$(PackageDescription)' == ''">$(CommonPackageDescription)</PackageDescription>
+  </PropertyGroup>
+
+  <!-- Ensure all specific packages have specific descriptions -->
+  <Target Name="EnsurePackageHasSpecificDescription" BeforeTargets="GenerateNuspec" Condition="'$(IsPackable)' == 'true' and '$(PackageDidNotSpecifyCustomDescription)' == 'true' and '$(AssemblyName)' != 'Biohazrd.AllInOne'">
+    <Error Text="$(AssemblyName) does not have a PackageDescription!" />
+  </Target>
+  <Target Name="EnsurePackageHasSpecificDescriptionBeforeBuild" BeforeTargets="Build" Condition="'$(IsPackable)' == 'true' and '$(PackageDidNotSpecifyCustomDescription)' == 'true'and '$(AssemblyName)' != 'Biohazrd.AllInOne'">
+    <Warning Text="$(AssemblyName) does not have a PackageDescription!" />
+  </Target>
+
+  <!--
+    This ensures Biohazrd packages use exact version matching for sibling Biohazrd dependencies since we do not support mixing and matching
+    This target is taken from https://github.com/NuGet/Home/issues/5556#issuecomment-585482714
+  -->
+  <Target Name="UseExactProjectReferenvePackageVersions" AfterTargets="_GetProjectReferenceVersions">
+    <ItemGroup>
+      <_ProjectReferencesWithExactVersions Include="@(_ProjectReferencesWithVersions)">
+        <ProjectVersion>[%(_ProjectReferencesWithVersions.ProjectVersion)]</ProjectVersion>
+      </_ProjectReferencesWithExactVersions>
+    </ItemGroup>
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Remove="@(_ProjectReferencesWithVersions)" />
+      <_ProjectReferencesWithVersions Include="@(_ProjectReferencesWithExactVersions)" />
+    </ItemGroup>
+  </Target>
 </Project>

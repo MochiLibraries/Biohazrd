@@ -22,6 +22,8 @@
     <BaseIntermediateOutputPath>$(_ProjectTreeRoot)obj/$(ThisProjectOutputSubdirectory)/</BaseIntermediateOutputPath>
     <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(Configuration)-$(Platform)/</IntermediateOutputPath>
 
+    <PackageOutputPath>$(_ProjectTreeRoot)packages/</PackageOutputPath>
+
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>

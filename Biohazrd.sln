@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30011.22
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31612.314
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A8649210-1355-403A-8B2D-45BD759B1B32}"
 	ProjectSection(SolutionItems) = preProject
@@ -21,6 +21,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tooling", "tooling", "{09A8
 	ProjectSection(SolutionItems) = preProject
 		tooling\Common.csproj.props = tooling\Common.csproj.props
 		tooling\Common.csproj.targets = tooling\Common.csproj.targets
+		tooling\Common.props = tooling\Common.props
+		tooling\Common.targets = tooling\Common.targets
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.Utilities", "Biohazrd.Utilities\Biohazrd.Utilities.csproj", "{12BCC25F-9712-4223-8E34-50B7C060D8E2}"
@@ -40,6 +42,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.CSharp.Tests", "Tests\Biohazrd.CSharp.Tests\Biohazrd.CSharp.Tests.csproj", "{00F21754-DDAC-498B-A6C7-1185341CDB65}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.OutputGeneration.Tests", "Tests\Biohazrd.OutputGeneration.Tests\Biohazrd.OutputGeneration.Tests.csproj", "{00E42A88-A883-4C43-BE2E-8A241A32EDA9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Biohazrd.AllInOne", "Biohazrd.AllInOne\Biohazrd.AllInOne.csproj", "{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -87,6 +91,10 @@ Global
 		{00E42A88-A883-4C43-BE2E-8A241A32EDA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00E42A88-A883-4C43-BE2E-8A241A32EDA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{00E42A88-A883-4C43-BE2E-8A241A32EDA9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

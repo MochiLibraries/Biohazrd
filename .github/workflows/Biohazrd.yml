@@ -1,22 +1,48 @@
 name: Biohazrd
 on:
   push:
+    # This prevents tag pushes from triggering this workflow
+    branches: ['*']
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version"
+        default: ""
+      will_publish_packages:
+        description: "Publish packages?"
+        default: "false"
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   DOTNET_GENERATE_ASPNET_CERTIFICATE: false
   ContinuousIntegrationBuild: true
+  # This URL will be added to the restore sources if it isn't the official NuGet.org
+  # (This is mainly intended to allow using the NuGet.org test servers to test CI in forks.)
+  CiNuGetApiUrl: ${{secrets.NUGET_API_URL}}
 jobs:
   build-and-test:
     strategy:
       fail-fast: false
       matrix:
-        os: ['windows-latest', 'ubuntu-latest']
+        platform:
+          - name: Windows
+            architecture: x64
+            runs-on: windows-latest
+          - name: Linux
+            architecture: x64
+            runs-on: ubuntu-latest
         configuration: ['Debug', 'Release']
-    name: Build and Test ${{matrix.configuration}} ${{matrix.os}}
-    runs-on: ${{matrix.os}}
+        include:
+          # Linux Release x64 builds create packages (if applicable)
+          - platform:
+              runs-on: ubuntu-latest
+            configuration: Release
+            create-packages: true
+    name: Build and Test ${{matrix.platform.name}} ${{matrix.platform.architecture}} ${{matrix.configuration}}
+    runs-on: ${{matrix.platform.runs-on}}
     steps:
       # ----------------------------------------------------------------------- Checkout
       - name: Checkout
@@ -24,11 +50,29 @@ jobs:
         with:
           submodules: recursive
 
+      # ----------------------------------------------------------------------- Setup Python
+      - name: Setup Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
       # ----------------------------------------------------------------------- Setup .NET
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 5.0.x
+
+      # ----------------------------------------------------------------------- Configure versioning
+      - name: Configure build
+        id: configuration
+        run: python .github/workflows/configure-build.py
+        env:
+          github_event_name: ${{github.event_name}}
+          github_ref: ${{github.ref}}
+          github_run_number: ${{github.run_number}}
+          release_version: ${{github.event.release.tag_name}}
+          workflow_dispatch_version: ${{github.event.inputs.version}}
+          workflow_dispatch_will_publish_packages: ${{github.event.inputs.will_publish_packages}}
 
       # ----------------------------------------------------------------------- Build
       - name: Restore
@@ -36,14 +80,121 @@ jobs:
 
       - name: Build
         run: dotnet build --no-restore --configuration ${{matrix.configuration}}
+      
+      - name: Pack
+        id: pack
+        if: matrix.create-packages
+        run: dotnet pack --no-build --configuration ${{matrix.configuration}}
 
       # ----------------------------------------------------------------------- Test
       - name: Test
         run: dotnet test --no-restore --no-build --configuration ${{matrix.configuration}} --verbosity normal
+      
+      # ----------------------------------------------------------------------- Collect Artifacts
+      - name: Collect NuGet Packages
+        uses: actions/upload-artifact@v2
+        # We always want to collect packages when they were produced
+        if: steps.pack.outcome == 'success' && always()
+        with:
+          name: Packages
+          if-no-files-found: error
+          path: packages/**
+
+  publish-packages-github:
+    name: Publish to GitHub
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    # Pushes always publish CI packages (configure-build.py will add the branch name to the version string for branches besides main)
+    # Published releases always publish packages
+    # A manual workflow only publishes packages if explicitly enabled
+    if: github.event_name == 'push' || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.will_publish_packages == 'true')
+    steps:
+      # ----------------------------------------------------------------------- Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+
+      # ----------------------------------------------------------------------- Download built packages
+      - name: Download built packages
+        uses: actions/download-artifact@v2
+        with:
+          name: Packages
+      
+      # ----------------------------------------------------------------------- Upload release assets
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        uses: actions/github-script@v4
+        with:
+          user-agent: actions/github-script for ${{github.repository}}
+          script: |
+            const fs = require('fs').promises;
+            const path = require('path');
+            const upload_url = context.payload.release.upload_url;
+
+            if (!upload_url) {
+                throw "Missing release asset upload URL!";
+            }
+
+            for (let filePath of await fs.readdir('.')) {
+                const fileExtension = path.extname(filePath);
+                if (fileExtension != '.nupkg' && fileExtension != '.snupkg') {
+                    continue;
+                }
+
+                console.log(`Uploading '${filePath}'`);
+                const contentLength = (await fs.stat(filePath)).size;
+                const fileContents = await fs.readFile(filePath);
+                await github.repos.uploadReleaseAsset({
+                    url: upload_url,
+                    headers: {
+                        'content-type': 'application/octet-stream',
+                        'content-length': contentLength
+                    },
+                    name: path.basename(filePath),
+                    data: fileContents
+                });
+            }
+
+      # ----------------------------------------------------------------------- Push to GitHub Packages
+      - name: Push to GitHub Packages
+        run: dotnet nuget push "*.nupkg" --skip-duplicate --no-symbols true --api-key ${{secrets.GITHUB_TOKEN}} --source https://nuget.pkg.github.com/${{github.repository_owner}}
+        env:
+          # This is a workaround for https://github.com/NuGet/Home/issues/9775
+          DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
+  
+  publish-packages-nuget-org:
+    name: Publish to NuGet.org
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    environment: NuGet.org
+    # Release builds always publish packages to NuGet.org
+    # Workflow dispatch builds will only publish packages if enabled and an explicit version number is given
+    # Make sure this logic matches configure-build.py to ensure we don't accidentally depend on sibling CI pre-release packages
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.will_publish_packages == 'true' && github.event.inputs.version != '')
+    steps:
+      # ----------------------------------------------------------------------- Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+
+      # ----------------------------------------------------------------------- Download built packages
+      - name: Download built packages
+        uses: actions/download-artifact@v2
+        with:
+          name: Packages
+
+      # ----------------------------------------------------------------------- Push to NuGet.org
+      - name: Push to NuGet.org
+        run: dotnet nuget push "*.nupkg" --api-key ${{secrets.NUGET_API_KEY}} --source ${{secrets.NUGET_API_URL}}
+        env:
+          # This is a workaround for https://github.com/NuGet/Home/issues/9775
+          DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
 
   send-ci-failure-notification:
     name: Send CI Failure Notification
-    needs: build-and-test
+    needs: [build-and-test, publish-packages-github, publish-packages-nuget-org]
     if: failure() && github.event_name != 'pull_request'
     continue-on-error: true
     runs-on: ubuntu-latest

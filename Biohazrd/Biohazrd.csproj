@@ -2,16 +2,19 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
+    <!-- The Biohazrd package is an all-in-one package which brings in everything so we need to disambiguate this one. -->
+    <PackageId>Biohazrd.Core</PackageId>
+    <PackageDescription>This package provides core functionality for parsing C/C++ libraries.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="ClangSharp" Version="[12.0.0-beta2]" />
-    <PackageReference Include="ClangSharp.Pathogen" Version="[0.0.0-ci45]" />
-    
+    <PackageReference Include="ClangSharp.Pathogen" Version="[0.0.0]" />
+
     <!-- Exclude ClangSharp's runtime packages (we provide libclang and libClangSharp via ClangSharp.Pathogen -->
     <PackageReference Include="libClang" Version="12.0.0" PrivateAssets="all" />
     <PackageReference Include="libClangSharp" Version="12.0.0-beta1" PrivateAssets="all" />
-    
+
     <!-- This package is needed to support __HACK__Stl1300Workaround -->
     <PackageReference Include="Microsoft.VisualStudio.Setup.Configuration.Interop" Version="2.3.2262-g94fae01e" />
   </ItemGroup>
