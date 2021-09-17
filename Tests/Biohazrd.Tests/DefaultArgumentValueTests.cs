@@ -368,22 +368,27 @@ void Function(bool x = Test() || true);"
             bitPatternTest((uint)BitConverter.SingleToInt32Bits(floatConstant.Value));
         }
 
+        private void AbnormalFloatTest(string parameterValue, float expectedValue, Func<float, bool>? sanityTest, Action<uint> bitPatternTest)
+            => AbnormalFloatTest("", parameterValue, expectedValue, sanityTest, bitPatternTest);
+
         private void AbnormalFloatTest(string prefix, string parameterValue, float expectedValue, Func<float, bool>? sanityTest, uint bitPattern)
             => AbnormalFloatTest(prefix, parameterValue, expectedValue, sanityTest, actualBitPattern => Assert.Equal(bitPattern, actualBitPattern));
 
         private void AbnormalFloatTest(string parameterValue, float expectedValue, Func<float, bool>? sanityTest, uint bitPattern)
             => AbnormalFloatTest("", parameterValue, expectedValue, sanityTest, bitPattern);
 
+        private void IsPayloadlessQuietNaN(uint bitPattern)
+            // We ignore the sign bit because it's considered to be meaningless.
+            // From Wikipedia: "[...]a NaN may carry other information: a sign bit (which has no meaning, but may be used by some operations)[...]"
+            => Assert.Equal(0x7FC0_0000u, bitPattern & ~0x8000_0000u);
+
         [Fact]
         public void Float_Nan1()
-            // Note: The bit pattern is different from the C# and MSVC's value for NaN. They both use 0xFFC0_0000
-            // From Wikipedia: "[...]a NaN may carry other information: a sign bit (which has no meaning, but may be used by some operations)[...]"
-            // Assuming this is correct, IEEE-754 does not prescribe meaning to the sign bit of a NaN, so this is simply a behavior difference between Clang and MSVC/CLR.
-            => AbnormalFloatTest("#include <cmath>", "NAN", Single.NaN, Single.IsNaN, 0x7FC0_0000);
+            => AbnormalFloatTest("#include <cmath>", "NAN", Single.NaN, Single.IsNaN, IsPayloadlessQuietNaN);
 
         [Fact]
         public void Float_Nan2()
-            => AbnormalFloatTest("0.f / 0.f", Single.NaN, Single.IsNaN, 0x7FC0_0000);
+            => AbnormalFloatTest("0.f / 0.f", Single.NaN, Single.IsNaN, IsPayloadlessQuietNaN);
 
         [Fact]
         public void Float_Nan_Quiet1()
@@ -402,7 +407,7 @@ void Function(bool x = Test() || true);"
 
         [Fact]
         public void Float_Nan_Quiet4()
-            => AbnormalFloatTest("#include <limits>", "std::numeric_limits<float>::quiet_NaN()", Single.NaN, Single.IsNaN, 0x7FC0_0000);
+            => AbnormalFloatTest("#include <limits>", "std::numeric_limits<float>::quiet_NaN()", Single.NaN, Single.IsNaN, IsPayloadlessQuietNaN);
 
         [FutureFact] // Needs C++20
         public void Float_Nan_Quiet5()
@@ -574,22 +579,27 @@ void Function(bool x = Test() || true);"
             bitPatternTest((ulong)BitConverter.DoubleToInt64Bits(doubleConstant.Value));
         }
 
+        private void AbnormalDoubleTest(string parameterValue, double expectedValue, Func<double, bool>? sanityTest, Action<ulong> bitPatternTest)
+            => AbnormalDoubleTest("", parameterValue, expectedValue, sanityTest, bitPatternTest);
+
         private void AbnormalDoubleTest(string prefix, string parameterValue, double expectedValue, Func<double, bool>? sanityTest, ulong bitPattern)
             => AbnormalDoubleTest(prefix, parameterValue, expectedValue, sanityTest, actualBitPattern => Assert.Equal(bitPattern, actualBitPattern));
 
         private void AbnormalDoubleTest(string parameterValue, double expectedValue, Func<double, bool>? sanityTest, ulong bitPattern)
             => AbnormalDoubleTest("", parameterValue, expectedValue, sanityTest, bitPattern);
 
+        private void IsPayloadlessQuietNaN(ulong bitPattern)
+            // We ignore the sign bit because it's considered to be meaningless.
+            // From Wikipedia: "[...]a NaN may carry other information: a sign bit (which has no meaning, but may be used by some operations)[...]"
+            => Assert.Equal(0x7FF8_0000_0000_0000ul, bitPattern & ~0x8000_0000_0000_0000ul);
+
         [Fact]
         public void Double_Nan1()
-            // Note: The bit pattern is different from the C# and MSVC's value for NaN. They both use 0xFFF8_0000_0000_0000
-            // From Wikipedia: "[...]a NaN may carry other information: a sign bit (which has no meaning, but may be used by some operations)[...]"
-            // Assuming this is correct, IEEE-754 does not prescribe meaning to the sign bit of a NaN, so this is simply a behavior difference between Clang and MSVC/CLR.
-            => AbnormalDoubleTest("#include <cmath>", "NAN", Double.NaN, Double.IsNaN, 0x7FF8_0000_0000_0000);
+            => AbnormalDoubleTest("#include <cmath>", "NAN", Double.NaN, Double.IsNaN, IsPayloadlessQuietNaN);
 
         [Fact]
         public void Double_Nan2()
-            => AbnormalDoubleTest("0.0 / 0.0", Double.NaN, Double.IsNaN, 0x7FF8_0000_0000_0000);
+            => AbnormalDoubleTest("0.0 / 0.0", Double.NaN, Double.IsNaN, IsPayloadlessQuietNaN);
 
         [Fact]
         public void Double_Nan_Quiet1()
@@ -608,7 +618,7 @@ void Function(bool x = Test() || true);"
 
         [Fact]
         public void Double_Nan_Quiet4()
-            => AbnormalDoubleTest("#include <limits>", "std::numeric_limits<double>::quiet_NaN()", Double.NaN, Double.IsNaN, 0x7FF8_0000_0000_0000);
+            => AbnormalDoubleTest("#include <limits>", "std::numeric_limits<double>::quiet_NaN()", Double.NaN, Double.IsNaN, IsPayloadlessQuietNaN);
 
         [FutureFact] // Needs C++20
         public void Double_Nan_Quiet5()
