@@ -259,7 +259,7 @@ namespace Biohazrd
                     // If the file was not in scope, it is promoted to be partially in-scope for the pruposes of this declaration
                     // (This will not cause the file to be considered in-scope if it is included again outside of the parent declaration.)
                     // If this is the first time this file was promoted and the containing file was in-scope, issue a warning
-                    if (!newFile.WasInScope && PromotedOutOfScopeFiles.Add(newFile) && file.WasInScope)
+                    if (newFile != TranslatedFile.Synthesized && !newFile.WasInScope && PromotedOutOfScopeFiles.Add(newFile) && file.WasInScope)
                     {
                         ParsingDiagnosticsBuilder.Add
                         (
@@ -287,6 +287,8 @@ namespace Biohazrd
                         case CX_AttrKind.CX_AttrKind_DLLImport:
                         case CX_AttrKind.CX_AttrKind_MSNoVTable:
                         case CX_AttrKind.CX_AttrKind_Uuid:
+                        case CX_AttrKind.CX_AttrKind_Visibility:
+                        case CX_AttrKind.CX_AttrKind_TypeVisibility:
                         //TODO: Alignment could impact the translation if types are allocated client-side.
                         case CX_AttrKind.CX_AttrKind_Aligned:
                             return None;
