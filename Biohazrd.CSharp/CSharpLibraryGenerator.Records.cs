@@ -1,5 +1,4 @@
-﻿using ClangSharp;
-using System.Linq;
+﻿using System.Linq;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp

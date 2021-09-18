@@ -2,7 +2,6 @@
 using Biohazrd.Transformation.Common;
 using Biohazrd.Transformation.Infrastructure;
 using ClangSharp;
-using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;

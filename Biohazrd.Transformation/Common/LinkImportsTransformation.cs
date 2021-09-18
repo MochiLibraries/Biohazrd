@@ -79,7 +79,7 @@ namespace Biohazrd.Transformation.Common
                         foreach (CoffSymbol coffSymbol in coffMember.Symbols)
                         { GetOrCreateSymbolEntry(coffSymbol.Name).AddExport(filePath); }
                     }
-                } 
+                }
             }
             else if (header.StartsWith(ElfFileSignature))
             {

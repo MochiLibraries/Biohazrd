@@ -29,7 +29,7 @@ namespace Biohazrd
             {
                 if (!Directory.Exists(resourceDirectoryPath) || !File.Exists(Path.Combine(resourceDirectoryPath, "include", "stddef.h")))
                 { throw new DirectoryNotFoundException("Clang resources directory not found."); }
-                
+
                 AddCommandLineArguments("-resource-dir", resourceDirectoryPath);
             }
         }

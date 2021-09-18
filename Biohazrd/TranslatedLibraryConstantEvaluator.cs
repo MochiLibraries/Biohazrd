@@ -285,7 +285,7 @@ namespace Biohazrd
                     }
 
                     (IntPtr, int) clientData = ((IntPtr)Unsafe.AsPointer(ref cursors[0]), expressions.Count);
-                    delegate* unmanaged[Cdecl]<CXCursor, CXCursor, (IntPtr, int) *, CXChildVisitResult> enumeratorPtr = &Enumerator;
+                    delegate* unmanaged[Cdecl]<CXCursor, CXCursor, (IntPtr, int)*, CXChildVisitResult> enumeratorPtr = &Enumerator;
                     clang.visitChildren(UnitHandle.Cursor, (IntPtr)enumeratorPtr, &clientData);
 
                     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]

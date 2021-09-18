@@ -1,5 +1,4 @@
 ﻿using ClangSharp;
-using System;
 
 namespace Biohazrd
 {
