@@ -217,8 +217,12 @@ namespace Biohazrd.Transformation.Common
             // If the symbol is only an export, emit a diagnostic and fail
             if (!symbolInfo.IsImport)
             {
-                Severity severity = ErrorOnMissing ? Severity.Error : Severity.Warning;
-                diagnostics.Add(new TranslationDiagnostic(severity, MakeErrorMessage($"No import sources found for '{symbolName}'.", symbolEntry)));
+                if (!isVirtualMethod || ErrorOnMissingVirtualMethods)
+                {
+                    Severity severity = ErrorOnMissing ? Severity.Error : Severity.Warning;
+                    diagnostics.Add(new TranslationDiagnostic(severity, MakeErrorMessage($"No import sources found for '{symbolName}'.", symbolEntry)));
+                }
+
                 dllFileName = null;
                 mangledName = null;
                 return false;
