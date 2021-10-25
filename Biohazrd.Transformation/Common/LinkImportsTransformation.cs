@@ -201,11 +201,11 @@ namespace Biohazrd.Transformation.Common
                     foreach ((string library, SymbolImportExportInfo info) in symbolEntry.Sources)
                     {
                         if (info.IsFromElf)
-                        { builder.Append($"\n    '{library}'"); } // The library and the DllFileName are the same for ELF sources, avoid printing the redundant info.
+                        { builder.Append($"{Environment.NewLine}    '{library}'"); } // The library and the DllFileName are the same for ELF sources, avoid printing the redundant info.
                         else if (info.IsImport)
-                        { builder.Append($"\n    '{library}': Import from '{info.DllFileName}'"); }
+                        { builder.Append($"{Environment.NewLine}    '{library}': Import from '{info.DllFileName}'"); }
                         else
-                        { builder.Append($"\n    '{library}': Statically-linked export'"); }
+                        { builder.Append($"{Environment.NewLine}    '{library}': Statically-linked export'"); }
                     }
 
                     return builder.ToString();
