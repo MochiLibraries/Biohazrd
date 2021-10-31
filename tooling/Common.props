@@ -15,14 +15,22 @@
 
     <_ProjectTreeRoot>$(MSBuildThisFileDirectory)../</_ProjectTreeRoot>
 
-    <BaseOutputPath>$(_ProjectTreeRoot)bin/$(Configuration)-$(Platform)/</BaseOutputPath>
+    <!--
+      Odd things can happen when WSL and Windows share the same output directories. As such if we detect we're running under WSL we use different output directories.
+    -->
+    <_WslPathPart></_WslPathPart>
+    <_WslSuffixPart></_WslSuffixPart>
+    <_WslPathPart Condition="'$(WSL_DISTRO_NAME)' != ''">wsl/</_WslPathPart>
+    <_WslSuffixPart Condition="'$(WSL_DISTRO_NAME)' != ''">-wsl</_WslSuffixPart>
+
+    <BaseOutputPath>$(_ProjectTreeRoot)bin/$(Configuration)-$(Platform)$(_WslSuffixPart)/</BaseOutputPath>
     <OutputPath>$(BaseOutputPath)$(ThisProjectOutputSubdirectory)/</OutputPath>
     <OutputDir>$(OutputPath)</OutputDir>
 
-    <BaseIntermediateOutputPath>$(_ProjectTreeRoot)obj/$(ThisProjectOutputSubdirectory)/</BaseIntermediateOutputPath>
+    <BaseIntermediateOutputPath>$(_ProjectTreeRoot)obj/$(_WslPathPart)$(ThisProjectOutputSubdirectory)/</BaseIntermediateOutputPath>
     <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(Configuration)-$(Platform)/</IntermediateOutputPath>
 
-    <PackageOutputPath>$(_ProjectTreeRoot)packages/</PackageOutputPath>
+    <PackageOutputPath>$(_ProjectTreeRoot)packages/$(_WslPathPart)</PackageOutputPath>
 
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
