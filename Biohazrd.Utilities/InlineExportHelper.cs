@@ -248,7 +248,8 @@ namespace Biohazrd.Utilities
                 Writer.WriteLine($"inline void operator delete(void*, {dummyNamespaceName}::{placementNewHelperName}, void*) {{ }}");
 
                 Writer.EnsureSeparation();
-                Writer.WriteLine("#pragma warning(disable: 4190) // C-linkage function returning C++ type");
+                if (!__ItaniumExportMode)
+                { Writer.WriteLine("#pragma warning(disable: 4190) // C-linkage function returning C++ type"); }
                 Writer.WriteLine($"extern \"C\" namespace {dummyNamespaceName}");
                 using (Writer.Block())
                 {
