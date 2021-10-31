@@ -27,6 +27,10 @@ namespace Biohazrd
         /// <remarks>Out-of-scope files may appear on declarations in certain situations. (Such as when an in-scope declaration contains a nested include to an out-of-scope file.)</remarks>
         public bool WasInScope { get; }
 
+        /// <summary>True if this file was specified as in-scope to <see cref="TranslatedLibraryBuilder"/> but was not encountered during parsing.</summary>
+        /// <remarks>A file being unused does not necessarily indicate it was not included. For instance, file containing only comments will be considered unused.</remarks>
+        public bool WasNotUsed => WasInScope && Handle == IntPtr.Zero;
+
         /// <summary>A dummy translated file which represents synthesized declarations that don't directly correspond to a translated file.</summary>
         public static readonly TranslatedFile Synthesized = new TranslatedFile("<>Synthesized", new IntPtr(-1), false);
 
