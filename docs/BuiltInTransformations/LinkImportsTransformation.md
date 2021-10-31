@@ -3,13 +3,13 @@
 
 <small>\[[Transformation Source](../../Biohazrd.Transformation/Common/LinkImportsTransformation.cs)\]</small>
 
-This transformation loads one or more import libraries (`.lib`) files and resolves symbols in your translated library to the appropriate DLLs.
+This transformation loads one or more import library (`.lib`) or shared object (`.so`) files and resolves symbols in your translated library to the appropriate DLLs.
 
-Essentially this transformation acts like a linker. It uses the same `.lib` files the C++ linker normally uses to resolve the location of functions and data in DLLs.
+Essentially this transformation acts like a linker. It uses the same `.lib`/`.so` files the C++ linker normally uses to resolve the location of functions and data in DLLs.
 
 ## When this transformation is applicable
 
-This transformation is primarily intended for scenarios when the native code is spread througout multiple DLLs and it's non-trivial to simply assign the same DLL file name to all symbols in the library. However it's always valid to use this transformation and it can help diagnose issues where Biohazrd translates a symbol which isn't actually exported.
+This transformation is primarily intended for scenarios when the native code is spread througout multiple DLLs and it's non-trivial to simply assign the same DLL file name to all symbols in the library. However it's always valid to use this transformation and it can help diagnose issues where Biohazrd translates a symbol which isn't actually exported so its use is highly recommended.
 
 Note: This transformation does not natively handle anything exported by `InlineExportHelper` yet.
 
@@ -21,7 +21,9 @@ To use this transformation: Create it, add one or more libraries with `AddLibrar
 
 The order you add libraries matters. If you add more than one library that have an import for a given symbol, only the first import will be used.
 
-It is not an error to specify export (static) libraries, but Biohazrd does not support linking to static libraries. (If a symbol can only be found as an export, a diagnostic will be attached to the affected declaration.
+It is not an error to specify export (static) libraries (either Windows `.lib` or Linux `.a`), but Biohazrd does not support linking to static libraries. (If a symbol can only be found as an export, a diagnostic will be attached to the affected declaration.)
+
+Note: This transformation supports Linux `.o` ELF files incedentally since they are not substantially different from `.so` files, but it does not support Windows `.obj` (COFF) files. (Same disclaimers apply as static libraries.)
 
 This transformation includes some flags you can configure to change how it emits diagnostics:
 

@@ -1,16 +1,20 @@
 ﻿using Biohazrd.Transformation.Infrastructure;
 using Kaisa;
-using LibObjectFile.Elf;
+using Kaisa.Elf;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace Biohazrd.Transformation.Common
 {
+    // This transformation uses some confusing nomenclature due to being originally designed for Windows-only and using the same terminology as the Microsoft .lib file specification does.
+    // In this file:
+    // A symbol which is exported is one which is exported by one of the static libraries passed to AddLibrary.
+    // A symbol which is imported is one which is imported from either a .dll pointed to by an Microsoft import .lib passed to AddLibrary OR exported by a .so passed to AddLibrary.
+    // In a future cleanup of this transformation, we should probably change it to ExportedFromStaticLibrary and ExportedFromDynamicLibrary respectively.
     public sealed class LinkImportsTransformation : TransformationBase
     {
         private readonly Dictionary<string, SymbolEntry> Imports = new();
@@ -48,21 +52,16 @@ namespace Biohazrd.Transformation.Common
         /// <remarks>You generally do not want to enable this option unless you have advanced needs for virtual methods to be exported.</remarks>
         public bool ErrorOnMissingVirtualMethods { get; set; }
 
-        private static ReadOnlySpan<byte> ElfFileSignature => new byte[] { 0x7F, 0x45, 0x4C, 0x46 }; // 0x7F "ELF"
-        private static ReadOnlySpan<byte> WindowsArchiveSignature => new byte[] { 0x21, 0x3C, 0x61, 0x72, 0x63, 0x68, 0x3E, 0xA };// "!<arch>\n"
-        private static int LongestSignatureLength => WindowsArchiveSignature.Length;
         public void AddLibrary(string filePath)
         {
             using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read);
 
-            // Determine if the library is an ELF shared library or a Windows archive file
-            Span<byte> header = stackalloc byte[LongestSignatureLength];
-            if (stream.Read(header) != header.Length)
-            { throw new ArgumentException("The specified file is too small to be a library.", nameof(filePath)); }
+            // Determine the name to use for the import in the case of ELF files or Linux-style archives
+            // In theory we could strip off the lib prefix and .so suffix here, however that will remove information required for loading the library via NativeLibrary.Load(string)
+            // If we want to strip these we should handle it in the output stage instead (that way it's consistent across the entire library too.)
+            string libraryFileName = Path.GetFileName(filePath);
 
-            stream.Position = 0;
-
-            if (header.StartsWith(WindowsArchiveSignature))
+            if (Archive.IsArchiveFile(stream))
             {
                 Archive library = new(stream);
 
@@ -79,31 +78,56 @@ namespace Biohazrd.Transformation.Common
                         foreach (CoffSymbol coffSymbol in coffMember.Symbols)
                         { GetOrCreateSymbolEntry(coffSymbol.Name).AddExport(filePath); }
                     }
+                    else if (member is ElfArchiveMember elfMember)
+                    {
+                        ProcessElfFile(elfMember.ElfFile);
+                    }
                 }
             }
-            else if (header.StartsWith(ElfFileSignature))
+            else if (ElfFile.IsElfFile(stream))
             {
-                ElfReaderOptions options = new() { ReadOnly = true };
-                ElfObjectFile elf = ElfObjectFile.Read(stream, options);
+                ElfFile elf = new(stream);
+                ProcessElfFile(elf);
+            }
+            else
+            { throw new ArgumentException("The specified file does not appear to be in a compatible format.", nameof(filePath)); }
 
-                // Determine the name to use for the import
-                // In theory we could strip off the lib prefix and .so suffix here, however that will remove information required for loading the library via NativeLibrary.Load(string)
-                // If we want to strip these we should handle it in the output stage instead (that way it's consistent across the entire library too.)
-                string libraryFileName = Path.GetFileName(filePath);
+            void ProcessElfFile(ElfFile elf)
+            {
+                bool isSharedObject = elf.Header.Type == ElfType.SharedObjectFile;
 
-                // Find the .dynsym table
-                // (We do not bother with the symbol hash table because we'll most likely end up needing nearly every symbol as it is and it simplifies our architecture.)
-                const string sectionName = ".dynsym";
-                ElfSymbolTable? symbolTable = elf.Sections.OfType<ElfSymbolTable>().FirstOrDefault(s => s.Name == sectionName);
+                // Get the symbol table
+                // For shared objects we prefer the dynamic symbol table, for static libraries we prefer the normal one
+                // (I don't think there's a situation where a static library even has a dynamic symbol table, much less a dynamic one but not a normal one,
+                //   but we're not here to decide what makes a valid Linux ELF.)
+                // Note that there is not a reason we'd want to process both tables (assuming the ELF file is sane) since the dynamic symbol table should always be a subset of the main one.
+                ElfSymbolTableSection? symbolTable;
+                if (isSharedObject)
+                { symbolTable = elf.DynamicSymbolTable ?? elf.SymbolTable; }
+                else
+                { symbolTable = elf.SymbolTable ?? elf.DynamicSymbolTable; }
 
                 if (symbolTable is null)
-                { throw new ArgumentException($"The specified ELF file does not contain a '{sectionName}' section."); }
+                {
+                    // I'm sure you could probably craft a valid shared object ELF that doesn't have a symbol table of any kind, but that'd be weird and the caller probably wants to know.
+                    if (isSharedObject)
+                    { throw new ArgumentException($"'{filePath}' does not have a symbol table of any kind.", nameof(filePath)); }
+                    else
+                    { return; } // Don't throw on library archives since they can contain many separate ELF files and we don't want to blow up with just a single unusual one.
+                }
 
+                ProcessElfSymbolSection(libraryFileName, isSharedObject, symbolTable);
+            }
+
+            void ProcessElfSymbolSection(string libraryFileName, bool isFromSharedObject, ElfSymbolTableSection symbolTable)
+            {
                 // See https://refspecs.linuxbase.org/elf/gabi4+/ch4.symtab.html for details on what the symbol table entires mean
                 // Note that the spec is not very specific about what is and isn't allowed in the dynamic symbol table, so we're probably overly defensive here
                 // In general we ignore symbols which have OS and architecture-specific types or binding since we can't safely understand what they're for.
-                foreach (ElfSymbol symbol in symbolTable.Entries)
+                foreach (ElfSymbol symbol in symbolTable)
                 {
+                    ElfSection? section = symbol.DefinedIn;
+
                     // Ignore unnamed symbols
                     if (String.IsNullOrEmpty(symbol.Name))
                     { continue; }
@@ -114,7 +138,7 @@ namespace Biohazrd.Transformation.Common
                     { continue; }
 
                     // Ignore symbols which are undefined
-                    if (symbol.Section.IsSpecial && symbol.Section.SpecialIndex == ElfNative.SHN_UNDEF)
+                    if (section is null || section.Type is ElfSectionType.Null)
                     { continue; }
 
                     // Ignore symbols which are not functions or objects (variables)
@@ -124,41 +148,49 @@ namespace Biohazrd.Transformation.Common
                     // Ignore symbols which are not global or weak
                     // Note that we do not actually differentiate between global and weak symbols, the distinction only matters for static linking
                     // See https://www.bottomupcs.com/libraries_and_the_linker.xhtml#d0e10440
-                    if (symbol.Bind != ElfSymbolBind.Global && symbol.Bind != ElfSymbolBind.Weak)
+                    if (symbol.Binding != ElfSymbolBinding.Global && symbol.Binding != ElfSymbolBinding.Weak)
                     { continue; }
 
                     // Determine the import type of the symbol based on its section
                     ImportType importType;
-                    switch (symbol.Section.Section?.Name)
+                    Debug.Assert(section.Type is ElfSectionType.ProgramSpecificData or ElfSectionType.NoData, $"Symbols should be exported from program-specific data or no-data sections. '{symbol}' '{section}'");
+                    const ElfSectionFlags codeFlags = ElfSectionFlags.Allocated | ElfSectionFlags.ExecutableInstructions;
+                    const ElfSectionFlags constFlags = ElfSectionFlags.Allocated;
+                    const ElfSectionFlags dataFlags = ElfSectionFlags.Allocated | ElfSectionFlags.Writeable;
+
+                    if ((section.Header.Flags & codeFlags) == codeFlags)
+                    { importType = ImportType.Code; }
+                    else if ((section.Header.Flags & constFlags) == constFlags)
+                    { importType = ImportType.Const; }
+                    else if ((section.Header.Flags & dataFlags) == dataFlags)
+                    { importType = ImportType.Data; }
+                    else
                     {
-                        case ".text":
-                            importType = ImportType.Code;
-                            break;
-                        case ".rodata":
-                            importType = ImportType.Const;
-                            break;
-                        case ".data":
-                        case ".bss":
-                            importType = ImportType.Data;
-                            break;
-                        case null when symbol.Section.IsSpecial:
-                            Debug.Fail($"ELF symbol from special section '{symbol.Section}'");
-                            continue;
-                        default:
-                            if (symbol.Section.Section?.Name is not null)
-                            { Debug.Fail($"ELF symbol from unrecognized section '{symbol.Section.Section.Name}'"); }
-                            else
-                            { Debug.Fail($"ELF symbol from unnamed/null section."); }
-                            continue;
+                        Debug.Fail("Could not determine symbol type based on section flags.");
+                        continue;
                     }
 
+                    // Assert on unusual symbols since we might not be handling them appropriately.
+                    // (The symbol *is* still being exported by the file though, so it's probably fine -- don't throw.)
+                    Debug.Assert(section.IsWellKnownSystemSection, $"Symbols '{symbol.Name}' is defined in '{section.Name}', which is not a well-known system section.");
+                    Debug.Assert(!section.IsNonStandard, $"Symbol '{symbol.Name}' is defined in an extension section '{section.Name}'");
+
                     // Add the symbol to our lookup
-                    SymbolImportExportInfo info = new(libraryFileName, symbol, importType);
-                    GetOrCreateSymbolEntry(symbol.Name).AddImport(filePath, info);
+                    if (isFromSharedObject)
+                    {
+                        SymbolImportExportInfo info = new(libraryFileName, symbol, importType);
+                        GetOrCreateSymbolEntry(symbol.Name).AddImport(filePath, info);
+                    }
+                    else
+                    {
+                        // Due to a weird historical quirk of the design of this transformation, symbols from static libraries don't keep track of the same details as
+                        // ones imported from dynamic ones. We still do this here so all the debug-build validaiton above still happens, but it's currently discarded.
+                        // (Only advanced users will intentionally pass `.a` archives to this transformation anyway since this transformation doesn't *actually* handle
+                        //   symbols only exported from static libraries anyway.)
+                        GetOrCreateSymbolEntry(symbol.Name).AddExport(filePath);
+                    }
                 }
             }
-            else
-            { throw new ArgumentException("The specified file does not appear to be in a compatible format.", nameof(filePath)); }
 
             SymbolEntry GetOrCreateSymbolEntry(string symbol)
             {
@@ -272,16 +304,24 @@ namespace Biohazrd.Transformation.Common
                     break;
             }
 
+            static string TrimFirstMangleCharacter(string name)
+            {
+                if (name.Length > 0 && name[0] is '?' or '@' or '_')
+                { return name.Substring(1); }
+
+                return name;
+            }
+
             return true;
         }
 
-        private string TrimFirstMangleCharacter(string name)
-        {
-            if (name.Length > 0 && name[0] is '?' or '@' or '_')
-            { return name.Substring(1); }
-
-            return name;
-        }
+        /// <summary>Checks whether any libraries registered with this transformation contain the specified symbol</summary>
+        /// <remarks>
+        /// This method does not necessarily indicate the symbol will resolve successfully, only that some library registered with the transformation contains it.
+        /// It does not check things like whether or not the symbol is ambiguous or if it's only provided by a static export.
+        /// </remarks>
+        public bool ContainsSymbol(string mangledSymbol)
+            => Imports.ContainsKey(mangledSymbol);
 
         protected override TransformationResult TransformFunction(TransformationContext context, TranslatedFunction declaration)
         {

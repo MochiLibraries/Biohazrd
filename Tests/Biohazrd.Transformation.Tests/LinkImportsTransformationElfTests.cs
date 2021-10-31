@@ -14,6 +14,8 @@ namespace Biohazrd.Transformation.Tests
         // We use this test to make these tests optional on Windows (they'll only run if a valid Clang installation is available
         public sealed class NeedsLinuxOrClangFactAttribute : FactAttribute
         {
+            public bool NeedsLlvmArToo { get; set; }
+
             public NeedsLinuxOrClangFactAttribute()
             {
                 // Nothing to do if we're already being skipped
@@ -33,10 +35,24 @@ namespace Biohazrd.Transformation.Tests
                 {
                     case FileNotFoundException:
                         Skip = "This test requires Clang to be available via the system PATH or via Visual Studio.";
-                        break;
+                        return;
                     case Exception exception:
                         Skip = $"This test requires an operational version of Clang: {exception.Message}";
-                        break;
+                        return;
+                }
+
+                // If it's needed, skip this test if the LLVM Archiver is not avialable
+                if (NeedsLlvmArToo)
+                {
+                    switch (LlvmTools.IsLlvmArAvailable())
+                    {
+                        case FileNotFoundException:
+                            Skip = "This test requires llvm-ar to be available via the system PATH or via Visual Studio.";
+                            return;
+                        case Exception exception:
+                            Skip = $"This test requires an operational version of llvm-ar: {exception.Message}";
+                            return;
+                    }
                 }
             }
         }
@@ -56,8 +72,6 @@ namespace Biohazrd.Transformation.Tests
         /// </remarks>
         private void CreateSharedLibrary(LinkImportsTransformation? transformation, string libName, bool useCPlusPlus, params string[] exports)
         {
-            libName += ".so";
-
             // Create dummy C definitions to create the desired symbols
             StringBuilder exportCode = new();
             foreach (string export in exports)
@@ -137,11 +151,31 @@ namespace Biohazrd.Transformation.Tests
                 exportCode.AppendLine();
             }
 
+            InvokeClang(transformation, exportCode, $"--language={(useCPlusPlus ? "c++" : "c")} --shared", $"{libName}.so", "shared library");
+        }
+
+        /// <summary>Creates an ELF shared library with the given name and exports.</summary>
+        /// <param name="transformation">An optional transformation to automatically add the library to.</param>
+        /// <param name="libName">The name of the library without any file extension.</param>
+        /// <param name="exports">One or more symbols to export.</param>
+        /// <remarks>
+        /// Symbols can be prefixed with a <c>~</c> to indicate they are weak exports.
+        ///
+        /// Symbols can be suffixed with an optional segment to mark them as object symbols instead of functions.
+        /// The following segments are supported: <c>.data</c>, <c>.rodata</c>, and <c>.bss</c>
+        ///
+        /// Symbols can be suffixed with a <c>!</c> followed by an optional visibility. Valid visibilities are those supported by the GCC visibility attribute.
+        /// </remarks>
+        private void CreateSharedLibrary(LinkImportsTransformation? transformation, string libName, params string[] exports)
+            => CreateSharedLibrary(transformation, libName, useCPlusPlus: false, exports);
+
+        private void InvokeClang(LinkImportsTransformation? transformation, StringBuilder code, string extraArguments, string outputFileName, string thingBeingMade)
+        {
             // Start Clang
             string clangPath = LlvmTools.GetClangPath();
             using Process clang = new()
             {
-                StartInfo = new ProcessStartInfo(clangPath, $"--target=x86_64-pc-linux --language={(useCPlusPlus ? "c++" : "c")} --shared --output={libName} -")
+                StartInfo = new ProcessStartInfo(clangPath, $"--target=x86_64-pc-linux {extraArguments} --output={outputFileName} -")
                 {
                     RedirectStandardInput = true
                 }
@@ -159,34 +193,44 @@ namespace Biohazrd.Transformation.Tests
 
             // Write our code to Clang to create the shared library
             using (StreamWriter writer = clang.StandardInput)
-            { writer.Write(exportCode); }
+            { writer.Write(code); }
 
             // Wait for Clang to finish up
             clang.WaitForExit();
 
             if (clang.ExitCode != 0)
-            { throw new Exception($"Clang failed with exit code {clang.ExitCode} while creating the shared library."); }
+            { throw new Exception($"Clang failed with exit code {clang.ExitCode} while creating the {thingBeingMade}."); }
 
             // We use a relative directory here so that:
             // A) We test that only the file name is used
             // B) We can tell when verbose import information was tracked
-            transformation?.AddLibrary($"./{libName}");
+            transformation?.AddLibrary($"./{outputFileName}");
         }
 
-        /// <summary>Creates an ELF shared library with the given name and exports.</summary>
-        /// <param name="transformation">An optional transformation to automatically add the library to.</param>
-        /// <param name="libName">The name of the library without any file extension.</param>
-        /// <param name="exports">One or more symbols to export.</param>
-        /// <remarks>
-        /// Symbols can be prefixed with a <c>~</c> to indicate they are weak exports.
-        ///
-        /// Symbols can be suffixed with an optional segment to mark them as object symbols instead of functions.
-        /// The following segments are supported: <c>.data</c>, <c>.rodata</c>, and <c>.bss</c>
-        ///
-        /// Symbols can be suffixed with a <c>!</c> followed by an optional visibility. Valid visibilities are those supported by the GCC visibility attribute.
-        /// </remarks>
-        private void CreateSharedLibrary(LinkImportsTransformation? transformation, string libName, params string[] exports)
-            => CreateSharedLibrary(transformation, libName, useCPlusPlus: false, exports);
+        private void CreateStaticLibrary(LinkImportsTransformation? transformation, string outputFileName, params string[] objectFiles)
+        {
+            // If the output file exists, delete it
+            // (The archiver will attempt to add to it otherwise.)
+            if (File.Exists(outputFileName))
+            { File.Delete(outputFileName); }
+
+            // Invoke the archiver
+            string llvmArPath = LlvmTools.GetLlvmArPath();
+            using Process llvmAr = new()
+            {
+                StartInfo = new ProcessStartInfo(llvmArPath, $"rc {outputFileName} " + String.Join(' ', objectFiles))
+            };
+            llvmAr.Start();
+            llvmAr.WaitForExit();
+
+            if (llvmAr.ExitCode != 0)
+            { throw new Exception($"llvm-ar failed with exit code {llvmAr.ExitCode} while creating the static library."); }
+
+            // We use a relative directory here so that:
+            // A) We test that only the file name is used
+            // B) We can tell when verbose import information was tracked
+            transformation?.AddLibrary($"./{outputFileName}");
+        }
 
         [NeedsLinuxOrClangFact]
         public void NormalSymbolTest()
@@ -359,6 +403,76 @@ extern ""C"" void AnotherFunction();
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
             Assert.NotEqual($"{nameof(ErrorOnMissing_True)}.so", function.DllFileName);
             Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Error && d.Message.Contains("Could not resolve"));
+        }
+
+        [NeedsLinuxOrClangFact]
+        public void SymbolResolvedToStaticExportFromObjectFile()
+        {
+            // Compile object file
+            const string code = @"extern ""C"" void TestFunction() { }";
+            LinkImportsTransformation transformation = new() { ErrorOnMissing = false };
+            InvokeClang(transformation, new StringBuilder(code), "-c -fPIC --language=c++", $"{nameof(SymbolResolvedToStaticExportFromObjectFile)}.o", "object file");
+
+            // Create and transform library
+            TranslatedLibrary library = CreateLibrary(code);
+            library = transformation.Transform(library);
+
+            TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            Assert.DoesNotContain(nameof(SymbolResolvedToStaticExportFromObjectFile), function.DllFileName);
+            Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("No import sources found"));
+        }
+
+        [NeedsLinuxOrClangFact]
+        public void SymbolResolvedToStaticExportFromObjectFile_ErrorOnMissing()
+        {
+            // Compile object file
+            const string code = @"extern ""C"" void TestFunction() { }";
+            LinkImportsTransformation transformation = new() { ErrorOnMissing = true };
+            InvokeClang(transformation, new StringBuilder(code), "-c -fPIC --language=c++", $"{nameof(SymbolResolvedToStaticExportFromObjectFile_ErrorOnMissing)}.o", "object file");
+
+            // Create and transform library
+            TranslatedLibrary library = CreateLibrary(code);
+            library = transformation.Transform(library);
+
+            TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            Assert.DoesNotContain(nameof(SymbolResolvedToStaticExportFromObjectFile_ErrorOnMissing), function.DllFileName);
+            Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Error && d.Message.Contains("No import sources found"));
+        }
+
+        [NeedsLinuxOrClangFact(NeedsLlvmArToo = true)]
+        public void SymbolResolvedToStaticExportFromStaticLibrary()
+        {
+            // Compile object file
+            const string code = @"extern ""C"" void TestFunction() { }";
+            InvokeClang(null, new StringBuilder(code), "-c -fPIC --language=c++", $"{nameof(SymbolResolvedToStaticExportFromStaticLibrary)}.o", "object file");
+            LinkImportsTransformation transformation = new() { ErrorOnMissing = false };
+            CreateStaticLibrary(transformation, $"{nameof(SymbolResolvedToStaticExportFromStaticLibrary)}.a", $"{nameof(SymbolResolvedToStaticExportFromStaticLibrary)}.o");
+
+            // Create and transform library
+            TranslatedLibrary library = CreateLibrary(code);
+            library = transformation.Transform(library);
+
+            TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            Assert.DoesNotContain(nameof(SymbolResolvedToStaticExportFromStaticLibrary), function.DllFileName);
+            Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("No import sources found"));
+        }
+
+        [NeedsLinuxOrClangFact(NeedsLlvmArToo = true)]
+        public void SymbolResolvedToStaticExportFromStaticLibrary_ErrorOnMissing()
+        {
+            // Compile object file
+            const string code = @"extern ""C"" void TestFunction() { }";
+            InvokeClang(null, new StringBuilder(code), "-c -fPIC --language=c++", $"{nameof(SymbolResolvedToStaticExportFromStaticLibrary_ErrorOnMissing)}.o", "object file");
+            LinkImportsTransformation transformation = new() { ErrorOnMissing = true };
+            CreateStaticLibrary(transformation, $"{nameof(SymbolResolvedToStaticExportFromStaticLibrary_ErrorOnMissing)}.a", $"{nameof(SymbolResolvedToStaticExportFromStaticLibrary_ErrorOnMissing)}.o");
+
+            // Create and transform library
+            TranslatedLibrary library = CreateLibrary(code);
+            library = transformation.Transform(library);
+
+            TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            Assert.DoesNotContain(nameof(SymbolResolvedToStaticExportFromObjectFile_ErrorOnMissing), function.DllFileName);
+            Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Error && d.Message.Contains("No import sources found"));
         }
 
         [NeedsLinuxOrClangFact]

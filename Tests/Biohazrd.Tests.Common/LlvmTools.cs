@@ -8,19 +8,22 @@ namespace Biohazrd.Tests.Common
     public static partial class LlvmTools
     {
         private static string? ClangPath = null;
-        private static Exception? LlvmToolchainRootLocationFailureException = null;
+        private static Exception? ClangLocationFailureException = null;
 
-        private static string? TryFindClang(out Exception? exception)
+        private static string? LlvmArPath = null;
+        private static Exception? LlvmArLocationFailureException = null;
+
+        private static string? TryFindLlvmTool(string friendlyName, string commandName, ref string? cachedPath, ref Exception? cachedException, out Exception? exception)
         {
-            if (ClangPath is not null)
+            if (cachedPath is not null)
             {
                 exception = null;
-                return ClangPath;
+                return cachedPath;
             }
 
-            if (LlvmToolchainRootLocationFailureException is not null)
+            if (cachedException is not null)
             {
-                exception = LlvmToolchainRootLocationFailureException;
+                exception = cachedException;
                 return null;
             }
 
@@ -28,34 +31,34 @@ namespace Biohazrd.Tests.Common
             // but it doesn't actually matter since ERROR_FILE_NOT_FOUND and ENOENT are both 2.
             const int ERROR_FILE_NOT_FOUND = 2;
 
-            // Check if Clang is present on the system PATH
+            // Check if the tool is present on the system PATH
             try
             {
-                using Process clang = Process.Start("clang", "--version");
-                clang.WaitForExit();
+                using Process toolProcess = Process.Start(commandName, "--version");
+                toolProcess.WaitForExit();
 
-                if (clang.ExitCode == 0)
+                if (toolProcess.ExitCode == 0)
                 {
                     exception = null;
-                    return ClangPath = "clang";
+                    return cachedPath = commandName;
                 }
                 else
                 {
-                    exception = new Exception("The Clang install found on the system PATH appears to be non-functional.");
-                    LlvmToolchainRootLocationFailureException = exception;
+                    exception = new Exception($"The {friendlyName} found on the system PATH appears to be non-functional.");
+                    cachedException = exception;
                     return null;
                 }
             }
             catch (Win32Exception ex) when (ex.NativeErrorCode == ERROR_FILE_NOT_FOUND)
-            { exception = new FileNotFoundException("Clang was not found on the system PATH."); }
+            { exception = new FileNotFoundException($"{friendlyName} was not found on the system PATH."); }
             catch (Exception ex)
             {
-                exception = new Exception($"The Clang install found on the system PATH appears to be unusable: {ex.Message}.", ex);
-                LlvmToolchainRootLocationFailureException = exception;
+                exception = new Exception($"The {friendlyName} found on the system PATH appears to be unusable: {ex.Message}.", ex);
+                cachedException = exception;
                 return null;
             }
 
-            // Find Clang from Visual Studio if the appropriate component is installed
+            // Find the tool from Visual Studio if the appropriate component is installed
             if (OperatingSystem.IsWindows())
             {
                 try
@@ -63,13 +66,13 @@ namespace Biohazrd.Tests.Common
                     // The other LLVM-related component (Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset) is only for using clang-cl for building C++ MSBuild projects.
                     VisualStudioLocator locator = new("Microsoft.VisualStudio.Component.VC.Llvm.Clang");
                     string visualStudioRoot = locator.LocateVisualStudio();
-                    string visualStudioClangPath = Path.Combine(visualStudioRoot, "VC", "Tools", "Llvm", "bin", "clang.exe");
+                    string visualStudioToolPath = Path.Combine(visualStudioRoot, "VC", "Tools", "Llvm", "bin", $"{commandName}.exe");
 
-                    if (!File.Exists(visualStudioClangPath))
-                    { throw new FileNotFoundException("Visual Studio install claims to have LLVM toolchain but clang.exe was not found.", visualStudioClangPath); }
+                    if (!File.Exists(visualStudioToolPath))
+                    { throw new FileNotFoundException($"Visual Studio install claims to have LLVM toolchain but {commandName}.exe was not found.", visualStudioToolPath); }
 
                     exception = null;
-                    return ClangPath = visualStudioClangPath;
+                    return cachedPath = visualStudioToolPath;
                 }
                 catch (Exception ex)
                 {
@@ -80,30 +83,57 @@ namespace Biohazrd.Tests.Common
                 }
             }
 
-            // Clang is not installed
-            LlvmToolchainRootLocationFailureException = exception;
+            // The tool is not installed
+            cachedException = exception;
             return null;
         }
 
+        private static string? TryFindClang(out Exception? exception)
+            => TryFindLlvmTool("Clang", "clang", ref ClangPath, ref ClangLocationFailureException, out exception);
+
         public static Exception? IsClangAvailable()
         {
-            string? clangPath = TryFindClang(out Exception? exception);
-            Debug.Assert(exception is not null || clangPath is not null);
+            string? path = TryFindClang(out Exception? exception);
+            Debug.Assert(exception is not null || path is not null);
             return exception;
         }
 
         public static string GetClangPath()
         {
-            string? clangPath = TryFindClang(out Exception? exception);
+            string? path = TryFindClang(out Exception? exception);
 
             if (exception is not null)
             {
-                Debug.Assert(clangPath is null);
+                Debug.Assert(path is null);
                 throw exception;
             }
 
-            Debug.Assert(clangPath is not null);
-            return clangPath;
+            Debug.Assert(path is not null);
+            return path;
+        }
+
+        private static string? TryFindLlvmAr(out Exception? exception)
+            => TryFindLlvmTool("LLVM Archiver (llvm-ar)", "llvm-ar", ref LlvmArPath, ref LlvmArLocationFailureException, out exception);
+
+        public static Exception? IsLlvmArAvailable()
+        {
+            string? path = TryFindLlvmAr(out Exception? exception);
+            Debug.Assert(exception is not null || path is not null);
+            return exception;
+        }
+
+        public static string GetLlvmArPath()
+        {
+            string? path = TryFindLlvmAr(out Exception? exception);
+
+            if (exception is not null)
+            {
+                Debug.Assert(path is null);
+                throw exception;
+            }
+
+            Debug.Assert(path is not null);
+            return path;
         }
     }
 }

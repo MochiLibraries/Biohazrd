@@ -324,7 +324,7 @@ extern ""C"" void AnotherFunction();
             library = transformation.Transform(library);
 
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
-            Assert.NotEqual($"{nameof(SymbolResolvesToExport)}.dll", function.DllFileName);
+            Assert.NotEqual(nameof(SymbolResolvesToExport), function.DllFileName);
             Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("No import sources found"));
         }
 
@@ -345,7 +345,7 @@ extern ""C"" void AnotherFunction();
             library = transformation.Transform(library);
 
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
-            Assert.NotEqual($"{nameof(SymbolResolvesToExport_ErrorOnMissing)}.dll", function.DllFileName);
+            Assert.DoesNotContain(nameof(SymbolResolvesToExport_ErrorOnMissing), function.DllFileName);
             Assert.Contains(function.Diagnostics, d => d.Severity == Severity.Error && d.Message.Contains("No import sources found"));
         }
 

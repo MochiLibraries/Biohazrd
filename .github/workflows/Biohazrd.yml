@@ -62,6 +62,12 @@ jobs:
         with:
           dotnet-version: 5.0.x
 
+      # ----------------------------------------------------------------------- Setup other dependencies
+      - name: Setup other dependencies
+        if: runner.os == 'Linux'
+        # This installs llvm-ar, which is used by LinkImportsTransformationElfTests
+        run: sudo apt-get install --yes llvm
+
       # ----------------------------------------------------------------------- Configure versioning
       - name: Configure build
         id: configuration
