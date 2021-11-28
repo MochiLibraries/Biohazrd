@@ -43,6 +43,8 @@ jobs:
             create-packages: true
     name: Build and Test ${{matrix.platform.name}} ${{matrix.platform.architecture}} ${{matrix.configuration}}
     runs-on: ${{matrix.platform.runs-on}}
+    env:
+      WillCreatePackages: ${{matrix.create-packages}}
     steps:
       # ----------------------------------------------------------------------- Checkout
       - name: Checkout

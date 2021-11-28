@@ -150,6 +150,9 @@ namespace Biohazrd
             {
                 LibClangSharpResolver.OverrideNativeRuntime(customNativeRuntime);
             }
+            // If we're using the automatic resolution, try loading it first and if that fails throw an exception telling the user how to provide the appropriate native runtime.
+            else if (!LibClangSharpResolver.TryLoadExplicitly())
+            { throw MakeExceptionForMissingClangSharpPathogenNativeRuntime(); }
 
             LibClangSharpResolver.VerifyResolverWasUsed();
         }

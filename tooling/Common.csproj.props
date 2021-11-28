@@ -9,7 +9,7 @@
     
     <!-- Common NuGet Package Properties -->
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <PackageProjectUrl>https://github.com/InfectedLibraries</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/MochiLibraries</PackageProjectUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>David Maas and Contributors</Authors>
@@ -44,6 +44,6 @@
     <RestoreSources Condition="'$(CiNuGetApiUrl)' != '' and '$(CiNuGetApiUrl)' != '$(OfficialNuGetApiUrl)'">$(RestoreSources);$(CiNuGetApiUrl)</RestoreSources>
 
     <!-- Allow consuming sibling CI packages if this build is not for packages which will be released publicly -->
-    <RestoreSources Condition="'$(CiIsForRelease)' != 'true'">$(RestoreSources);https://nuget-ci.infectedlibraries.net/index.json</RestoreSources>
+    <RestoreSources Condition="'$(CiIsForRelease)' != 'true'">$(RestoreSources);https://nuget-ci.mochilibraries.net/index.json</RestoreSources>
   </PropertyGroup>
 </Project>

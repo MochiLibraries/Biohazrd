@@ -5,11 +5,14 @@
     <!-- The Biohazrd package is an all-in-one package which brings in everything so we need to disambiguate this one. -->
     <PackageId>Biohazrd.Core</PackageId>
     <PackageDescription>This package provides core functionality for parsing C/C++ libraries.</PackageDescription>
+
+    <ClangSharpPathogenVersion>[0.0.0-ci51]</ClangSharpPathogenVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="ClangSharp" Version="[12.0.0-beta2]" />
-    <PackageReference Include="ClangSharp.Pathogen" Version="[0.0.0]" />
+    <PackageReference Include="ClangSharp.Pathogen" Version="$(ClangSharpPathogenVersion)" />
+    <PackageReference Include="ClangSharp.Pathogen.ClangResources" Version="$(ClangSharpPathogenVersion)" />
 
     <!-- Exclude ClangSharp's runtime packages (we provide libclang and libClangSharp via ClangSharp.Pathogen -->
     <PackageReference Include="libClang" Version="12.0.0" PrivateAssets="all" />
@@ -18,5 +21,38 @@
     <!-- This package is needed to support __HACK__Stl1300Workaround -->
     <PackageReference Include="Microsoft.VisualStudio.Setup.Configuration.Interop" Version="2.3.2262-g94fae01e" />
   </ItemGroup>
+
+  <!--
+    When creating packages, we want to reference the Windows x64 and Linux x64 ClangSharp.Pathogen native runtimes
+    This is a tradeoff between making consumers of Biohazrd download unneeded native runtimes (which weigh ~100 MB each) and providing a seamless out of box experience
+    Biohazrd will prompt the developer to install the needed native runtime if they're on a different platform.
+  -->
+  <ItemGroup Condition="'$(WillCreatePackages)' == 'true'">
+    <PackageReference Include="ClangSharp.Pathogen.Native.win-x64" Version="$(ClangSharpPathogenVersion)" />
+    <PackageReference Include="ClangSharp.Pathogen.Native.linux-x64" Version="$(ClangSharpPathogenVersion)" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(WillCreatePackages)' == 'true' and '$(ContinuousIntegrationBuild)' == 'true'">
+    <!-- This is only used to make a more sensible exception message. -->
+    <DefineConstants>$(DefineConstants);BIOHAZRD_IS_OFFICIAL_PACKAGE</DefineConstants>
+  </PropertyGroup>
+  <!--
+    Always reference the native runtime for the current system if we know it's available
+    We don't do this if we don't know for sure that ClangSharp.Pathogen provides a native runtime package for this platform.
+    It's OK to add this reference when creating official NuGet packages on CI since we do that on linux-x64.
+    For unofficial packages this is also OK since we assume the developer would want their native platform to be referenced by their custom package.
+  -->
+  <PropertyGroup>
+    <_PlatformHasClangSharpPathogenNativeRuntime>false</_PlatformHasClangSharpPathogenNativeRuntime>
+    <_PlatformHasClangSharpPathogenNativeRuntime Condition="'$(NETCoreSdkRuntimeIdentifier)' == 'win-x64'">true</_PlatformHasClangSharpPathogenNativeRuntime>
+    <_PlatformHasClangSharpPathogenNativeRuntime Condition="'$(NETCoreSdkRuntimeIdentifier)' == 'linux-x64'">true</_PlatformHasClangSharpPathogenNativeRuntime>
+    <_PlatformHasClangSharpPathogenNativeRuntime Condition="'$(NETCoreSdkRuntimeIdentifier)' == 'linux-arm64'">true</_PlatformHasClangSharpPathogenNativeRuntime>
+    <_PlatformHasClangSharpPathogenNativeRuntime Condition="'$(NETCoreSdkRuntimeIdentifier)' == 'osx-x64'">true</_PlatformHasClangSharpPathogenNativeRuntime>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(_PlatformHasClangSharpPathogenNativeRuntime)' == 'true' and '$(WillCreatePackages)' != 'true'">
+    <PackageReference Include="ClangSharp.Pathogen.Native.$(NETCoreSdkRuntimeIdentifier)" Version="$(ClangSharpPathogenVersion)" />
+  </ItemGroup>
+  <Target Name="ComplainAboutUnsupportedClangSharpPathogenNativeRuntime" BeforeTargets="Build;Pack" Condition="'$(_PlatformHasClangSharpPathogenNativeRuntime)' != 'true'">
+    <Warning Text="The current platform '$(NETCoreSdkRuntimeIdentifier)' is not supported by ClangSharp.Pathogen. You will need to provide your own ClangSharp.Pathogen native runtime by setting the BIOHAZRD_CUSTOM_LIBCLANG_PATHOGEN_RUNTIME environment variable or by calling ClangSharp.Pathogen.LibClangSharpResolver.OverrideNativeRuntime before calling Biohazrd.TranslatedLibraryBuilder.Create." />
+  </Target>
 
 </Project>
