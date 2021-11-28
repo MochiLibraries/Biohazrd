@@ -23,26 +23,33 @@ env:
   # (This is mainly intended to allow using the NuGet.org test servers to test CI in forks.)
   CiNuGetApiUrl: ${{secrets.NUGET_API_URL}}
 jobs:
+  # =====================================================================================================================================================================
+  # Build and Test Biohazrd
+  # =====================================================================================================================================================================
   build-and-test:
     strategy:
       fail-fast: false
       matrix:
         platform:
-          - name: Windows
-            architecture: x64
-            runs-on: windows-latest
-          - name: Linux
-            architecture: x64
-            runs-on: ubuntu-latest
+          - name: Windows x64
+            os: windows-latest
+            rid: win-x64
+          - name: Linux x64
+            os: ubuntu-latest
+            rid: linux-x64
+          - name: Linux ARM64
+            os: ubuntu-arm64-latest
+            rid: linux-arm64
+            skip-tool-install: true
         configuration: ['Debug', 'Release']
         include:
-          # Linux Release x64 builds create packages (if applicable)
+          # Create packages from Linux Release x64
           - platform:
-              runs-on: ubuntu-latest
+              rid: linux-x64
             configuration: Release
             create-packages: true
-    name: Build and Test ${{matrix.platform.name}} ${{matrix.platform.architecture}} ${{matrix.configuration}}
-    runs-on: ${{matrix.platform.runs-on}}
+    name: ${{matrix.platform.name}} ${{matrix.configuration}}
+    runs-on: ${{matrix.platform.os}}
     env:
       WillCreatePackages: ${{matrix.create-packages}}
     steps:
@@ -54,19 +61,21 @@ jobs:
 
       # ----------------------------------------------------------------------- Setup Python
       - name: Setup Python 3.8
+        if: matrix.platform.skip-tool-install != true
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
 
       # ----------------------------------------------------------------------- Setup .NET
       - name: Setup .NET
+        if: matrix.platform.skip-tool-install != true
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 5.0.x
 
       # ----------------------------------------------------------------------- Setup other dependencies
       - name: Setup other dependencies
-        if: runner.os == 'Linux'
+        if: matrix.platform.skip-tool-install != true && runner.os == 'Linux'
         # This installs lld and llvm-ar, which are used by LinkImportsTransformationElfTests
         run: sudo apt-get install --yes lld llvm
 
@@ -88,7 +97,7 @@ jobs:
 
       - name: Build
         run: dotnet build --no-restore --configuration ${{matrix.configuration}}
-      
+
       - name: Pack
         id: pack
         if: matrix.create-packages
@@ -97,7 +106,7 @@ jobs:
       # ----------------------------------------------------------------------- Test
       - name: Test
         run: dotnet test --no-restore --no-build --configuration ${{matrix.configuration}} --verbosity normal
-      
+
       # ----------------------------------------------------------------------- Collect Artifacts
       - name: Collect NuGet Packages
         uses: actions/upload-artifact@v2
@@ -108,6 +117,9 @@ jobs:
           if-no-files-found: error
           path: packages/**
 
+  # =====================================================================================================================================================================
+  # Publish NuGet Packages to GitHub
+  # =====================================================================================================================================================================
   publish-packages-github:
     name: Publish to GitHub
     runs-on: ubuntu-latest
@@ -128,7 +140,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: Packages
-      
+
       # ----------------------------------------------------------------------- Upload release assets
       - name: Upload release assets
         if: github.event_name == 'release'
@@ -170,7 +182,10 @@ jobs:
         env:
           # This is a workaround for https://github.com/NuGet/Home/issues/9775
           DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
-  
+
+  # =====================================================================================================================================================================
+  # Publish NuGet Packages to NuGet.org
+  # =====================================================================================================================================================================
   publish-packages-nuget-org:
     name: Publish to NuGet.org
     runs-on: ubuntu-latest
@@ -200,6 +215,9 @@ jobs:
           # This is a workaround for https://github.com/NuGet/Home/issues/9775
           DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
 
+  # =====================================================================================================================================================================
+  # Send CI Failure Notification
+  # =====================================================================================================================================================================
   send-ci-failure-notification:
     name: Send CI Failure Notification
     needs: [build-and-test, publish-packages-github, publish-packages-nuget-org]
@@ -216,7 +234,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
-      
+
       # ----------------------------------------------------------------------- Send CI Failure Notification
       - name: Send Notification
         run: python .github/workflows/send-ci-failure-notification.py
