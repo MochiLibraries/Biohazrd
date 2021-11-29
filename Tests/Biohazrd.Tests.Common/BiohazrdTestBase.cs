@@ -11,6 +11,7 @@ namespace Biohazrd.Tests.Common
     public abstract class BiohazrdTestBase
     {
         protected virtual TranslationOptions? DefaultTranslationOptions => null;
+        protected virtual string? DefaultTargetTriple => null;
 
         /// <param name="targetTriple">https://clang.llvm.org/docs/CrossCompilation.html#target-triple</param>
         protected TranslatedLibraryBuilder CreateLibraryBuilder(string cppCode, string? targetTriple = null, TranslationOptions? options = null)
@@ -21,6 +22,7 @@ namespace Biohazrd.Tests.Common
                 Contents = cppCode
             });
 
+            targetTriple ??= DefaultTargetTriple;
             if (targetTriple is not null)
             { builder.AddCommandLineArgument($"--target={targetTriple}"); }
 

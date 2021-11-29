@@ -13,6 +13,9 @@ namespace Biohazrd.Tests.Common
         private static string? LlvmArPath = null;
         private static Exception? LlvmArLocationFailureException = null;
 
+        private static string? LdLldPath = null;
+        private static Exception? LdLldLocationFailureException = null;
+
         private static string? TryFindLlvmTool(string friendlyName, string commandName, ref string? cachedPath, ref Exception? cachedException, out Exception? exception)
         {
             if (cachedPath is not null)
@@ -125,6 +128,30 @@ namespace Biohazrd.Tests.Common
         public static string GetLlvmArPath()
         {
             string? path = TryFindLlvmAr(out Exception? exception);
+
+            if (exception is not null)
+            {
+                Debug.Assert(path is null);
+                throw exception;
+            }
+
+            Debug.Assert(path is not null);
+            return path;
+        }
+
+        private static string? TryFindLdLld(out Exception? exception)
+            => TryFindLlvmTool("LLVM ELF Linker (ld.lld)", "ld.lld", ref LdLldPath, ref LdLldLocationFailureException, out exception);
+
+        public static Exception? IsLdLldAvailable()
+        {
+            string? path = TryFindLdLld(out Exception? exception);
+            Debug.Assert(exception is not null || path is not null);
+            return exception;
+        }
+
+        public static string GetLdLldPath()
+        {
+            string? path = TryFindLdLld(out Exception? exception);
 
             if (exception is not null)
             {

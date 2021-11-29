@@ -4,16 +4,38 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace Biohazrd.Transformation.Tests
 {
+    // This test only handled Windows linking.
+    // ELF (Linux) support is tested in LinkImportsTransformationElfTests.
+    //
     // Note that all tests within this file are marked as Windows-only not because LinkImportsTransformation is Windows-only, but
     // because they rely on being able to invoke the MSVC librarian to generate static libraries for testing.
-    // (Unfortunately lld's MSVC linker mode cannot imitate the librarian.)
+    // (Unfortunately lld-link cannot serve as a stand-in.)
     [RelatedIssue("https://github.com/InfectedLibraries/Biohazrd/issues/119")]
     public sealed class LinkImportsTransformationTests : BiohazrdTestBase
     {
+        protected override string? DefaultTargetTriple
+        {
+            get
+            {
+                // Use the default target triple on Windows
+                if (OperatingSystem.IsWindows())
+                { return null; }
+
+                // On non-Windows use an appropriate known triple or fall back on Windows x64
+                return RuntimeInformation.OSArchitecture switch
+                {
+                    Architecture.X64 => "x86_64-pc-windows",
+                    Architecture.Arm64 => "aarch64-pc-windows",
+                    _ => "x86_64-pc-windows"
+                };
+            }
+        }
+
         /// <summary>Creates an import library with the given name and exports.</summary>
         /// <param name="transformation">An optional transformation to automatically add the library to.</param>
         /// <param name="libName">The name of the library without any file extension.</param>
@@ -65,9 +87,9 @@ namespace Biohazrd.Transformation.Tests
             library = transformation.Transform(library);
 
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            Assert.Empty(function.Diagnostics);
             Assert.Equal($"{nameof(NormalSymbolTest)}.dll", function.DllFileName);
             Assert.Equal("TestFunction", function.MangledName);
-            Assert.Empty(function.Diagnostics);
         }
 
         [WindowsFact]
@@ -79,9 +101,9 @@ namespace Biohazrd.Transformation.Tests
             library = transformation.Transform(library);
 
             TranslatedStaticField staticField = library.FindDeclaration<TranslatedStaticField>("TestGlobal");
+            Assert.Empty(staticField.Diagnostics);
             Assert.Equal($"{nameof(NormalSymbolTest_GlobalVariable)}.dll", staticField.DllFileName);
             Assert.Equal("TestGlobal", staticField.MangledName);
-            Assert.Empty(staticField.Diagnostics);
         }
 
         [WindowsFact]
@@ -106,9 +128,9 @@ namespace Biohazrd.Transformation.Tests
         public void MangledCppSymbolTest()
         {
             LinkImportsTransformation transformation = new();
-            const string testFunctionMangled = "?TestFunction@@YAXXZ";
+            const string testFunctionMangled = "?TestFunction@@YAXXZ"; // The mangling of this symbol is the same between x86, x64, ARM32, and ARM64.
             CreateImportLib(transformation, nameof(MangledCppSymbolTest), testFunctionMangled);
-            TranslatedLibrary library = CreateLibrary(@"void TestFunction();", "x86_64-pc-win32");
+            TranslatedLibrary library = CreateLibrary(@"void TestFunction();");
             library = transformation.Transform(library);
 
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");

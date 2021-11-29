@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using Xunit;
 
@@ -11,7 +12,27 @@ namespace Biohazrd.Transformation.Tests
 {
     public sealed class LinkImportsTransformationElfTests : BiohazrdTestBase
     {
-        // We use this test to make these tests optional on Windows (they'll only run if a valid Clang installation is available
+        protected override string? DefaultTargetTriple
+        {
+            get
+            {
+                // Use the default target triple on Linux
+                if (OperatingSystem.IsLinux())
+                { return null; }
+
+                // On non-Windows use an appropriate known triple or fall back on Linux x64
+                return RuntimeInformation.OSArchitecture switch
+                {
+                    Architecture.X64 => "x86_64-pc-linux",
+                    Architecture.Arm64 => "aarch64-pc-linux",
+                    _ => "x86_64-pc-linux"
+                };
+            }
+        }
+
+        // We use this test to make these tests optional on non-Linux they'll only run if the appropriate tools can be found from either:
+        // * The system PATH
+        // * The "C++ Clang Compiler for Windows" (Microsoft.VisualStudio.Component.VC.Llvm.Clang) component from any Visual Studio installation (newest version present is preferred.)
         public sealed class NeedsLinuxOrClangFactAttribute : FactAttribute
         {
             public bool NeedsLlvmArToo { get; set; }
@@ -22,8 +43,8 @@ namespace Biohazrd.Transformation.Tests
                 if (base.Skip is not null)
                 { return; }
 
-                // On non-Windows platforms we always run these tests, we expect Clang to be available on the system PATH
-                if (!OperatingSystem.IsWindows())
+                // On Linux we should always run these tests
+                if (OperatingSystem.IsLinux())
                 { return; }
 
                 // Always run these tests for CI
@@ -38,6 +59,17 @@ namespace Biohazrd.Transformation.Tests
                         return;
                     case Exception exception:
                         Skip = $"This test requires an operational version of Clang: {exception.Message}";
+                        return;
+                }
+
+                // If it's needed, skip this test if the LLVM ELF Linker is not avialable
+                switch (LlvmTools.IsLdLldAvailable())
+                {
+                    case FileNotFoundException:
+                        Skip = "This test requires ld.lld to be available via the system PATH or via Visual Studio.";
+                        return;
+                    case Exception exception:
+                        Skip = $"This test requires an operational version of ld.lld: {exception.Message}";
                         return;
                 }
 
@@ -175,19 +207,26 @@ namespace Biohazrd.Transformation.Tests
             string clangPath = LlvmTools.GetClangPath();
             using Process clang = new()
             {
-                StartInfo = new ProcessStartInfo(clangPath, $"--target=x86_64-pc-linux {extraArguments} --output={outputFileName} -")
+                // We always use lld instead of ld
+                // * On Windows we can usually expect lld to be available when Clang is
+                // * On Linux, lld will typically support cross-targeting whereas ld will not
+                StartInfo = new ProcessStartInfo(clangPath, $"-fuse-ld=lld {extraArguments} --output={outputFileName} -")
                 {
                     RedirectStandardInput = true
                 }
             };
 
-            // Add extra arguments required for Windows
-            // These could be safely added on Linux too, but:
-            // A) lld might not be installed
-            // B) Not including standard libraries is extremely atypical, we don't want to deviate that far from normalcy.
-            //    (We need to do it on Windows simply because we don't have glibc and such there.)
-            if (OperatingSystem.IsWindows())
-            { clang.StartInfo.Arguments = $"-fuse-ld=lld --no-standard-libraries {clang.StartInfo.Arguments}"; }
+            // When the target triple is not defaulted to the host triple (IE: when testing on non-Linux) make sure we explicitly provide it
+            // We also disable linking against standard libraries since we don't expect Linux standard libraries to be available outside of Linux
+            // (We could just disable them on Linux too, but not linking with the standard libraries is extremely atypical and we don't want to deviate that far from normalcy.)
+            if (DefaultTargetTriple is string targetTriple)
+            {
+                clang.StartInfo.Arguments = $"--no-standard-libraries --target={targetTriple} {clang.StartInfo.Arguments}";
+                Assert.False(OperatingSystem.IsLinux());
+            }
+
+            // We don't directly use lld, but we get the path to verify it's installed and available
+            LlvmTools.GetLdLldPath();
 
             clang.Start();
 
@@ -199,7 +238,7 @@ namespace Biohazrd.Transformation.Tests
             clang.WaitForExit();
 
             if (clang.ExitCode != 0)
-            { throw new Exception($"Clang failed with exit code {clang.ExitCode} while creating the {thingBeingMade}."); }
+            { throw new ToolProcessFailureException(clang, $"creating the {thingBeingMade}", code.ToString()); }
 
             // We use a relative directory here so that:
             // A) We test that only the file name is used
@@ -224,7 +263,7 @@ namespace Biohazrd.Transformation.Tests
             llvmAr.WaitForExit();
 
             if (llvmAr.ExitCode != 0)
-            { throw new Exception($"llvm-ar failed with exit code {llvmAr.ExitCode} while creating the static library."); }
+            { throw new ToolProcessFailureException(llvmAr, "creating the static library"); }
 
             // We use a relative directory here so that:
             // A) We test that only the file name is used
@@ -241,9 +280,9 @@ namespace Biohazrd.Transformation.Tests
             library = transformation.Transform(library);
 
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");
+            Assert.Empty(function.Diagnostics);
             Assert.Equal($"{nameof(NormalSymbolTest)}.so", function.DllFileName);
             Assert.Equal("TestFunction", function.MangledName);
-            Assert.Empty(function.Diagnostics);
         }
 
         [NeedsLinuxOrClangFact]
@@ -255,18 +294,18 @@ namespace Biohazrd.Transformation.Tests
             library = transformation.Transform(library);
 
             TranslatedStaticField staticField = library.FindDeclaration<TranslatedStaticField>("TestGlobal");
+            Assert.Empty(staticField.Diagnostics);
             Assert.Equal($"{nameof(NormalSymbolTest_GlobalVariable)}.so", staticField.DllFileName);
             Assert.Equal("TestGlobal", staticField.MangledName);
-            Assert.Empty(staticField.Diagnostics);
         }
 
         [NeedsLinuxOrClangFact]
         public void MangledCppSymbolTest()
         {
             LinkImportsTransformation transformation = new();
-            const string testFunctionMangled = "_Z12TestFunctionv";
+            const string testFunctionMangled = "_Z12TestFunctionv"; // The mangling of this symbol is the same between x86, x64, ARM32, and ARM64.
             CreateSharedLibrary(transformation, nameof(MangledCppSymbolTest), useCPlusPlus: true, "TestFunction");
-            TranslatedLibrary library = CreateLibrary(@"void TestFunction();", "x86_64-pc-linux");
+            TranslatedLibrary library = CreateLibrary(@"void TestFunction();");
             library = transformation.Transform(library);
 
             TranslatedFunction function = library.FindDeclaration<TranslatedFunction>("TestFunction");

@@ -22,14 +22,7 @@ namespace Biohazrd.Tests.Common
             toolProcess.WaitForExit();
 
             if (toolProcess.ExitCode != 0)
-            {
-                string commandString = fileName;
-
-                foreach (string argument in arguments)
-                { commandString += $" {argument}"; }
-
-                throw new FailException($"'{commandString}' failed with exit code {toolProcess.ExitCode}.");
-            }
+            { throw new ToolProcessFailureException(toolProcess); }
         }
 
         public static void Lib(params string[] arguments)

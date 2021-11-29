@@ -72,7 +72,7 @@ namespace Biohazrd.Tests.Common
                     }
 
                     if (newestInstance is null)
-                    { throw new Exception("No instances of Visual Studio with the MSVC Toolchain were found."); }
+                    { throw new Exception($"No instances of Visual Studio with the {RequiredComponentName} component were found."); }
 
                     visualStudioInstance = newestInstance;
                 }

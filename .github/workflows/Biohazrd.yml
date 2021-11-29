@@ -67,8 +67,8 @@ jobs:
       # ----------------------------------------------------------------------- Setup other dependencies
       - name: Setup other dependencies
         if: runner.os == 'Linux'
-        # This installs llvm-ar, which is used by LinkImportsTransformationElfTests
-        run: sudo apt-get install --yes llvm
+        # This installs lld and llvm-ar, which are used by LinkImportsTransformationElfTests
+        run: sudo apt-get install --yes lld llvm
 
       # ----------------------------------------------------------------------- Configure versioning
       - name: Configure build
