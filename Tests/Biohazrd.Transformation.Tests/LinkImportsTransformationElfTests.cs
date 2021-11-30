@@ -51,11 +51,16 @@ namespace Biohazrd.Transformation.Tests
                 if (Environment.GetEnvironmentVariable("ContinuousIntegrationBuild")?.Equals("true", StringComparison.InvariantCultureIgnoreCase) ?? false)
                 { return; }
 
+                // On Windows we will try to find the tools via Visual Studio so mention that in our skip messages
+                string secondarySourceHint = $" or {LlvmTools.ExplicitToolchainRootEnvironmentVariable}";
+                if (OperatingSystem.IsWindows())
+                { secondarySourceHint = $", Visual Studio,{secondarySourceHint}"; }
+
                 // Skip this test if Clang is not avialable
                 switch (LlvmTools.IsClangAvailable())
                 {
                     case FileNotFoundException:
-                        Skip = "This test requires Clang to be available via the system PATH or via Visual Studio.";
+                        Skip = $"This test requires Clang to be available via the system PATH{secondarySourceHint}.";
                         return;
                     case Exception exception:
                         Skip = $"This test requires an operational version of Clang: {exception.Message}";
@@ -66,7 +71,7 @@ namespace Biohazrd.Transformation.Tests
                 switch (LlvmTools.IsLdLldAvailable())
                 {
                     case FileNotFoundException:
-                        Skip = "This test requires ld.lld to be available via the system PATH or via Visual Studio.";
+                        Skip = $"This test requires ld.lld to be available via the system PATH{secondarySourceHint}.";
                         return;
                     case Exception exception:
                         Skip = $"This test requires an operational version of ld.lld: {exception.Message}";
@@ -79,7 +84,7 @@ namespace Biohazrd.Transformation.Tests
                     switch (LlvmTools.IsLlvmArAvailable())
                     {
                         case FileNotFoundException:
-                            Skip = "This test requires llvm-ar to be available via the system PATH or via Visual Studio.";
+                            Skip = $"This test requires llvm-ar to be available via the system PATH{secondarySourceHint}.";
                             return;
                         case Exception exception:
                             Skip = $"This test requires an operational version of llvm-ar: {exception.Message}";

@@ -16,6 +16,8 @@ namespace Biohazrd.Tests.Common
         private static string? LdLldPath = null;
         private static Exception? LdLldLocationFailureException = null;
 
+        public const string ExplicitToolchainRootEnvironmentVariable = "BIOHAZRD_FULL_LLVM_TOOLCHAIN_PATH";
+
         private static string? TryFindLlvmTool(string friendlyName, string commandName, ref string? cachedPath, ref Exception? cachedException, out Exception? exception)
         {
             if (cachedPath is not null)
@@ -28,6 +30,28 @@ namespace Biohazrd.Tests.Common
             {
                 exception = cachedException;
                 return null;
+            }
+
+            // If a LLVM toolchain is explicitly configured, use it instead of searching the system path
+            if (Environment.GetEnvironmentVariable(ExplicitToolchainRootEnvironmentVariable) is string explicitToolchainRoot)
+            {
+                if (!Path.IsPathFullyQualified(explicitToolchainRoot))
+                {
+                    cachedException = exception = new InvalidOperationException($"LLVM toolchain provided by {ExplicitToolchainRootEnvironmentVariable} must be a fully-qualified path.");
+                    return null;
+                }
+
+                string fileExtension = OperatingSystem.IsWindows() ? ".exe" : "";
+                string explicitToolPath = Path.Combine(explicitToolchainRoot, "bin", $"{commandName}{fileExtension}");
+
+                if (!File.Exists(explicitToolPath))
+                {
+                    cachedException = exception = new FileNotFoundException($"LLVM toolchain provided by {ExplicitToolchainRootEnvironmentVariable} is incomplete. '{explicitToolPath}' not found.");
+                    return null;
+                }
+
+                exception = null;
+                return explicitToolPath;
             }
 
             // It's not super clear if Win32Exception.NativeErrorCode is actually errno on Unix-like systems when Process.Start fails due to a missing executable,
