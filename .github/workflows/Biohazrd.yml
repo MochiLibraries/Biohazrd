@@ -41,6 +41,9 @@ jobs:
             os: ubuntu-arm64-latest
             rid: linux-arm64
             skip-tool-install: true
+          - name: macOS x64
+            os: macos-10.15
+            rid: osx-x64
         configuration: ['Debug', 'Release']
         include:
           # Create packages from Linux Release x64
@@ -74,10 +77,16 @@ jobs:
           dotnet-version: 5.0.x
 
       # ----------------------------------------------------------------------- Setup other dependencies
-      - name: Setup other dependencies
+      - name: Setup other dependencies (Linux)
         if: matrix.platform.skip-tool-install != true && runner.os == 'Linux'
         # This installs lld and llvm-ar, which are used by LinkImportsTransformationElfTests
         run: sudo apt-get install --yes lld llvm
+
+      - name: Setup other dependencies (macOS)
+        if: matrix.platform.skip-tool-install != true && runner.os == 'macOS'
+        # The LLVM toolchain provided by Xcode is stripped down and doesn't include things like lld or llvm-ar
+        # However, the runners do have a full LLVM toolchian installed via brew, so we use that for tests which require these tools
+        run: python .github/workflows/gha.py set_environment_variable BIOHAZRD_FULL_LLVM_TOOLCHAIN_PATH "$(brew --prefix llvm)"
 
       # ----------------------------------------------------------------------- Configure versioning
       - name: Configure build

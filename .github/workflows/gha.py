@@ -44,3 +44,50 @@ def set_environment_variable(name, value):
 
 def add_path(path):
     github_file_command("PATH", path)
+
+if __name__ == "__main__":
+    args = sys.argv
+
+    def pop_arg():
+        global args
+        if len(args) == 0:
+            print_error("Bad command line, not enough arguments specified.")
+            sys.exit(1)
+        result = args[0]
+        args = args[1:]
+        return result
+    
+    def done_parsing():
+        if len(args) > 0:
+            print_error("Bad command line, too many arguments specified.")
+            sys.exit(1)
+    
+    pop_arg() # Skip script name
+    command = pop_arg()
+    if command == "print_error":
+        message = pop_arg()
+        done_parsing()
+        print_error(message)
+    elif command == "print_warning":
+        message = pop_arg()
+        done_parsing()
+        print_warning(message)
+    elif command == "set_output":
+        name = pop_arg()
+        value = pop_arg()
+        done_parsing()
+        set_output(name, value)
+    elif command == "set_environment_variable":
+        name = pop_arg()
+        value = pop_arg()
+        done_parsing()
+        set_environment_variable(name, value)
+    elif command == "add_path":
+        path = pop_arg()
+        done_parsing()
+        add_path(path)
+    else:
+        print_error(f"Unknown command '{command}'")
+        sys.exit(1)
+    
+    fail_if_errors()
