@@ -15,6 +15,7 @@ namespace Biohazrd
     {
         private readonly List<string> CommandLineArguments = new();
         private readonly List<SourceFileInternal> Files = new();
+        private readonly List<TranslationDiagnostic> PreparseDiagnostics = new();
 
         public TranslationOptions Options { get; set; } = new();
 
@@ -32,6 +33,11 @@ namespace Biohazrd
 
                 AddCommandLineArguments("-resource-dir", resourceDirectoryPath);
             }
+
+            // On macOS we need to tell Clang where the macOS SDK and Xcode toolchain is located.
+            // See https://github.com/MochiLibraries/Biohazrd/issues/226 for more details
+            if (OperatingSystem.IsMacOS())
+            { Xcode.PrepareLibrary(this); }
         }
 
         public void AddFile(SourceFile sourceFile)
@@ -82,6 +88,12 @@ namespace Biohazrd
 
         public void AddCommandLineArguments(params string[] commandLineArguments)
             => AddCommandLineArguments((IEnumerable<string>)commandLineArguments);
+
+        internal void AddPreparseDiagnostic(TranslationDiagnostic diagnostic)
+            => PreparseDiagnostics.Add(diagnostic);
+
+        internal void AddPreparseDiagnostics(IEnumerable<TranslationDiagnostic> diagnostics)
+            => PreparseDiagnostics.AddRange(diagnostics);
 
         /// <summary>Creates the Biohazrd index file</summary>
         /// <remarks>
@@ -266,6 +278,10 @@ namespace Biohazrd
                 miscDiagnostics.AddRange(parsingDiagnostics);
                 parsingDiagnostics = miscDiagnostics.MoveToImmutableSafe();
             }
+
+            // Prepend any pre-parsing diagnostics if we have any
+            if (PreparseDiagnostics.Count > 0)
+            { parsingDiagnostics = parsingDiagnostics.InsertRange(0, PreparseDiagnostics); }
 
             __HACK__Stl1300Workaround stl1300Workaround = __HACK__Stl1300Workaround.Instance;
             if (stl1300Workaround.Diagnostics.Length > 0)
