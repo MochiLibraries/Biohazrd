@@ -53,7 +53,7 @@ namespace Biohazrd.CSharp
                 { continue; }
 
                 // Typedefs generally have no output in C#, but they do have some informational output when Clang dumping is enabled
-                if (declaration is TranslatedTypedef && !options.DumpClangInfo)
+                if (declaration is TranslatedTypedef && !options.__DumpClangInfo)
                 { continue; }
 
                 // Determine the file for the declaration
@@ -107,13 +107,13 @@ namespace Biohazrd.CSharp
             using (Writer.Namespace(namespaceName))
             {
                 // Dump Clang information
-                if (Options.DumpClangInfo && declaration.Declaration is not null)
+                if (Options.__DumpClangInfo && declaration.Declaration is not null)
                 {
                     Writer.EnsureSeparation();
                     Writer.WriteLineLeftAdjusted($"#region {declaration.Declaration.CursorKindDetailed()} {declaration.Name} Dump");
 
                     using (Writer.Prefix("// "))
-                    { ClangSharpInfoDumper.Dump(Writer, declaration.Declaration, Options.DumpOptions); }
+                    { ClangSharpInfoDumper.Dump(Writer, declaration.Declaration, Options.__DumpOptions); }
 
                     Writer.WriteLineLeftAdjusted("#endregion");
                     Writer.NoSeparationNeededBeforeNextLine();
@@ -141,7 +141,7 @@ namespace Biohazrd.CSharp
 
         protected override void VisitTypedef(VisitorContext context, TranslatedTypedef declaration)
         {
-            if (Options.DumpClangInfo)
+            if (Options.__DumpClangInfo)
             {
                 Writer.Write("// ");
 

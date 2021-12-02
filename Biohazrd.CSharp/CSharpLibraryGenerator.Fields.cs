@@ -170,7 +170,7 @@ namespace Biohazrd.CSharp
 
             Writer.EnsureSeparation();
 
-            if (Options.DumpClangInfo)
+            if (Options.__DumpClangInfo)
             {
                 Writer.WriteLine($"// ===== Extra bitfield info for {declaration.Name} =====");
                 Writer.WriteLine($"//         Offset = {declaration.Offset} -> {offset}");

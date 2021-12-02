@@ -6,8 +6,16 @@ namespace Biohazrd.CSharp
 {
     public sealed record CSharpGenerationOptions
     {
+        [Obsolete("Clang info dumping is currently broken and should probably not be enabled. See https://github.com/MochiLibraries/Biohazrd/issues/227 for details.")]
         public bool DumpClangInfo { get; init; } = false;
+        [Obsolete("Clang info dumping is currently broken and should probably not be enabled. See https://github.com/MochiLibraries/Biohazrd/issues/227 for details.")]
         public ClangSharpInfoDumper.Options DumpOptions { get; init; }
+
+#pragma warning disable CS0618 // Type or member is obsolete
+        // These aliases are here to avoid having warning paragmas all over the place.
+        internal bool __DumpClangInfo => DumpClangInfo;
+        internal ClangSharpInfoDumper.Options __DumpOptions => DumpOptions;
+#pragma warning restore CS0618 // Type or member is obsolete
 
         public bool HideTrampolinesFromDebugger { get; init; } = true;
 
@@ -83,7 +91,9 @@ namespace Biohazrd.CSharp
         }
 
         public CSharpGenerationOptions()
+#pragma warning disable CS0618 // Type or member is obsolete
             => DumpOptions = ClangSharpInfoDumper.DefaultOptions;
+#pragma warning restore CS0618 // Type or member is obsolete
 
         public static readonly CSharpGenerationOptions Default = new();
     }
