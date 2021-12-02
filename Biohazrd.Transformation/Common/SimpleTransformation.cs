@@ -15,6 +15,7 @@ namespace Biohazrd.Transformation.Common
         public delegate TransformationResult TransformationMethod<TDeclaration>(TransformationContext context, TDeclaration declaration);
         public TransformationMethod<TranslatedDeclaration>? TransformDeclaration { get; init; }
         public TransformationMethod<TranslatedDeclaration>? TransformUnknownDeclarationType { get; init; }
+        public TransformationMethod<TranslatedConstant>? TransformConstant { get; init; }
         public TransformationMethod<TranslatedEnum>? TransformEnum { get; init; }
         public TransformationMethod<TranslatedEnumConstant>? TransformEnumConstant { get; init; }
         public TransformationMethod<TranslatedFunction>? TransformFunction { get; init; }
@@ -51,6 +52,8 @@ namespace Biohazrd.Transformation.Common
                 => Parent.TransformDeclaration is not null ? Parent.TransformDeclaration(context, declaration) : base.TransformDeclaration(context, declaration);
             protected sealed override TransformationResult TransformUnknownDeclarationType(TransformationContext context, TranslatedDeclaration declaration)
                 => Parent.TransformUnknownDeclarationType is not null ? Parent.TransformUnknownDeclarationType(context, declaration) : base.TransformUnknownDeclarationType(context, declaration);
+            protected sealed override TransformationResult TransformConstant(TransformationContext context, TranslatedConstant declaration)
+                => Parent.TransformConstant is not null ? Parent.TransformConstant(context, declaration) : base.TransformConstant(context, declaration);
             protected sealed override TransformationResult TransformEnum(TransformationContext context, TranslatedEnum declaration)
                 => Parent.TransformEnum is not null ? Parent.TransformEnum(context, declaration) : base.TransformEnum(context, declaration);
             protected sealed override TransformationResult TransformEnumConstant(TransformationContext context, TranslatedEnumConstant declaration)

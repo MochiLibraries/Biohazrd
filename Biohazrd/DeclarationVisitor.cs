@@ -69,6 +69,9 @@
                 case TranslatedEnum enumDeclaration:
                     VisitEnum(context, enumDeclaration);
                     break;
+                case TranslatedConstant constantDeclaration:
+                    VisitConstant(context, constantDeclaration);
+                    break;
 
                 // Fallback declaration
                 default:

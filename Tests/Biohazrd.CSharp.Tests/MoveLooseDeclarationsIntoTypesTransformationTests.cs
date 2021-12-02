@@ -1,4 +1,5 @@
-﻿using Biohazrd.Tests.Common;
+﻿using Biohazrd.Expressions;
+using Biohazrd.Tests.Common;
 using System.Linq;
 using Xunit;
 
@@ -28,6 +29,19 @@ namespace Biohazrd.CSharp.Tests
             Assert.Equal("A", container.Name); // Transformation uses name of file for default name
             Assert.Contains(variable, container);
             Assert.DoesNotContain(variable, library);
+        }
+
+        [Fact]
+        public void Basic_Constant()
+        {
+            TranslatedLibrary library = CreateLibrary("");
+            library = library with { Declarations = library.Declarations.Add(new TranslatedConstant(library.Files.First(), "Test", IntegerConstant.FromInt32(3226))) };
+            TranslatedConstant constant = library.FindDeclaration<TranslatedConstant>("Test");
+            library = new MoveLooseDeclarationsIntoTypesTransformation().Transform(library);
+            SynthesizedLooseDeclarationsTypeDeclaration container = library.FindDeclaration<SynthesizedLooseDeclarationsTypeDeclaration>();
+            Assert.Equal("A", container.Name); // Transformation uses name of file for default name
+            Assert.Contains(constant, container);
+            Assert.DoesNotContain(constant, library);
         }
 
         [Fact]

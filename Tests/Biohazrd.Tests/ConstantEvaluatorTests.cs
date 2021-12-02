@@ -32,6 +32,17 @@ namespace Biohazrd.Tests
         }
 
         [Fact]
+        public void Warning()
+        {
+            TranslatedLibraryBuilder builder = CreateLibraryBuilder("[[deprecated]] const int DeprecatedConstant = 3226;");
+            TranslatedLibraryConstantEvaluator evaluator = builder.CreateConstantEvaluator();
+            ConstantEvaluationResult result = evaluator.Evaluate("DeprecatedConstant");
+            Assert.Contains(result.Diagnostics, d => d.Severity == Severity.Warning && d.Message.Contains("-Wdeprecated-declarations"));
+            IntegerConstant value = Assert.IsType<IntegerConstant>(result.Value);
+            Assert.Equal(3226UL, value.Value);
+        }
+
+        [Fact]
         public void Macro()
         {
             TranslatedLibraryBuilder builder = CreateLibraryBuilder("#define TEST 3226");

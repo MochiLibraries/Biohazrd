@@ -42,6 +42,7 @@ namespace Biohazrd.Transformation
             => declaration switch
             {
                 ICustomTranslatedDeclaration customDeclaration => customDeclaration.TransformTypeChildren(this, context.Add(declaration)),
+                TranslatedConstant { Type: not null }  constantDeclaration => TransformConstantTypeReferences(context.Add(declaration), constantDeclaration),
                 TranslatedEnum enumDeclaration => TransformEnumTypeReferences(context.Add(declaration), enumDeclaration),
                 TranslatedFunction functionDeclaration => TransformFunctionTypeReferences(context.Add(declaration), functionDeclaration),
                 TranslatedParameter parameterDeclaration => TransformParameterTypeReferences(context.Add(declaration), parameterDeclaration),

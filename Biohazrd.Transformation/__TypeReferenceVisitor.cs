@@ -7,6 +7,14 @@ namespace Biohazrd.Transformation
     /// </summary>
     internal abstract class __TypeReferenceVisitor : DeclarationVisitor
     {
+        protected override void VisitConstant(VisitorContext context, TranslatedConstant declaration)
+        {
+            if (declaration.Type is not null)
+            { VisitTypeReference(context, declaration, declaration.Type); }
+
+            base.VisitConstant(context, declaration);
+        }
+
         protected override void VisitEnum(VisitorContext context, TranslatedEnum declaration)
         {
             VisitTypeReference(context, declaration, declaration.UnderlyingType);

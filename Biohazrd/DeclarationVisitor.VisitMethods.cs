@@ -18,6 +18,8 @@
             }
         }
 
+        protected virtual void VisitConstant(VisitorContext context, TranslatedConstant declaration)
+            => VisitDeclaration(context, declaration);
         protected virtual void VisitEnum(VisitorContext context, TranslatedEnum declaration)
             => VisitDeclaration(context, declaration);
         protected virtual void VisitEnumConstant(VisitorContext context, TranslatedEnumConstant declaration)

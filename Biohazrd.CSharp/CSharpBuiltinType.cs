@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Biohazrd.Transformation;
+using System;
 using System.Collections.Immutable;
 
 namespace Biohazrd.CSharp
@@ -136,5 +137,11 @@ namespace Biohazrd.CSharp
             Float,
             Double
         );
+
+        // The following are placeholders and should not be added to AllTypes or made public
+        // They don't fit into the constraints CSharpBuiltinType. If we're going to expose these I'd rather make something specific to them.
+        internal static readonly TypeReference String = new ExternallyDefinedTypeReference("string");
+        internal static readonly TypeReference NativeInt = new ExternallyDefinedTypeReference("nint");
+        internal static readonly TypeReference UnsignedNativeInt = new ExternallyDefinedTypeReference("unint");
     }
 }

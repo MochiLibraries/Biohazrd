@@ -24,6 +24,7 @@
                 TranslatedFunction functionDeclaration => TransformFunction(context, functionDeclaration),
                 TranslatedEnumConstant enumConstantDeclaration => TransformEnumConstant(context, enumConstantDeclaration),
                 TranslatedEnum enumDeclaration => TransformEnum(context, enumDeclaration),
+                TranslatedConstant constantDeclaration => TransformConstant(context, constantDeclaration),
                 // Fallback declaration
                 TranslatedDeclaration => TransformUnknownDeclarationType(context, declaration)
             };
@@ -34,6 +35,8 @@
         protected virtual TransformationResult TransformUnknownDeclarationType(TransformationContext context, TranslatedDeclaration declaration)
             => TransformDeclaration(context, declaration);
 
+        protected virtual TransformationResult TransformConstant(TransformationContext context, TranslatedConstant declaration)
+            => TransformDeclaration(context, declaration);
         protected virtual TransformationResult TransformEnum(TransformationContext context, TranslatedEnum declaration)
             => TransformDeclaration(context, declaration);
         protected virtual TransformationResult TransformEnumConstant(TransformationContext context, TranslatedEnumConstant declaration)

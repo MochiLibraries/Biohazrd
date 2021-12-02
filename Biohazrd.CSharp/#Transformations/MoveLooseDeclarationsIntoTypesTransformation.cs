@@ -30,7 +30,7 @@ namespace Biohazrd.CSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool DeclarationCouldBeLoose(TranslatedDeclaration declaration)
             // Functions and fields must be nested under a type in C#, so they can be loose
-            => declaration is TranslatedFunction or TranslatedStaticField or TranslatedField or TranslatedEnum { TranslateAsLooseConstants: true };
+            => declaration is TranslatedFunction or TranslatedStaticField or TranslatedField or TranslatedConstant or TranslatedEnum { TranslateAsLooseConstants: true };
 
         protected override TranslatedLibrary PreTransformLibrary(TranslatedLibrary library)
         {

@@ -1,6 +1,9 @@
-﻿using Biohazrd.Tests.Common;
+﻿using Biohazrd.Expressions;
+using Biohazrd.Tests.Common;
 using Biohazrd.Transformation;
+using Biohazrd.Transformation.Common;
 using System.Collections.Immutable;
+using System.Linq;
 using Xunit;
 
 namespace Biohazrd.CSharp.Tests
@@ -254,6 +257,133 @@ MyStruct Test();
                 Assert.False(translatedFunction.IsCallable);
                 Assert.Contains(translatedFunction.Diagnostics, d => d.IsError);
             }
+        }
+
+        [Fact]
+        public void Constant_DoNotAllowInGlobalScope()
+        {
+            TranslatedLibrary library = CreateLibrary("struct MyStruct { };");
+            library = new SimpleTransformation()
+            {
+                TransformRecord = (context, declaration) =>
+                {
+                    TranslatedConstant nestedConstant = new("NestedConstant", new StringConstant("I'm valid in both C++ and C#!"));
+                    TransformationResult result = declaration with { Members = declaration.Members.Add(nestedConstant) };
+                    result.Add(new TranslatedConstant("GlobalConstant", new StringConstant("I'm valid in C++ but not in C#!")));
+                    return result;
+                }
+            }.Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+
+            TranslatedConstant nestedConstant = library.FindDeclaration<TranslatedRecord>("MyStruct").FindDeclaration<TranslatedConstant>("NestedConstant");
+            TranslatedConstant globalConstant = library.FindDeclaration<TranslatedConstant>("GlobalConstant");
+            Assert.Empty(nestedConstant.Diagnostics);
+            Assert.NotEmpty(globalConstant.Diagnostics.Where(d => d.IsError));
+        }
+
+        [Fact]
+        public void Constant_InferredCSharpConstantTypeOk()
+        {
+            TranslatedLibrary library = CreateLibrary("struct MyStruct { };");
+            library = new SimpleTransformation()
+            {
+                TransformRecord = (context, declaration) => declaration with
+                {
+                    Members = declaration.Members.Add(new TranslatedConstant("Constant", IntegerConstant.FromInt32(3226)))
+                }
+            }.Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+
+            TranslatedConstant constant = library.FindDeclaration<TranslatedRecord>().FindDeclaration<TranslatedConstant>();
+            Assert.Empty(constant.Diagnostics);
+        }
+
+        [Fact]
+        public void Constant_ExplicitCSharpConstantTypeOk()
+        {
+            TranslatedLibrary library = CreateLibrary("struct MyStruct { };");
+            library = new SimpleTransformation()
+            {
+                TransformRecord = (context, declaration) => declaration with
+                {
+                    Members = declaration.Members.Add
+                    (
+                        new TranslatedConstant("Constant", IntegerConstant.FromInt32(3226)) { Type = CSharpBuiltinType.Short }
+                    )
+                }
+            }.Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+
+            TranslatedConstant constant = library.FindDeclaration<TranslatedRecord>().FindDeclaration<TranslatedConstant>();
+            Assert.Empty(constant.Diagnostics);
+        }
+
+        [Fact]
+        public void Constant_EnumTypeOk()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+enum MyEnum { A, B, C };
+struct MyStruct { };
+"
+            );
+            library = new SimpleTransformation()
+            {
+                TransformRecord = (context, declaration) => declaration with
+                {
+                    Members = declaration.Members.Add
+                    (
+                        new TranslatedConstant("Constant", IntegerConstant.FromInt32(3226)) { Type = TranslatedTypeReference.Create(library.FindDeclaration<TranslatedEnum>()) }
+                    )
+                }
+            }.Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+
+            TranslatedConstant constant = library.FindDeclaration<TranslatedRecord>().FindDeclaration<TranslatedConstant>();
+            Assert.Empty(constant.Diagnostics);
+        }
+
+        [Fact]
+        public void Constant_StructTypeNotOk()
+        {
+            TranslatedLibrary library = CreateLibrary("struct MyStruct { };");
+            library = new SimpleTransformation()
+            {
+                TransformRecord = (context, declaration) => declaration with
+                {
+                    Members = declaration.Members.Add
+                    (
+                        new TranslatedConstant("Constant", IntegerConstant.FromInt32(3226)) { Type = TranslatedTypeReference.Create(declaration) }
+                    )
+                }
+            }.Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+
+            TranslatedConstant constant = library.FindDeclaration<TranslatedRecord>().FindDeclaration<TranslatedConstant>();
+            Assert.NotEmpty(constant.Diagnostics.Where(d => d.IsError));
+        }
+
+        [Fact]
+        public void Constant_UnsupportedConstantNotOk()
+        {
+            TranslatedLibrary library = CreateLibrary("struct MyStruct { };");
+            library = new SimpleTransformation()
+            {
+                TransformRecord = (context, declaration) => declaration with
+                {
+                    Members = declaration.Members.Add
+                    (
+                        new TranslatedConstant("Constant", new UnsupportedConstantExpression(nameof(Constant_UnsupportedConstantNotOk)))
+                    )
+                }
+            }.Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+
+            TranslatedConstant constant = library.FindDeclaration<TranslatedRecord>().FindDeclaration<TranslatedConstant>();
+            Assert.NotEmpty(constant.Diagnostics.Where(d => d.IsError));
+
+            // Unsupported constants should mention the failure reason
+            Assert.Single(constant.Diagnostics.Where(d => d.Message.Contains(nameof(Constant_UnsupportedConstantNotOk))));
         }
     }
 }

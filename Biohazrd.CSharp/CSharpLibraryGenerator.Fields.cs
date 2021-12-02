@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Biohazrd.Expressions;
+using System.Diagnostics;
 using System.Linq;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
@@ -63,6 +64,24 @@ namespace Biohazrd.CSharp
             WriteTypeAsReference(context, declaration, declaration.Type);
             //TODO: This leaks handles to the native library.
             Writer.WriteLine($")NativeLibrary.GetExport(NativeLibrary.Load(\"{SanitizeStringLiteral(declaration.DllFileName)}\"), \"{SanitizeStringLiteral(declaration.MangledName)}\");");
+        }
+
+        protected override void VisitConstant(VisitorContext context, TranslatedConstant declaration)
+        {
+            TypeReference? type = declaration.Type ?? declaration.Value.InferType();
+
+            if (type is null)
+            {
+                Fatal(context, declaration, "Constant type was not specified and cannot be inferred.");
+                return;
+            }
+
+            Writer.EnsureSeparation();
+            Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} const ");
+            WriteType(context, declaration, type);
+            Writer.Write($" {SanitizeIdentifier(declaration.Name)} = ");
+            Writer.Write(GetConstantAsString(context, declaration, declaration.Value, type));
+            Writer.WriteLine(';');
         }
 
         protected override void VisitBitField(VisitorContext context, TranslatedBitField declaration)

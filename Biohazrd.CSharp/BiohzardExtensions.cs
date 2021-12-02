@@ -1,4 +1,5 @@
-﻿using Biohazrd.Transformation;
+﻿using Biohazrd.Expressions;
+using Biohazrd.Transformation;
 using System;
 using System.Collections.Generic;
 
@@ -48,6 +49,24 @@ namespace Biohazrd.CSharp
             => declaration with
             {
                 Diagnostics = declaration.Diagnostics.Add(Severity.Warning, warningMessage)
+            };
+
+        public static TypeReference? InferType(this ConstantValue value)
+            => value switch
+            {
+                IntegerConstant integer => integer.SizeBits switch
+                {
+                    8 => integer.IsSigned ? CSharpBuiltinType.SByte : CSharpBuiltinType.Byte,
+                    16 => integer.IsSigned ? CSharpBuiltinType.Short : CSharpBuiltinType.UShort,
+                    32 => integer.IsSigned ? CSharpBuiltinType.Int : CSharpBuiltinType.UInt,
+                    64 => integer.IsSigned ? CSharpBuiltinType.Long : CSharpBuiltinType.ULong,
+                    _ => (TypeReference?)null
+                },
+                FloatConstant => CSharpBuiltinType.Float,
+                DoubleConstant => CSharpBuiltinType.Double,
+                StringConstant => CSharpBuiltinType.String,
+                NullPointerConstant => CSharpBuiltinType.NativeInt,
+                _ => null
             };
     }
 }

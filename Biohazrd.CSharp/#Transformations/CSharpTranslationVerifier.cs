@@ -55,6 +55,39 @@ namespace Biohazrd.CSharp
         protected override TransformationResult TransformUnknownDeclarationType(TransformationContext context, Biohazrd.TranslatedDeclaration declaration)
             => base.TransformUnknownDeclarationType(context, declaration);
 
+        protected override TransformationResult TransformConstant(TransformationContext context, TranslatedConstant declaration)
+        {
+            if (!context.IsValidFieldOrMethodContext())
+            { return declaration.WithError("Loose constants are not supported in C#."); }
+
+            if (declaration.Value is UnsupportedConstantExpression unsupportedConstant)
+            { return declaration.WithError($"Constant is not supported: {unsupportedConstant.Message}"); }
+
+            if (declaration.Type is CSharpBuiltinTypeReference)
+            { return declaration; }
+            else if (declaration.Type is null)
+            {
+                // If the type of the constant cannot be inferred as a C# type, it isn't supported as a constant in C#
+                if (declaration.Value.InferType() is null)
+                { return declaration.WithError($"Constants with {declaration.Value.GetType().Name} values are not supported in C#."); }
+                else
+                { return declaration; }
+            }
+            else if (declaration.Type is TranslatedTypeReference typeReference)
+            {
+                TranslatedDeclaration? typeDeclaration = typeReference.TryResolve(context.Library);
+
+                if (typeDeclaration is null)
+                { return declaration.WithError($"Constant's type '{typeReference}' failed to resolve."); }
+                else if (typeDeclaration is TranslatedEnum)
+                { return declaration; }
+                else
+                { return declaration.WithError($"Constants of type '{typeDeclaration}' are not supported as C# constants."); }
+            }
+            else
+            { return declaration.WithError($"Constants of type '{declaration.Type.GetType().Name}' are not supported as C# constants."); }
+        }
+
         protected override TransformationResult TransformEnum(TransformationContext context, TranslatedEnum declaration)
         {
             bool canBeFields = context.IsValidFieldOrMethodContext();

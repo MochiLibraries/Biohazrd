@@ -55,4 +55,9 @@
     <Warning Text="The current platform '$(NETCoreSdkRuntimeIdentifier)' is not supported by ClangSharp.Pathogen. You will need to provide your own ClangSharp.Pathogen native runtime by setting the BIOHAZRD_CUSTOM_LIBCLANG_PATHOGEN_RUNTIME environment variable or by calling ClangSharp.Pathogen.LibClangSharpResolver.OverrideNativeRuntime before calling Biohazrd.TranslatedLibraryBuilder.Create." />
   </Target>
 
+  <!-- Extra InternalsVisibleTo attributes -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="$(MSBuildProjectName).CSharp.Tests" />
+  </ItemGroup>
+
 </Project>
