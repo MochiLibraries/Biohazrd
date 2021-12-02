@@ -185,14 +185,36 @@ namespace Biohazrd.CSharp
                 Diagnostics.Add(Severity.Error, $"Method trampoline cannot be emitted: {methodAccessFailure}");
             }
 
+            // If this is a constructor, determine if we'll emit it as an actual constructor
+            string? constructorName = null;
+            if (declaration.SpecialFunctionKind == SpecialFunctionKind.Constructor && context.ParentDeclaration is TranslatedRecord constructorType)
+            {
+                constructorName = constructorType.Name;
+
+                // Parameterless constructors require C# 10
+                if (declaration.Parameters.Length == 0 && Options.TargetLanguageVersion < TargetLanguageVersion.CSharp10)
+                { constructorName = null; }
+            }
+
             // Emit the method signature
-            Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} ");
-            if (!declaration.IsInstanceMethod)
-            { Writer.Write("static "); }
-            WriteTypeForTrampoline(context, declaration, declaration.ReturnType);
-            Writer.Write($" {SanitizeIdentifier(declaration.Name)}(");
-            EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineParameters);
-            Writer.WriteLine(')');
+            if (constructorName is null)
+            {
+                Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} ");
+                if (!declaration.IsInstanceMethod)
+                { Writer.Write("static "); }
+                WriteTypeForTrampoline(context, declaration, declaration.ReturnType);
+                Writer.Write($" {SanitizeIdentifier(declaration.Name)}(");
+                EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineParameters);
+                Writer.WriteLine(')');
+            }
+            // Emit the constructor signature
+            else
+            {
+                Writer.Write($"{declaration.Accessibility.ToCSharpKeyword()} ");
+                Writer.Write($"{SanitizeIdentifier(constructorName)}(");
+                EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineParameters);
+                Writer.WriteLine(')');
+            }
 
             // If we failed to build the method access, just emit an exception
             if (methodAccessFailure is not null)
