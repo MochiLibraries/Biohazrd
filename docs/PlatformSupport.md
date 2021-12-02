@@ -88,9 +88,9 @@ As for the wrappers you generate with said generators, Biohazrd is not especiall
 
 [Officially speaking](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/configure-language-version), C# 10 is only supported for use with .NET 6 (and C# 9 with .NET 5.) That being said, newer versions of C# tend to work just fine on older versions of .NET as long as you don't utilize any new runtime features and the C# compiler is good about letting you know at build time if you accidentally do.
 
-We generally recommend sticking to .NET 6 (or newer) if you can.
+We generally recommend sticking to .NET 6 (or newer) if you can. You can indicate the .NET runtime and/or C# language version you're targeting via `CSharpGenerationOptions`.
 
-If you must target older framework, we recommend building your generated library with the .NET 6 C# compiler and targeting the framework you need. Please keep the following caveats in mind:
+If you must target older framework, we recommend building your generated library with the .NET 6 C# compiler with C# 10 and targeting the framework you need. Please keep the following caveats in mind:
 
 * Native libraires featuring function pointers on their API surface require the use of [C# 9 function pointers](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/unsafe-code#function-pointers). Depending on the context, you may not be able to utilize these APIs at all on older runtimes without extra effort.
 * For C++ libraries, parameterless constructors (including ones which are defined implicitly by the compiler) are handled using [C# 10 parameterless struct constructors](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-10.0/parameterless-struct-constructors) by default. These constructors work just fine when called normally (even from old C# compilers), but they have major issues when called by reflection or in a generic context. (See [dotnet/runtime#6536](https://github.com/dotnet/runtime/issues/6536) and [dotnet/runtime#45397](https://github.com/dotnet/runtime/issues/45397))
