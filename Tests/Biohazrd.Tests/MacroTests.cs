@@ -1,5 +1,6 @@
 ﻿using Biohazrd.Tests.Common;
 using System.IO;
+using System.Linq;
 using Xunit;
 
 namespace Biohazrd.Tests
@@ -17,6 +18,8 @@ namespace Biohazrd.Tests
             Assert.False(macro.IsFunctionLike);
             Assert.Empty(macro.ParameterNames);
             Assert.False(macro.LastParameterIsVardic);
+            Assert.True(macro.HasValue);
+            Assert.False(macro.IsUsedForHeaderGuard);
         }
 
         [Fact]
@@ -26,6 +29,7 @@ namespace Biohazrd.Tests
             TranslatedMacro macro = Assert.Single(library.Macros);
             Assert.Equal("TEST", macro.Name);
             Assert.False(macro.IsFunctionLike);
+            Assert.False(macro.HasValue);
         }
 
         [Fact]
@@ -37,6 +41,7 @@ namespace Biohazrd.Tests
             Assert.True(macro.IsFunctionLike);
             Assert.Empty(macro.ParameterNames);
             Assert.False(macro.LastParameterIsVardic);
+            Assert.True(macro.HasValue);
         }
 
         [Fact]
@@ -49,6 +54,7 @@ namespace Biohazrd.Tests
             Assert.Single(macro.ParameterNames);
             Assert.Equal("a", macro.ParameterNames[0]);
             Assert.False(macro.LastParameterIsVardic);
+            Assert.True(macro.HasValue);
         }
 
         [Fact]
@@ -194,6 +200,27 @@ namespace Biohazrd.Tests
             TranslatedMacro macro = Assert.Single(library.Macros);
             Assert.Equal("TEST", macro.Name);
             Assert.True(macro.WasUndefined);
+            Assert.True(macro.HasValue);
+        }
+
+        [Fact]
+        public void UndefinedMacro_IncludedWhenEnabled_NoValue()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#define TEST
+#undef TEST
+",
+                options: new TranslationOptions()
+                {
+                    IncludeUndefinedMacros = true
+                }
+            );
+
+            TranslatedMacro macro = Assert.Single(library.Macros);
+            Assert.Equal("TEST", macro.Name);
+            Assert.True(macro.WasUndefined);
+            Assert.False(macro.HasValue);
         }
 
         [Fact]
@@ -260,6 +287,103 @@ namespace Biohazrd.Tests
             Assert.Equal("AAAAAAAAAAAAAAAAAA", library.Macros[0].Name);
             Assert.Equal("AAAAAAAAAAAAAAAAAB", library.Macros[1].Name);
             Assert.Equal("AAAAAAAAAAAAAAAAAC", library.Macros[2].Name);
+        }
+
+        [Fact]
+        public void HeaderGuardMacro()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#ifndef __A_H__
+#define __A_H__
+
+#define OTHER_MACRO
+
+#endif
+"
+            );
+            TranslatedMacro headerGuard = Assert.Single(library.Macros.Where(m => m.Name == "__A_H__"));
+            TranslatedMacro otherMacro = Assert.Single(library.Macros.Where(m => m.Name == "OTHER_MACRO"));
+            Assert.True(headerGuard.IsUsedForHeaderGuard);
+            Assert.False(otherMacro.IsUsedForHeaderGuard);
+        }
+
+        [Fact]
+        public void HeaderGuardMacro_NotActuallyGuard()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#ifndef __A_H__
+#define __A_H__
+
+#define OTHER_MACRO
+
+#endif
+
+class Surprise { };
+"
+            );
+            TranslatedMacro headerGuard = Assert.Single(library.Macros.Where(m => m.Name == "__A_H__"));
+            TranslatedMacro otherMacro = Assert.Single(library.Macros.Where(m => m.Name == "OTHER_MACRO"));
+            Assert.False(headerGuard.IsUsedForHeaderGuard);
+            Assert.False(otherMacro.IsUsedForHeaderGuard);
+        }
+
+        [Fact]
+        public void HeaderGuardMacro_WeirdName()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#ifndef JUSTPROVINGTHATCLANGISNOTUSINGHEURISTICS
+#define JUSTPROVINGTHATCLANGISNOTUSINGHEURISTICS
+
+#define OTHER_MACRO
+
+#endif
+"
+            );
+            TranslatedMacro headerGuard = Assert.Single(library.Macros.Where(m => m.Name == "JUSTPROVINGTHATCLANGISNOTUSINGHEURISTICS"));
+            TranslatedMacro otherMacro = Assert.Single(library.Macros.Where(m => m.Name == "OTHER_MACRO"));
+            Assert.True(headerGuard.IsUsedForHeaderGuard);
+            Assert.False(otherMacro.IsUsedForHeaderGuard);
+        }
+
+        [Fact]
+        public void HeaderGuardMacro_WeirdIfStyle()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#if !defined(__A_H__)
+#define __A_H__
+
+#define OTHER_MACRO
+
+#endif
+"
+            );
+            TranslatedMacro headerGuard = Assert.Single(library.Macros.Where(m => m.Name == "__A_H__"));
+            TranslatedMacro otherMacro = Assert.Single(library.Macros.Where(m => m.Name == "OTHER_MACRO"));
+            Assert.True(headerGuard.IsUsedForHeaderGuard);
+            Assert.False(otherMacro.IsUsedForHeaderGuard);
+        }
+
+        [Fact]
+        public void HeaderGuardMacro_WeirdWithValue()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#ifndef __A_H__
+#define __A_H__ 1
+
+#define OTHER_MACRO
+
+#endif
+"
+            );
+            TranslatedMacro headerGuard = Assert.Single(library.Macros.Where(m => m.Name == "__A_H__"));
+            TranslatedMacro otherMacro = Assert.Single(library.Macros.Where(m => m.Name == "OTHER_MACRO"));
+            Assert.True(headerGuard.IsUsedForHeaderGuard);
+            Assert.False(otherMacro.IsUsedForHeaderGuard);
         }
     }
 }

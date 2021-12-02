@@ -14,6 +14,8 @@ namespace Biohazrd
         public bool IsFunctionLike { get; }
         public ImmutableArray<string> ParameterNames { get; }
         public bool LastParameterIsVardic { get; }
+        public bool IsUsedForHeaderGuard { get; }
+        public bool HasValue { get; }
 
         internal unsafe TranslatedMacro(TranslatedFile file, PathogenMacroInformation* macroInfo)
         {
@@ -21,6 +23,8 @@ namespace Biohazrd
             Name = macroInfo->Name;
             WasUndefined = macroInfo->WasUndefined;
             IsFunctionLike = macroInfo->IsFunctionLike;
+            IsUsedForHeaderGuard = macroInfo->IsUsedForHeaderGuard;
+            HasValue = macroInfo->TokenCount != 0;
 
             if (IsFunctionLike)
             {
