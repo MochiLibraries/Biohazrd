@@ -82,17 +82,26 @@ namespace Biohazrd
         }
 
         public ConstantEvaluationResult Evaluate(TranslatedMacro macro)
+            => Evaluate(extraCodeBeforeEvaluation: null, macro);
+
+        public ConstantEvaluationResult Evaluate(TranslatedMacro macro, params string[] arguments)
+            => Evaluate(extraCodeBeforeEvaluation: null, macro, arguments);
+
+        public ConstantEvaluationResult Evaluate(string expression)
+            => Evaluate(extraCodeBeforeEvaluation: null, expression);
+
+        public ConstantEvaluationResult Evaluate(string? extraCodeBeforeEvaluation, TranslatedMacro macro)
         {
             if (macro.WasUndefined)
             { throw new ArgumentException("The specified macro was undefined and cannot be evaluated.", nameof(macro)); }
 
             if (macro.IsFunctionLike)
-            { return Evaluate(macro, Array.Empty<string>()); }
+            { return Evaluate(extraCodeBeforeEvaluation, macro, Array.Empty<string>()); }
 
-            return Evaluate(macro.Name);
+            return Evaluate(extraCodeBeforeEvaluation, macro.Name);
         }
 
-        public ConstantEvaluationResult Evaluate(TranslatedMacro macro, params string[] arguments)
+        public ConstantEvaluationResult Evaluate(string? extraCodeBeforeEvaluation, TranslatedMacro macro, params string[] arguments)
         {
             if (macro.WasUndefined)
             { throw new ArgumentException("The specified macro was undefined and cannot be evaluated.", nameof(macro)); }
@@ -102,7 +111,7 @@ namespace Biohazrd
                 if (arguments.Length != 0)
                 { throw new ArgumentException($"Arguments specified for non-function macro '{macro}'", nameof(arguments)); }
 
-                return Evaluate(macro.Name);
+                return Evaluate(extraCodeBeforeEvaluation, macro.Name);
             }
 
             // Validate argument count
@@ -134,17 +143,23 @@ namespace Biohazrd
             expression.Append(')');
 
             // Evaluate the expression
-            return Evaluate(expression.ToString());
+            return Evaluate(extraCodeBeforeEvaluation, expression.ToString());
         }
 
-        public ConstantEvaluationResult Evaluate(string expression)
+        public ConstantEvaluationResult Evaluate(string? extraCodeBeforeEvaluation, string expression)
         {
-            ImmutableArray<ConstantEvaluationResult> results = EvaluateBatch(new[] { expression });
+            ImmutableArray<ConstantEvaluationResult> results = EvaluateBatch(extraCodeBeforeEvaluation, new[] { expression });
             Debug.Assert(results.Length == 1);
             return results[0];
         }
 
         public ImmutableArray<ConstantEvaluationResult> EvaluateBatch(IEnumerable<TranslatedMacro> macros)
+            => EvaluateBatch(extraCodeBeforeEvaluation: null, macros);
+
+        public unsafe ImmutableArray<ConstantEvaluationResult> EvaluateBatch(IReadOnlyList<string> expressions)
+            => EvaluateBatch(extraCodeBeforeEvaluation: null, expressions);
+
+        public ImmutableArray<ConstantEvaluationResult> EvaluateBatch(string? extraCodeBeforeEvaluation, IEnumerable<TranslatedMacro> macros)
         {
             List<string> macroExpressions = macros is ICollection<TranslatedMacro> collection ? new(collection.Count) : new();
 
@@ -170,10 +185,10 @@ namespace Biohazrd
                 { macroExpressions.Add(macro.Name); }
             }
 
-            return EvaluateBatch(macroExpressions);
+            return EvaluateBatch(extraCodeBeforeEvaluation, macroExpressions);
         }
 
-        public unsafe ImmutableArray<ConstantEvaluationResult> EvaluateBatch(IReadOnlyList<string> expressions)
+        public unsafe ImmutableArray<ConstantEvaluationResult> EvaluateBatch(string? extraCodeBeforeEvaluation, IReadOnlyList<string> expressions)
         {
             CheckDisposed();
             const string evaluationPrefix = "__BIOHAZRD_EXPRESSION_EVALUATION__";
@@ -186,6 +201,10 @@ namespace Biohazrd
             // Build the evaluation index file
             //-------------------------------------------------------------------------------------
             StringBuilder evaluationIndexFileContents = new(IndexFileBase.Contents);
+
+            if (extraCodeBeforeEvaluation is not null)
+            { evaluationIndexFileContents.AppendLine(extraCodeBeforeEvaluation); }
+
             for (int i = 0; i < expressions.Count; i++)
             {
                 string evaluationId = $"{evaluationPrefix}{i}";

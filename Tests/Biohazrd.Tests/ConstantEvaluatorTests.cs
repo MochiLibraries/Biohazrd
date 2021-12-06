@@ -57,6 +57,26 @@ namespace Biohazrd.Tests
         }
 
         [Fact]
+        [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/228")]
+        public void MacroNeedingNamespace()
+        {
+            TranslatedLibraryBuilder builder = CreateLibraryBuilder
+            (@"
+namespace MyNamespace { typedef int MyInt; }
+#define TEST MyInt(3226)
+"
+            );
+            TranslatedLibrary library = builder.Create();
+            TranslatedLibraryConstantEvaluator evaluator = builder.CreateConstantEvaluator();
+
+            TranslatedMacro macro = library.Macros.First(m => m.Name == "TEST");
+            ConstantEvaluationResult result = evaluator.Evaluate("using namespace MyNamespace;", macro);
+            Assert.Empty(result.Diagnostics);
+            IntegerConstant value = Assert.IsType<IntegerConstant>(result.Value);
+            Assert.Equal(3226UL, value.Value);
+        }
+
+        [Fact]
         public void FunctionMacro_NoParameters0()
         {
             TranslatedLibraryBuilder builder = CreateLibraryBuilder("#define TEST() 3226");
