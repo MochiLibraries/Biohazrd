@@ -385,5 +385,43 @@ class Surprise { };
             Assert.True(headerGuard.IsUsedForHeaderGuard);
             Assert.False(otherMacro.IsUsedForHeaderGuard);
         }
+
+        [Fact]
+        public void RawValueAsCppSourceCode_Basic()
+        {
+            TranslatedLibrary library = CreateLibrary("#define TEST 3226");
+            TranslatedMacro macro = Assert.Single(library.Macros);
+            Assert.Equal("3226", macro.RawValueSourceString);
+        }
+
+        [Fact]
+        public void RawValueAsCppSourceCode_IsNotSimplified1()
+        {
+            TranslatedLibrary library = CreateLibrary("#define TEST (3226)");
+            TranslatedMacro macro = Assert.Single(library.Macros);
+            Assert.Equal("(3226)", macro.RawValueSourceString);
+        }
+
+        [Fact]
+        public void RawValueAsCppSourceCode_IsNotSimplified2()
+        {
+            TranslatedLibrary library = CreateLibrary("#define TEST (3226 + (1337 * 1))");
+            TranslatedMacro macro = Assert.Single(library.Macros);
+            Assert.Equal("(3226 + (1337 * 1))", macro.RawValueSourceString);
+        }
+
+        [Fact]
+        public void RawValueAsCppSourceCode_WhitespaceIsSimplified()
+        {
+            // This might seem at odds with IsNotSimplified tests, but whitespace is simplified as a quirk of how Clang represents this information
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#define TEST 3226             + \
+       1337
+"
+            );
+            TranslatedMacro macro = Assert.Single(library.Macros);
+            Assert.Equal("3226 + 1337", macro.RawValueSourceString);
+        }
     }
 }

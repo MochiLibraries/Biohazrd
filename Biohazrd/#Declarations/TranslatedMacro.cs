@@ -17,6 +17,10 @@ namespace Biohazrd
         public bool IsUsedForHeaderGuard { get; }
         public bool HasValue { get; }
 
+        /// <summary>The macro's value (if it has one) as C/C++ code.</summary>
+        /// <remarks>You should not try to parse this for evaluating constants, use <see cref="TranslatedLibraryConstantEvaluator"/>.</remarks>
+        public string? RawValueSourceString { get; }
+
         internal unsafe TranslatedMacro(TranslatedFile file, PathogenMacroInformation* macroInfo)
         {
             File = file;
@@ -25,6 +29,7 @@ namespace Biohazrd
             IsFunctionLike = macroInfo->IsFunctionLike;
             IsUsedForHeaderGuard = macroInfo->IsUsedForHeaderGuard;
             HasValue = macroInfo->TokenCount != 0;
+            RawValueSourceString = HasValue ? macroInfo->RawValueSourceString : null;
 
             if (IsFunctionLike)
             {

@@ -6,7 +6,7 @@
     <PackageId>Biohazrd.Core</PackageId>
     <PackageDescription>This package provides core functionality for parsing C/C++ libraries.</PackageDescription>
 
-    <ClangSharpPathogenVersion>[0.0.0-ci54]</ClangSharpPathogenVersion>
+    <ClangSharpPathogenVersion>[0.0.0-ci56]</ClangSharpPathogenVersion>
   </PropertyGroup>
 
   <ItemGroup>
