@@ -385,5 +385,63 @@ struct MyStruct { };
             // Unsupported constants should mention the failure reason
             Assert.Single(constant.Diagnostics.Where(d => d.Message.Contains(nameof(Constant_UnsupportedConstantNotOk))));
         }
+
+        [Fact]
+        [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/31")]
+        public void Record_CannotInitializeConstructorlessVirtual()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+class MyClass
+{
+public:
+    virtual void Test() { }
+};
+"
+            );
+
+            Assert.Empty(library.FindDeclaration<TranslatedRecord>("MyClass").Diagnostics);
+            library = new CSharpTranslationVerifier().Transform(library);
+            Assert.Contains(library.FindDeclaration<TranslatedRecord>("MyClass").Diagnostics, d => d.Severity >= Severity.Warning);
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/31")]
+        public void Record_CannotInitializeConstructorlessVirtual_IgnoreAbstract()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+class MyClass
+{
+public:
+    virtual void Test() = 0;
+};
+"
+            );
+
+            Assert.Empty(library.FindDeclaration<TranslatedRecord>("MyClass").Diagnostics);
+            library = new CSharpTranslationVerifier().Transform(library);
+            Assert.Empty(library.FindDeclaration<TranslatedRecord>("MyClass").Diagnostics);
+        }
+
+        [Fact]
+        [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/31")]
+        public void Record_CannotInitializeConstructorlessVirtual_ExplicitConstructorOk()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+class MyClass
+{
+public:
+    MyClass() { }
+    virtual void Test() { }
+};
+"
+            );
+
+            Assert.Empty(library.FindDeclaration<TranslatedRecord>("MyClass").Diagnostics);
+            library = new CSharpTranslationVerifier().Transform(library);
+            Assert.Empty(library.FindDeclaration<TranslatedRecord>("MyClass").Diagnostics);
+        }
     }
 }

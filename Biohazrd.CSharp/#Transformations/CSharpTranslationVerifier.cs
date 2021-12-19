@@ -1,6 +1,7 @@
 ﻿using Biohazrd.CSharp.Metadata;
 using Biohazrd.Expressions;
 using Biohazrd.Transformation;
+using ClangSharp;
 using ClangSharp.Pathogen;
 using System.Collections.Immutable;
 using System.Linq;
@@ -297,6 +298,13 @@ namespace Biohazrd.CSharp
             { declaration = declaration.WithError("Records should not have a VTable field without a VTable."); }
             else if (declaration.VTable is not null && declaration.VTableField is null)
             { declaration = declaration.WithError("Records should not have a VTable without a VTable field."); }
+
+            // We don't currently provide a way to initialize a virtual type without a constructor
+            // https://github.com/MochiLibraries/Biohazrd/issues/31
+            if (declaration.VTable is not null
+                && !declaration.Members.OfType<TranslatedFunction>().Any(f => f.SpecialFunctionKind is SpecialFunctionKind.Constructor)
+                && declaration.Declaration is not CXXRecordDecl { IsAbstract: true })
+            { declaration = declaration.WithWarning("Virtual records without a constructor cannot be initialized from C#. See https://github.com/MochiLibraries/Biohazrd/issues/31"); }
 
             return base.TransformRecord(context, declaration);
         }
