@@ -64,8 +64,9 @@ namespace Biohazrd.CSharp
                 }
 
                 // Write out the length
+                // This used to be a constant, but C# doesn't let you reference constants as instance members and these infrastructure types shouldn't really ever be referenced directly.
                 Writer.EnsureSeparation();
-                Writer.WriteLine($"public const int Length = {elementCount};");
+                Writer.WriteLine($"public int Length => {elementCount};");
 
                 // Write out ToString implementaiton
                 Writer.EnsureSeparation();
