@@ -129,7 +129,6 @@ public:
 
             // Reduce types to make them easier to reason about
             library = new CSharpTypeReductionTransformation().Transform(library);
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
 
             // Verify the template specialization was translated
             TranslatedTemplateSpecialization specialization = library.FindDeclaration<TranslatedTemplateSpecialization>("MyTemplate<int>");
@@ -192,7 +191,6 @@ int Test(MyTemplate<int>& t)
 
             // Reduce types to make them easier to reason about
             library = new CSharpTypeReductionTransformation().Transform(library);
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
 
             void VerifyTemplate(string typedefName, int typeSize, TypeReference type)
             {
@@ -254,7 +252,6 @@ int Test(MyTemplate<int>::MyStruct& s)
 
             // Reduce types to make them easier to reason about
             library = new CSharpTypeReductionTransformation().Transform(library);
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
 
             void VerifyTemplate(string typedefName, TypeReference type)
             {

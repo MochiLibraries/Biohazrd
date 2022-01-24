@@ -16,7 +16,6 @@ MyTypedef MyFunction(MyTypedef* x);
             );
 
             library = new CSharpTypeReductionTransformation().Transform(library);
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
             {
                 // Precondition sanity checks
                 TranslatedTypedef typedef = library.FindDeclaration<TranslatedTypedef>("MyTypedef");
@@ -60,7 +59,6 @@ MyTypedef2 MyFunction(MyTypedef2* x);
             );
 
             library = new CSharpTypeReductionTransformation().Transform(library);
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
             library = new ResolveTypedefsTransformation().Transform(library);
             {
                 Assert.DoesNotContain(library, d => d is TranslatedTypedef);

@@ -5,9 +5,7 @@
 
 > ℹ This transformation is derived from [`TypeReductionTransformation`](TypeReductionTransformation.md), make sure you understand it too.
 
-This type reduction transformation builds on [`TypeReductionTransformation`](TypeReductionTransformation.md) to add C#-specific type reductions.
-
-(Note: [`CSharpBuiltinTypeTransformation`](CSharpBuiltinTypeTransformation.md) is responsible for reducing C/C++ built-in types to C# built-in types.)
+This type reduction transformation builds on [`TypeReductionTransformation`](TypeReductionTransformation.md) to add C#-specific type reductions, such as reducing `unsigned long long` in C++ to `ulong` in C#.
 
 ## When this transformation is applicable
 
@@ -17,9 +15,7 @@ See [`TypeReductionTransformation`](TypeReductionTransformation.md) for details 
 
 ## Interacting with this transformation
 
-This transformation has the same interaction cocerns as [`TypeReductionTransformation`](TypeReductionTransformation.md), see that article for details.
-
-(Note that you might also want to ensure your transformations run after [`CSharpBuiltinTypeTransformation`](CSharpBuiltinTypeTransformation.md) as well.)
+This transformation has the same interaction concerns as [`TypeReductionTransformation`](TypeReductionTransformation.md), see that article for details.
 
 ## Type reductions handled by this transformation
 

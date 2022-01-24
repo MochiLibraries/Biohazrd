@@ -12,7 +12,6 @@ The transformations are listed in the order they're typically applied.
 * [`MakeEverythingPublicTransformation`](MakeEverythingPublicTransformation.md)
 * [`TypeReductionTransformation`](TypeReductionTransformation.md)
 * [`CSharpTypeReductionTransformation`](CSharpTypeReductionTransformation.md)
-* [`CSharpBuiltinTypeTransformation`](CSharpBuiltinTypeTransformation.md)
 * [`LiftAnonymousRecordFieldsTransformation`](LiftAnonymousRecordFieldsTransformation.md)
 * [`WrapNonBlittableTypesWhereNecessaryTransformation`](WrapNonBlittableTypesWhereNecessaryTransformation.md)
 * [`MoveLooseDeclarationsIntoTypesTransformation`](MoveLooseDeclarationsIntoTypesTransformation.md)

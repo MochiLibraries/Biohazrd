@@ -4,8 +4,6 @@ using Xunit;
 
 namespace Biohazrd.CSharp.Tests
 {
-    // Usage of CSharpBuiltinTypeTransformation in this file is mainly being done because we plan to eliminate it.
-    // https://github.com/MochiLibraries/Biohazrd/issues/107
     public sealed class CSharpTypeReductionTransformationTests : BiohazrdTestBase
     {
         private void NativeIntegerTest(string? include, string typeName, TypeReference expectedType)
@@ -18,7 +16,6 @@ namespace Biohazrd.CSharp.Tests
             // size_t without including anything is a non-standard MSVC feature so it only works on Windows triples
             TranslatedLibrary library = CreateLibrary(code, targetTriple: include is null ? "x86_64-pc-windows" : null);
             library = new CSharpTypeReductionTransformation().Transform(library);
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
             library = new ResolveTypedefsTransformation().Transform(library);
             TypeReference returnType = library.FindDeclaration<TranslatedFunction>("Test").ReturnType;
             Assert.Equal(expectedType, returnType);
@@ -72,7 +69,6 @@ void Test(size_t, ptrdiff_t, intptr_t, uintptr_t);
             );
 
             library = new CSharpTypeReductionTransformation() { UseNativeIntegersForPointerSizedTypes = false }.Transform(library);
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
             library = new ResolveTypedefsTransformation().Transform(library);
 
             foreach (TranslatedParameter parameter in library.FindDeclaration<TranslatedFunction>("Test").Parameters)

@@ -40,7 +40,7 @@ enum
             }
 
             // Transform and validate
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
+            library = new CSharpTypeReductionTransformation().Transform(library);
             library = new CSharpTranslationVerifier().Transform(library);
             {
                 TranslatedEnum translatedEnum = library.FindDeclaration<TranslatedEnum>();
@@ -77,7 +77,7 @@ struct MyStruct
             }
 
             // Transform and validate
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
+            library = new CSharpTypeReductionTransformation().Transform(library);
             TranslatedLibrary transformed = new CSharpTranslationVerifier().Transform(library);
             Assert.ReferenceEqual(library, transformed);
         }
@@ -103,7 +103,7 @@ struct MyStruct
             );
 
             // Assert preconditions
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
+            library = new CSharpTypeReductionTransformation().Transform(library);
             {
                 TranslatedRecord record = library.FindDeclaration<TranslatedRecord>("MyStruct");
                 TranslatedEnum translatedEnum = record.FindDeclaration<TranslatedEnum>("MyEnum");
@@ -142,7 +142,7 @@ enum : wchar_t
             );
 
             // Assert preconditions
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
+            library = new CSharpTypeReductionTransformation().Transform(library);
             {
                 TranslatedEnum translatedEnum = library.FindDeclaration<TranslatedEnum>();
                 Assert.True(translatedEnum.IsUnnamed);
@@ -201,7 +201,7 @@ enum : wchar_t
             }
 
             // Assert preconditions
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
+            library = new CSharpTypeReductionTransformation().Transform(library);
             {
                 TranslatedEnum translatedEnum = library.FindDeclaration<TranslatedEnum>();
                 Assert.Equal("MyEnum", translatedEnum.Name);
@@ -250,7 +250,7 @@ MyStruct Test();
             }
 
             // Transform and validate
-            library = new CSharpBuiltinTypeTransformation().Transform(library);
+            library = new CSharpTypeReductionTransformation().Transform(library);
             library = new CSharpTranslationVerifier().Transform(library);
             {
                 TranslatedFunction translatedFunction = library.FindDeclaration<TranslatedFunction>();
