@@ -134,7 +134,8 @@ namespace Biohazrd.CSharp
                 if (typedef.Parent is not null)
                 { return false; }
 
-                // System typedefs will be in system headers or have no associated file (which means they're built-in. IE: size_t on Windows.)
+                // System typedefs will be in system headers or have no associated file (in the case of size_t on Windows.)
+                // (Note that clang::SourceManager::isWrittenInBuiltinFile does not seem to apply to size_t on Windows for whatever reason. Don't try to use it here.)
                 if (!typedef.Location.IsInSystemHeader && typedef.Location.GetFileLocation().Handle != IntPtr.Zero)
                 { return false; }
 
