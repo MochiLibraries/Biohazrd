@@ -456,9 +456,80 @@ struct TestStruct
 };
 "
             );
+
+            // Validate preconditition: ClangSharp.Pathogen will fail to interpret the default value and it will be marked as such
+            TranslatedParameter oldParameter = library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x");
+            TranslationDiagnostic oldDiagnostic = Assert.Single(oldParameter.Diagnostics, d => d.Severity == Severity.Warning && d.Message.StartsWith("Unsupported constant:"));
+
+            // Apply transformations
             library = new CSharpTypeReductionTransformation().Transform(library);
             library = new CSharpTranslationVerifier().Transform(library);
+
+            // Validate postcondition: The default value should be removed and no extra diagnostics should be added.
             TranslatedParameter parameter = library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x");
+            Assert.Null(parameter.DefaultValue);
+            TranslationDiagnostic newDiagnostic = Assert.Single(parameter.Diagnostics);
+            Assert.Equal(oldDiagnostic.ToString(), newDiagnostic.ToString());
+        }
+
+        [Fact]
+        public void DefaultParameterValue_UnsupportedConstantExpression()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#include <stddef.h>
+struct TestStruct
+{
+    void Test(TestStruct x);
+};
+"
+            );
+
+            // Validate preconditition: Parameter should not have any diagnostics
+            Assert.Empty(library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x").Diagnostics);
+
+            // Manually set the default value to a UnsupportedConstantExpression
+            // (Normally when these constants happen naturally they're already removed and converted into diagnostics by the time translation has completed.)
+            const string message = "Constant value machine broke";
+            library = new SimpleTransformation()
+            {
+                TransformParameter = (c, p) => p with { DefaultValue = new UnsupportedConstantExpression(message) }
+            }.Transform(library);
+
+            // Apply transformations
+            library = new CSharpTypeReductionTransformation().Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+
+            // Validate postcondition: The default value should be removed and a diagnostic should have been added.
+            TranslatedParameter parameter = library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x");
+            Assert.Null(parameter.DefaultValue);
+            TranslationDiagnostic newDiagnostic = Assert.Single(parameter.Diagnostics);
+            Assert.Contains(message, newDiagnostic.Message);
+            Assert.Equal(Severity.Warning, newDiagnostic.Severity);
+        }
+
+        [Fact]
+        public void DefaultParameterValue_UnrecognizedNotAllowed()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#include <stddef.h>
+struct TestStruct
+{
+    void Test(int x = 100);
+};
+"
+            );
+            library = new CSharpTypeReductionTransformation().Transform(library);
+            library = new SimpleTransformation()
+            {
+                // Transform the parameter to be a type which isn't recognized by C# as defaultable
+                TransformParameter = (c, p) => p with { Type = new ExternallyDefinedTypeReference("DummyType") }
+            }.Transform(library);
+            Assert.Empty(library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x").Diagnostics);
+            library = new CSharpTranslationVerifier().Transform(library);
+            TranslatedParameter parameter = library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x");
+            Assert.Null(parameter.DefaultValue); // The unusable default should be removed.
             TranslationDiagnostic diagnostic = Assert.Single(parameter.Diagnostics, d => d.Message == "Default parameter values are not supported for this parameter's type.");
             Assert.Equal(Severity.Warning, diagnostic.Severity);
         }
@@ -475,6 +546,7 @@ struct TestStruct
 };
 "
             );
+            Assert.Empty(library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x").Diagnostics);
             library = new CSharpTypeReductionTransformation().Transform(library);
             library = new ResolveTypedefsTransformation().Transform(library);
             library = new CSharpTranslationVerifier().Transform(library);
@@ -494,6 +566,7 @@ struct TestStruct
 };
 "
             );
+            Assert.Empty(library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x").Diagnostics);
             library = new SimpleTransformation()
             {
                 TransformParameter = (context, parameter) => parameter with { Type = new ExternallyDefinedTypeReference("nuint") }

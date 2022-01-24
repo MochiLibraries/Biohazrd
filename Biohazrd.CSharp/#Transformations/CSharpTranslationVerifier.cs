@@ -234,11 +234,11 @@ namespace Biohazrd.CSharp
                         DefaultValue = null,
                         Diagnostics = declaration.Diagnostics.Add(Severity.Warning, "String constants are not supported as default parameter values.")
                     };
-                case UnsupportedConstantExpression:
-                    // No diagnostic here, it was already emitted during the initial translation
+                case UnsupportedConstantExpression unsupportedConstant:
                     return declaration with
                     {
-                        DefaultValue = null
+                        DefaultValue = null,
+                        Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Unsupported constant: {unsupportedConstant.Message}")
                     };
                 default:
                 {
