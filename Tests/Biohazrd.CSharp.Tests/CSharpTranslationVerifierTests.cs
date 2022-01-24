@@ -443,5 +443,64 @@ public:
             library = new CSharpTranslationVerifier().Transform(library);
             Assert.Empty(library.FindDeclaration<TranslatedRecord>("MyClass").Diagnostics);
         }
+
+        [Fact]
+        public void DefaultParameterValue_UserStructNotAllowed()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#include <stddef.h>
+struct TestStruct
+{
+    void Test(TestStruct x = TestStruct());
+};
+"
+            );
+            library = new CSharpTypeReductionTransformation().Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+            TranslatedParameter parameter = library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x");
+            TranslationDiagnostic diagnostic = Assert.Single(parameter.Diagnostics, d => d.Message == "Default parameter values are not supported for this parameter's type.");
+            Assert.Equal(Severity.Warning, diagnostic.Severity);
+        }
+
+        [Fact]
+        public void DefaultParameterValue_NativeIntegerAllowed()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#include <stddef.h>
+struct TestStruct
+{
+    void Test(size_t x = 100);
+};
+"
+            );
+            library = new CSharpTypeReductionTransformation().Transform(library);
+            library = new ResolveTypedefsTransformation().Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+            TranslatedParameter parameter = library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x");
+            Assert.Empty(parameter.Diagnostics);
+        }
+
+        [Fact]
+        public void DefaultParameterValue_NonStandardNativeIntegerAllowed()
+        {
+            TranslatedLibrary library = CreateLibrary
+            (@"
+#include <stddef.h>
+struct TestStruct
+{
+    void Test(size_t x = 100);
+};
+"
+            );
+            library = new SimpleTransformation()
+            {
+                TransformParameter = (context, parameter) => parameter with { Type = new ExternallyDefinedTypeReference("nuint") }
+            }.Transform(library);
+            library = new CSharpTranslationVerifier().Transform(library);
+            TranslatedParameter parameter = library.FindDeclaration("TestStruct").FindDeclaration<TranslatedFunction>("Test").FindDeclaration<TranslatedParameter>("x");
+            Assert.Empty(parameter.Diagnostics);
+        }
     }
 }

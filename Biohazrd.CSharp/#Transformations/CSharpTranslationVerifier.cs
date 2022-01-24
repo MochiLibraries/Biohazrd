@@ -246,32 +246,32 @@ namespace Biohazrd.CSharp
                     // (Such as a type being replaced with a convienience wrapper.)
                     static bool TypeCanHaveDefaultInCSharp(TranslatedLibrary library, TypeReference type)
                     {
-                        if (type is PointerTypeReference)
-                        { return true; }
-
-                        if (type is CSharpBuiltinTypeReference)
-                        { return true; }
-
-                        if (type is FunctionPointerTypeReference)
-                        { return true; }
-
-                        if (type is TranslatedTypeReference translatedType)
+                        switch (type)
                         {
-                            switch (translatedType.TryResolve(library))
-                            {
-                                case TranslatedTypedef typedef:
-                                    return TypeCanHaveDefaultInCSharp(library, typedef.UnderlyingType);
-                                case TranslatedEnum:
-                                    return true;
-                                // NativeBoolean and NativeChar will become bool/char on the trampoline surface and should not appear in places where trampolines aren't generated since
-                                // they end up using MarshalAs instead.
-                                case NativeBooleanDeclaration:
-                                case NativeCharDeclaration:
-                                    return true;
-                            }
+                            case PointerTypeReference:
+                            case CSharpBuiltinTypeReference:
+                            case FunctionPointerTypeReference:
+                                return true;
+                            case ExternallyDefinedTypeReference externalType:
+                                return externalType == CSharpBuiltinType.String || externalType == CSharpBuiltinType.NativeInt || externalType == CSharpBuiltinType.NativeUnsignedInt;
+                            case TranslatedTypeReference translatedType:
+                                switch (translatedType.TryResolve(library))
+                                {
+                                    case TranslatedTypedef typedef:
+                                        return TypeCanHaveDefaultInCSharp(library, typedef.UnderlyingType);
+                                    case TranslatedEnum:
+                                        return true;
+                                    // NativeBoolean and NativeChar will become bool/char on the trampoline surface and should not appear in places where trampolines aren't generated since
+                                    // they end up using MarshalAs instead.
+                                    case NativeBooleanDeclaration:
+                                    case NativeCharDeclaration:
+                                        return true;
+                                    default:
+                                        return false;
+                                }
+                            default:
+                                return false;
                         }
-
-                        return false;
                     }
 
                     if (declaration.DefaultValue is not null && !TypeCanHaveDefaultInCSharp(context.Library, declaration.Type))
