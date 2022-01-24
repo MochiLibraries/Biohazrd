@@ -27,17 +27,17 @@ namespace Biohazrd.CSharp.Tests
         [Fact]
         [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/82")]
         public void size_t_Intrinsic()
-            => NativeIntegerTest(null, "size_t", CSharpBuiltinType.UnsignedNativeInt);
+            => NativeIntegerTest(null, "size_t", CSharpBuiltinType.NativeUnsignedInt);
 
         [Fact]
         [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/82")]
         public void size_t_StdDef()
-            => NativeIntegerTest("stddef.h", "size_t", CSharpBuiltinType.UnsignedNativeInt);
+            => NativeIntegerTest("stddef.h", "size_t", CSharpBuiltinType.NativeUnsignedInt);
 
         [Fact]
         [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/82")]
         public void size_t_Namespaced()
-            => NativeIntegerTest("cstddef", "std::size_t", CSharpBuiltinType.UnsignedNativeInt);
+            => NativeIntegerTest("cstddef", "std::size_t", CSharpBuiltinType.NativeUnsignedInt);
 
         [Fact]
         [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/82")]
@@ -57,7 +57,7 @@ namespace Biohazrd.CSharp.Tests
         [Fact]
         [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/82")]
         public void uinptr_t()
-            => NativeIntegerTest("cstdint", "uintptr_t", CSharpBuiltinType.UnsignedNativeInt);
+            => NativeIntegerTest("cstdint", "uintptr_t", CSharpBuiltinType.NativeUnsignedInt);
 
         [Fact]
         [RelatedIssue("https://github.com/MochiLibraries/Biohazrd/issues/82")]
@@ -78,7 +78,7 @@ void Test(size_t, ptrdiff_t, intptr_t, uintptr_t);
             foreach (TranslatedParameter parameter in library.FindDeclaration<TranslatedFunction>("Test").Parameters)
             {
                 Assert.NotEqual(CSharpBuiltinType.NativeInt, parameter.Type);
-                Assert.NotEqual(CSharpBuiltinType.UnsignedNativeInt, parameter.Type);
+                Assert.NotEqual(CSharpBuiltinType.NativeUnsignedInt, parameter.Type);
             }
         }
     }

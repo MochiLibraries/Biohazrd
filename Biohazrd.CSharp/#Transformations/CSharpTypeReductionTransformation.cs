@@ -162,13 +162,13 @@ namespace Biohazrd.CSharp
                         TypedefNameDecl decl = typedefType.Decl;
 
                         if (IsSystemTypedef(decl, nameof(size_t), ref size_t))
-                        { return CSharpBuiltinType.UnsignedNativeInt; }
+                        { return CSharpBuiltinType.NativeUnsignedInt; }
                         else if (IsSystemTypedef(decl, nameof(ptrdiff_t), ref ptrdiff_t))
                         { return CSharpBuiltinType.NativeInt; }
                         else if (IsSystemTypedef(decl, nameof(intptr_t), ref intptr_t))
                         { return CSharpBuiltinType.NativeInt; }
                         else if (IsSystemTypedef(decl, nameof(uintptr_t), ref uintptr_t))
-                        { return CSharpBuiltinType.UnsignedNativeInt; }
+                        { return CSharpBuiltinType.NativeUnsignedInt; }
                     }
 
                     goto default;

@@ -142,6 +142,6 @@ namespace Biohazrd.CSharp
         // They don't fit into the constraints CSharpBuiltinType. If we're going to expose these I'd rather make something specific to them.
         internal static readonly TypeReference String = new ExternallyDefinedTypeReference("string");
         internal static readonly TypeReference NativeInt = new ExternallyDefinedTypeReference("nint");
-        internal static readonly TypeReference UnsignedNativeInt = new ExternallyDefinedTypeReference("unint");
+        internal static readonly TypeReference NativeUnsignedInt = new ExternallyDefinedTypeReference("nuint");
     }
 }
