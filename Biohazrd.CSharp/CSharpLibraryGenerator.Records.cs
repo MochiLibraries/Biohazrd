@@ -16,7 +16,7 @@ namespace Biohazrd.CSharp
             // https://github.com/dotnet/runtime/blob/29e9b5b7fd95231d9cd9d3ae351404e63cbb6d5a/src/coreclr/src/vm/fieldmarshaler.cpp#L233-L235
             foreach (TranslatedNormalField field in declaration.Members.OfType<TranslatedNormalField>())
             {
-                if (field.Type.IsCSharpType(CSharpBuiltinType.Char))
+                if (field.Type.IsCSharpType(context.Library, CSharpBuiltinType.Char))
                 {
                     Writer.Write(", CharSet = CharSet.Unicode");
                     break;

@@ -59,14 +59,14 @@ namespace Biohazrd.CSharp
             { EmitFunctionTrampoline(context, emitContext, declaration); }
         }
 
-        private static bool FunctionNeedsCharSetParameter(TranslatedFunction declaration)
+        private static bool FunctionNeedsCharSetParameter(TranslatedLibrary library, TranslatedFunction declaration)
         {
-            if (declaration.ReturnType.IsCSharpType(CSharpBuiltinType.Char))
+            if (declaration.ReturnType.IsCSharpType(library, CSharpBuiltinType.Char))
             { return true; }
 
             foreach (TranslatedParameter parameter in declaration.Parameters)
             {
-                if (parameter.Type.IsCSharpType(CSharpBuiltinType.Char))
+                if (parameter.Type.IsCSharpType(library, CSharpBuiltinType.Char))
                 { return true; }
             }
 
@@ -89,7 +89,7 @@ namespace Biohazrd.CSharp
             if (declaration.MangledName != emitContext.DllImportName)
             { Writer.Write($", EntryPoint = \"{SanitizeStringLiteral(declaration.MangledName)}\""); }
 
-            if (FunctionNeedsCharSetParameter(declaration))
+            if (FunctionNeedsCharSetParameter(context.Library, declaration))
             { Writer.Write(", CharSet = CharSet.Unicode"); }
 
             if (declaration.Metadata.Has<SetLastErrorFunction>())
@@ -98,7 +98,7 @@ namespace Biohazrd.CSharp
             Writer.WriteLine(", ExactSpelling = true)]");
 
             // Write out MarshalAs for boolean returns
-            if (declaration.ReturnType.IsCSharpType(CSharpBuiltinType.Bool))
+            if (declaration.ReturnType.IsCSharpType(context.Library, CSharpBuiltinType.Bool))
             { Writer.WriteLine("[return: MarshalAs(UnmanagedType.I1)]"); }
 
             // Write out the function signature
@@ -425,7 +425,7 @@ namespace Biohazrd.CSharp
                     else
                     {
                         // Write MarshalAs for booleans at pinvoke boundaries
-                        if (mode == EmitParameterListMode.DllImportParameters && parameter.Type.IsCSharpType(CSharpBuiltinType.Bool))
+                        if (mode == EmitParameterListMode.DllImportParameters && parameter.Type.IsCSharpType(context.Library, CSharpBuiltinType.Bool))
                         { Writer.Write("[MarshalAs(UnmanagedType.I1)] "); }
 
                         if (mode == EmitParameterListMode.TrampolineParameters)
