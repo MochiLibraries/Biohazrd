@@ -6,13 +6,13 @@ namespace Biohazrd.CSharp
 {
     public sealed class OrganizeOutputFilesByNamespaceTransformation : TransformationBase
     {
-        private readonly string RootNamespace;
-        private readonly string RootNamespacePrefix;
+        private readonly string? RootNamespace;
+        private readonly string? RootNamespacePrefix;
 
-        public OrganizeOutputFilesByNamespaceTransformation(string rootNamespace)
+        public OrganizeOutputFilesByNamespaceTransformation(string? rootNamespace)
         {
             RootNamespace = rootNamespace;
-            RootNamespacePrefix = $"{RootNamespace}.";
+            RootNamespacePrefix = RootNamespace is null ? null : $"{RootNamespace}.";
         }
 
         protected override TransformationResult TransformDeclaration(TransformationContext context, TranslatedDeclaration declaration)
@@ -26,7 +26,7 @@ namespace Biohazrd.CSharp
             { return declaration; }
 
             ReadOnlySpan<char> childNamespace = declaration.Namespace;
-            if (childNamespace.StartsWith(RootNamespacePrefix))
+            if (RootNamespacePrefix is not null && childNamespace.StartsWith(RootNamespacePrefix))
             { childNamespace = childNamespace.Slice(RootNamespacePrefix.Length); }
 
             string outputPath = "";
