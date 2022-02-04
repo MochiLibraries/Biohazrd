@@ -21,5 +21,8 @@ namespace Biohazrd.Transformation
 
         TransformationResult ICustomTranslatedDeclaration.TransformTypeChildren(ITypeTransformation transformation, TransformationContext context)
             => this;
+
+        public override string ToString()
+            => $"ExternallyDefinedType {Namespace}{(Namespace is null ? "" : ".")}{Name}";
     }
 }
