@@ -64,5 +64,22 @@ namespace Biohazrd
 
             return new DeclarationMetadata(Metadata.Remove(typeof(T)));
         }
+
+        /// <remarks>The API of this type is not stable as it is affected by the internal implementation of <see cref="DeclarationMetadata"/>.</remarks>
+        public readonly ref struct DebugView
+        {
+            private readonly ImmutableDictionary<Type, object>? Metadata;
+
+            private DebugView(DeclarationMetadata metadata)
+                => Metadata = metadata.Metadata;
+
+            public int MetadataCount => Metadata?.Count ?? 0;
+
+            public ImmutableDictionary<Type, object>.Enumerator GetEnumerator()
+                => Metadata?.GetEnumerator() ?? ImmutableDictionary<Type, object>.Empty.GetEnumerator();
+
+            public static explicit operator DebugView(in DeclarationMetadata metadata)
+                => new(metadata);
+        }
     }
 }
