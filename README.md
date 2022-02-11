@@ -1,7 +1,7 @@
 # Biohazrd
 
 [![MIT Licensed](https://img.shields.io/github/license/mochilibraries/biohazrd?style=flat-square)](LICENSE.txt)
-[![CI Status](https://img.shields.io/github/workflow/status/mochilibraries/biohazrd/Biohazrd/main?style=flat-square&label=CI)](https://github.com/InfectedLibraries/Biohazrd/actions?query=workflow%3ABiohazrd+branch%3Amain)
+[![CI Status](https://img.shields.io/github/workflow/status/mochilibraries/biohazrd/Biohazrd/main?style=flat-square&label=CI)](https://github.com/MochiLibraries/Biohazrd/actions?query=workflow%3ABiohazrd+branch%3Amain)
 [![NuGet Version](https://img.shields.io/nuget/v/Biohazrd?style=flat-square)](https://www.nuget.org/packages/Biohazrd/)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-lightgrey?logo=github&style=flat-square)](https://github.com/sponsors/PathogenDavid)
 
