@@ -358,18 +358,12 @@ namespace Biohazrd.CSharp
                     if (!first)
                     { Writer.Write(", "); }
 
-                    if (!declaration.IsVirtual)
-                    { Writer.Write("out "); }
-                    else if (mode == EmitParameterListMode.TrampolineArguments)
+                    if (mode == EmitParameterListMode.TrampolineArguments)
                     { Writer.Write("&"); }
 
                     if (writeTypes)
                     {
-                        WriteType(context, declaration, declaration.ReturnType);
-
-                        //TODO: When fixing https://github.com/InfectedLibraries/Biohazrd/issues/196, use WriteTypeAsReference instead.
-                        if (mode == EmitParameterListMode.VTableFunctionPointerParameters)
-                        { Writer.Write('*'); }
+                        WriteTypeAsReference(context, declaration, declaration.ReturnType);
 
                         if (writeNames)
                         { Writer.Write(' '); }
