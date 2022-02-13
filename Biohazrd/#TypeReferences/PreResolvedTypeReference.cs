@@ -41,5 +41,8 @@ namespace Biohazrd
 
         public override string ToString()
             => $"`Pre-resolved reference to {Declaration.Name}`";
+
+        internal override bool __HACK__CouldResolveTo(TranslatedDeclaration declaration)
+            => ReferenceEquals(declaration, Declaration);
     }
 }

@@ -143,6 +143,20 @@ namespace Biohazrd
             return false;
         }
 
+        public bool MatchesId(DeclarationId id)
+        {
+            if (Id == id)
+            { return true; }
+
+            foreach (DeclarationId replacedId in ReplacedIds)
+            {
+                if (replacedId == id)
+                { return true; }
+            }
+
+            return false;
+        }
+
         /// <summary>Do not use, this is an implementation detail of <see cref="TranslatedDeclarationExtensions.CreateUniqueClone{TDeclaration}(TDeclaration)"/>.</summary>
         internal static TranslatedDeclaration _CreateUniqueClone(TranslatedDeclaration target)
             => target with

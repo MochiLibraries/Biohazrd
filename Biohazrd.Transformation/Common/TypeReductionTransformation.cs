@@ -64,14 +64,18 @@ namespace Biohazrd.Transformation.Common
                 case PointerType pointerType:
                 {
                     ClangTypeReference inner = new(pointerType.PointeeType);
-                    return new PointerTypeReference(inner);
+                    return new PointerTypeReference(inner)
+                    {
+                        InnerIsConst = pointerType.PointeeType.IsLocalConstQualified
+                    };
                 }
                 case ReferenceType referenceType:
                 {
                     ClangTypeReference inner = new(referenceType.PointeeType);
                     TypeTransformationResult result = new PointerTypeReference(inner)
                     {
-                        WasReference = true
+                        WasReference = true,
+                        InnerIsConst = referenceType.PointeeType.IsLocalConstQualified
                     };
 
                     if (referenceType is RValueReferenceType)

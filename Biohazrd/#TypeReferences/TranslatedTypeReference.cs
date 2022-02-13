@@ -43,5 +43,8 @@ namespace Biohazrd
             else
             { return new DeclarationIdTranslatedTypeReference(declaration.Id); }
         }
+
+        // This is used for a workaround to https://github.com/MochiLibraries/Biohazrd/issues/239
+        internal abstract bool __HACK__CouldResolveTo(TranslatedDeclaration declaration);
     }
 }

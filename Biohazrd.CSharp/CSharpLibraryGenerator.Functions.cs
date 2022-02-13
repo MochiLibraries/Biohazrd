@@ -1,4 +1,5 @@
 ﻿using Biohazrd.CSharp.Metadata;
+using Biohazrd.CSharp.Trampolines;
 using ClangSharp.Pathogen;
 using System;
 using System.Diagnostics;
@@ -45,6 +46,17 @@ namespace Biohazrd.CSharp
             if (!declaration.IsCallable)
             {
                 Fatal(context, declaration, $"{declaration.Name} is missing ABI information and cannot be called.");
+                return;
+            }
+
+            if (declaration.Metadata.TryGet(out TrampolineCollection trampolines))
+            {
+                foreach (Trampoline trampoline in trampolines)
+                {
+                    Writer.EnsureSeparation();
+                    trampoline.Emit(this, context, declaration, Writer);
+                }
+
                 return;
             }
 
@@ -318,7 +330,11 @@ namespace Biohazrd.CSharp
             if (declaration.ReturnByReference)
             { WriteTypeAsReference(context, declaration, declaration.ReturnType); }
             else
-            { WriteType(context, declaration, declaration.ReturnType); }
+            {
+                string typeString = GetTypeAsString(context, declaration, declaration.ReturnType);
+                typeString = FixNonBlittableTypeForFunctionPointer(typeString);
+                Writer.Write(typeString);
+            }
 
             Writer.Write('>');
         }
@@ -425,7 +441,12 @@ namespace Biohazrd.CSharp
                         if (mode == EmitParameterListMode.TrampolineParameters)
                         { WriteTypeForTrampoline(parameterContext, parameter, parameter.Type); }
                         else
-                        { WriteType(parameterContext, parameter, parameter.Type); }
+                        {
+                            string typeString = GetTypeAsString(parameterContext, parameter, parameter.Type);
+                            if (mode == EmitParameterListMode.VTableFunctionPointerParameters)
+                            { typeString = FixNonBlittableTypeForFunctionPointer(typeString); }
+                            Writer.Write(typeString);
+                        }
                     }
 
                     if (writeNames)

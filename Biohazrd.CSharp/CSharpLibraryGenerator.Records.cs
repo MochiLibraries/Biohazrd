@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using Biohazrd.CSharp.Trampolines;
+using System.Linq;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp
@@ -87,10 +88,36 @@ namespace Biohazrd.CSharp
 
                     Writer.Write($"{entry.Accessibility.ToCSharpKeyword()} ");
 
-                    if (entry.IsFunctionPointer && entry.MethodReference?.TryResolve(context.Library) is TranslatedFunction associatedFunction)
+                    TranslatedFunction? associatedFunction = null;
+
+                    // Prefer methods which are a sibling to the vtable
+                    // (This is a workaround for https://github.com/MochiLibraries/Biohazrd/issues/239)
+                    if (entry.MethodReference is DeclarationReference methodReference && context.ParentDeclaration is TranslatedRecord record)
                     {
-                        EmitFunctionContext emitContext = new(context, associatedFunction);
-                        EmitFunctionPointerForVTable(context, emitContext, associatedFunction);
+                        foreach (TranslatedDeclaration sibling in record)
+                        {
+                            if (sibling is TranslatedFunction function && methodReference.__HACK__CouldResolveTo(function))
+                            {
+                                associatedFunction = function;
+                                break;
+                            }
+                        }
+                    }
+
+                    // If we didn't find it as a sibling search the entire library
+                    associatedFunction ??= entry.MethodReference?.TryResolve(context.Library) as TranslatedFunction;
+
+                    if (entry.IsFunctionPointer && associatedFunction is not null)
+                    {
+                        if (associatedFunction.Metadata.TryGet(out TrampolineCollection trampolines))
+                        {
+                            trampolines.NativeFunction.EmitFunctionPointer(this, context, associatedFunction, Writer);
+                        }
+                        else
+                        {
+                            EmitFunctionContext emitContext = new(context, associatedFunction);
+                            EmitFunctionPointerForVTable(context, emitContext, associatedFunction);
+                        }
                     }
                     else
                     { WriteType(context.Add(entry), entry, VoidTypeReference.PointerInstance); }

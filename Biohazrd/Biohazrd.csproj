@@ -58,6 +58,8 @@
   <!-- Extra InternalsVisibleTo attributes -->
   <ItemGroup>
     <InternalsVisibleTo Include="$(MSBuildProjectName).CSharp.Tests" />
+    <!-- For temporary workaround methods on TranslatedTypeReference -->
+    <InternalsVisibleTo Include="$(MSBuildProjectName).CSharp" />
   </ItemGroup>
 
 </Project>

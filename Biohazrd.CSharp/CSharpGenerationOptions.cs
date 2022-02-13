@@ -40,6 +40,7 @@ namespace Biohazrd.CSharp
                     {
                         TargetLanguageVersion.CSharp9 => TargetRuntime.Net5,
                         TargetLanguageVersion.CSharp10 => TargetRuntime.Net6,
+                        TargetLanguageVersion.CSharp11 => TargetRuntime.Net7,
                         _ => TargetRuntime.Net6
                     };
                 }
@@ -74,6 +75,7 @@ namespace Biohazrd.CSharp
                     {
                         TargetRuntime.Net5 => TargetLanguageVersion.CSharp9,
                         TargetRuntime.Net6 => TargetLanguageVersion.CSharp10,
+                        TargetRuntime.Net7 => TargetLanguageVersion.CSharp11,
                         _ => TargetLanguageVersion.CSharp10
                     };
                 }
@@ -89,6 +91,17 @@ namespace Biohazrd.CSharp
                 _TargetLangaugeVersion = value;
             }
         }
+
+        /// <summary>If true, default parameter values will not be emitted for non-public APIs.</summary>
+        /// <remarks>
+        /// This setting is enabled by default to avoid unecessary metadata bloat.
+        /// If you intend to manually write trampolines for native functions it may be desirable to turn this off.
+        /// </remarks>
+        public bool SuppressDefaultParameterValuesOnNonPublicMethods { get; init; } = true;
+
+        //TODO: We shold automatically prefix this with whatever is configured on OrganizeOutputFilesByNamespaceTransformation
+        public string InfrastructureTypesNamespace { get; init; } = "Infrastructure";
+        public string InfrastructureTypesDirectoryPath { get; init; } = "Infrastructure";
 
         public CSharpGenerationOptions()
 #pragma warning disable CS0618 // Type or member is obsolete

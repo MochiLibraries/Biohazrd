@@ -9,6 +9,9 @@
         /// <summary>True when this pointer represents what used to be a C++-style reference type.</summary>
         public bool WasReference { get; init; }
 
+        /// <summary>True when this pointer or reference points to a type which is const qualified.</summary>
+        public bool InnerIsConst { get; init; }
+
         public PointerTypeReference(TypeReference inner)
             => Inner = inner;
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -28,6 +29,15 @@ namespace Biohazrd
                 value = default;
                 return false;
             }
+        }
+
+        public T Get<T>()
+            where T : struct, IDeclarationMetadataItem
+        {
+            if (!TryGet(out T result))
+            { throw new KeyNotFoundException($"No metadata for '{typeof(T).FullName}' exists in the collection."); }
+
+            return result;
         }
 
         public bool Has<T>()

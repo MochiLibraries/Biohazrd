@@ -1,9 +1,13 @@
 ﻿using Biohazrd.CSharp.Metadata;
+using Biohazrd.CSharp.Trampolines;
 using Biohazrd.Expressions;
 using Biohazrd.Transformation;
+using Biohazrd.Transformation.Infrastructure;
 using ClangSharp;
 using ClangSharp.Pathogen;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Biohazrd.CSharp
@@ -153,7 +157,145 @@ namespace Biohazrd.CSharp
 
         protected override TransformationResult TransformFunction(TransformationContext context, TranslatedFunction declaration)
         {
-            //TODO: Verify return type is compatible
+            // Validate the trampolines
+            if (!declaration.Metadata.TryGet(out TrampolineCollection trampolines))
+            { declaration = declaration.WithWarning($"Function does not have trampolines which will soon be deprecated, use {nameof(CreateTrampolinesTransformation)} to add them."); }
+            else if (trampolines.__OriginalFunction is null)
+            {
+                declaration = declaration with
+                {
+                    Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Function has trampolines but they were defaulted. Trampolines should be added via {nameof(CreateTrampolinesTransformation)}."),
+                    Metadata = declaration.Metadata.Remove<TrampolineCollection>()
+                };
+            }
+            else
+            {
+                TranslatedFunction original = trampolines.__OriginalFunction;
+
+                // Validate name did not change too late
+                if (declaration.Name != original.Name)
+                { declaration = declaration.WithWarning($"Function's name was changed from '{original.Name}' to '{declaration.Name}' after trampolines were added. This change will not be reflected in the output."); }
+
+                // Validate return type did not change too late
+                if (declaration.ReturnType != original.ReturnType)
+                { declaration = declaration.WithWarning($"Function's return type was changed from '{original.ReturnType}' to '{declaration.ReturnType}' after trampolines were added. This change will not be reflected in the output."); }
+
+                // Validate the parameter count did not change too late
+                // (This situation is somewhat nonsensical, but it *is* possible so we need ot handle it somehow.)
+                if (declaration.Parameters.Length != original.Parameters.Length)
+                { declaration = declaration.WithWarning($"The number of parameters changed from {original.Parameters.Length} to {declaration.Parameters.Length} after trampolines were added. This change will not be reflected in the output."); }
+                else
+                {
+                    // Validate the parameter names and types did not change too late
+                    ArrayTransformHelper<TranslatedParameter> verifiedParameters = new(declaration.Parameters);
+                    for (int i = 0; i < declaration.Parameters.Length; i++)
+                    {
+                        TranslatedParameter parameter = declaration.Parameters[i];
+                        TranslatedParameter originalParameter = original.Parameters[i];
+
+                        if (parameter.Type != originalParameter.Type)
+                        { parameter = parameter.WithWarning($"Parameter's type was changed from '{originalParameter.Type}' to '{parameter.Type}' after trampolines were added. This change will not be reflected in the output."); }
+
+                        if (parameter.Name != originalParameter.Name)
+                        { parameter = parameter.WithWarning($"Parameter's name was changed from '{originalParameter.Name}' to '{parameter.Name}' after trampolines were added. This change will not be reflected in the output."); }
+
+                        if (parameter.DefaultValue != originalParameter.DefaultValue)
+                        { parameter = parameter.WithWarning($"Parameter's default value was changed from '{originalParameter.DefaultValue}' to '{parameter.DefaultValue}' after trampolines were added. This change will not be reflected in the output."); }
+
+                        verifiedParameters.Add(parameter);
+                    }
+
+                    if (verifiedParameters.WasChanged)
+                    {
+                        declaration = declaration with
+                        {
+                            Parameters = verifiedParameters.MoveToImmutable()
+                        };
+                    }
+                }
+
+                // Validate the trampoline collection does not contain duplicates
+                for (int i = 0; i < trampolines.SecondaryTrampolines.Length; i++)
+                {
+                    Trampoline trampoline = trampolines.SecondaryTrampolines[i];
+
+                    if (ReferenceEquals(trampoline, trampolines.PrimaryTrampoline))
+                    {
+                        trampolines = trampolines with { SecondaryTrampolines = trampolines.SecondaryTrampolines.RemoveAt(i) };
+                        i--;
+                        declaration = declaration with
+                        {
+                            Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampoline.Description}' was added as both a secondary and the primary trampoline. The extra entry was removed."),
+                            Metadata = declaration.Metadata.Set(trampolines)
+                        };
+                        continue;
+                    }
+
+                    for (int j = i + 1; j < trampolines.SecondaryTrampolines.Length; j++)
+                    {
+                        if (ReferenceEquals(trampoline, trampolines.SecondaryTrampolines[j]))
+                        {
+                            trampolines = trampolines with { SecondaryTrampolines = trampolines.SecondaryTrampolines.RemoveAt(j) };
+                            j--;
+                            declaration = declaration with
+                            {
+                                Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampoline.Description}' was added to the secondary trampoline list more than once. The extra entry was removed."),
+                                Metadata = declaration.Metadata.Set(trampolines)
+                            };
+                        }
+                    }
+                }
+
+                // Validate the trampoline graph is complete
+                // This has to be done iteratively so if we have A -> B -> (missing) and A is checked before B we will remove both.
+                bool foundBrokenLinks;
+                do
+                {
+                    foundBrokenLinks = false;
+
+                    // Validate primary trampoline
+                    Trampoline primary = trampolines.PrimaryTrampoline;
+                    if (!primary.IsNativeFunction && !trampolines.Contains(primary.Target))
+                    {
+                        trampolines = trampolines with { PrimaryTrampoline = trampolines.NativeFunction };
+                        declaration = declaration with
+                        {
+                            Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{primary.Description}' referenced missing trampoline '{primary.Target.Description}' and was removed."),
+                            Metadata = declaration.Metadata.Set(trampolines)
+                        };
+
+                        foundBrokenLinks = true;
+                    }
+
+                    // Verify secondary trampolines
+                    foreach (Trampoline trampoline in trampolines.SecondaryTrampolines)
+                    {
+                        if (trampoline.IsNativeFunction)
+                        {
+                            Debug.Fail("Secondary trampolines should not be native trampolines!");
+                            continue;
+                        }
+
+                        if (!trampolines.Contains(trampoline.Target))
+                        {
+                            trampolines = trampolines with
+                            {
+                                SecondaryTrampolines = trampolines.SecondaryTrampolines.Remove(trampoline, ReferenceEqualityComparer.Instance)
+                            };
+
+                            declaration = declaration with
+                            {
+                                Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampoline.Description}' referenced missing trampoline '{trampoline.Target.Description}' and was removed."),
+                                Metadata = declaration.Metadata.Set(trampolines)
+                            };
+
+                            foundBrokenLinks = true;
+                        }
+                    }
+                } while (foundBrokenLinks);
+            }
+
+            //TODO: Verify the return type can be actually be emitted
             //TODO: We might want to check if they can be resolved in an extra pass due to BrokenDeclarationExtractor.
             if (!context.IsValidFieldOrMethodContext())
             { declaration = declaration.WithError("Loose functions are not supported in C#."); }
@@ -221,9 +363,18 @@ namespace Biohazrd.CSharp
 
         protected override TransformationResult TransformParameter(TransformationContext context, TranslatedParameter declaration)
         {
-            //TODO: Verify type is compatible
+            //TODO: Verify the type can be actually be emitted
             if (context.ParentDeclaration is not TranslatedFunction)
             { declaration = declaration.WithError("Function parameters are not valid outside of a function context."); }
+
+            //TODO: This verification was written prior to trampolines. It doesn't really make as much sense anymore now that we have them.
+            // In particular, it's too late to remove the default values here since they were captured upon trampoline creation. This isn't a problem though since trampolines will skip defaults they don't
+            // support automatically.
+            //
+            // However, it is still nice for generator authors to know when a default parameter value is (probably) being ignored by Biohazrd. As such this logic (and CSharpTranslationVerifierPass2) remain
+            // for the time being.
+            //
+            // In the future we should instead look through all trampolines and determine if a default parameter value was lost entirely for all trampolines and emit warnings for that.
 
             // Verify default parameter value is compatible
             switch (declaration.DefaultValue)

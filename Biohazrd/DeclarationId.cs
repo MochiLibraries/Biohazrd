@@ -34,5 +34,7 @@ namespace Biohazrd
             ulong newId = Interlocked.Increment(ref NextId);
             return new DeclarationId(newId);
         }
+
+        public static DeclarationId Null => default;
     }
 }
