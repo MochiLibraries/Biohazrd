@@ -124,6 +124,9 @@ csharp_using_directive_placement = outside_namespace:warning
 # File header
 file_header_template = unset
 
+# Misc
+csharp_style_namespace_declarations = file_scoped:none
+
 #----------------------------------------------------------
 # Unnecessary code rules
 #----------------------------------------------------------

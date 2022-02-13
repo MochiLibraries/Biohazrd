@@ -41,6 +41,20 @@ namespace Biohazrd.CSharp
         {
             ImmutableArray<TranslationDiagnostic>.Builder diagnosticsBuilder = ImmutableArray.CreateBuilder<TranslationDiagnostic>();
 
+            // Create AssemblyInfo file
+            if (options.TargetRuntime >= TargetRuntime.Net7)
+            {
+                using CSharpCodeWriter assemblyInfo = session.Open<CSharpCodeWriter>("AssemblyInfo.cs");
+                assemblyInfo.Using("System.Runtime.CompilerServices");
+                assemblyInfo.WriteLine("[assembly: DisableRuntimeMarshalling]");
+            }
+            else
+            {
+                using CSharpCodeWriter assemblyInfo = session.Open<CSharpCodeWriter>("AssemblyInfo.cs");
+                assemblyInfo.Using("System.Runtime.InteropServices");
+                assemblyInfo.WriteLine("[module: DefaultCharSet(CharSet.Unicode)]");
+            }
+
             // path => generator
             Dictionary<string, CSharpLibraryGenerator> generators = new();
 

@@ -5,6 +5,8 @@ namespace Biohazrd.CSharp
 {
     partial class CSharpLibraryGenerator : ICSharpOutputGenerator
     {
+        CSharpGenerationOptions ICSharpOutputGenerator.Options => Options;
+
         string ICSharpOutputGenerator.GetTypeAsString(VisitorContext context, TranslatedDeclaration declaration, TypeReference type)
             => GetTypeAsString(context, declaration, type);
 
@@ -16,5 +18,8 @@ namespace Biohazrd.CSharp
 
         void ICSharpOutputGenerator.Visit(VisitorContext context, TranslatedDeclaration declaration)
             => Visit(context, declaration);
+
+        void ICSharpOutputGenerator.AddDiagnostic(TranslationDiagnostic diagnostic)
+            => Diagnostics.Add(diagnostic);
     }
 }

@@ -40,6 +40,7 @@ namespace Biohazrd.CSharp
                     {
                         TargetLanguageVersion.CSharp9 => TargetRuntime.Net5,
                         TargetLanguageVersion.CSharp10 => TargetRuntime.Net6,
+                        TargetLanguageVersion.CSharp11 => TargetRuntime.Net7,
                         _ => TargetRuntime.Net6
                     };
                 }
@@ -74,6 +75,7 @@ namespace Biohazrd.CSharp
                     {
                         TargetRuntime.Net5 => TargetLanguageVersion.CSharp9,
                         TargetRuntime.Net6 => TargetLanguageVersion.CSharp10,
+                        TargetRuntime.Net7 => TargetLanguageVersion.CSharp11,
                         _ => TargetLanguageVersion.CSharp10
                     };
                 }
@@ -89,6 +91,16 @@ namespace Biohazrd.CSharp
                 _TargetLangaugeVersion = value;
             }
         }
+
+        /// <summary>Controls how C++ reference types are translated to C#.</summary>
+        /// <remarks>
+        /// By default, references are emitted according to <see cref="ReferenceTypeOutputBehavior.AsRefOrByValue"/>.
+        ///
+        /// This setting can be overriden for individual parameters using <see cref="Metadata.OverrideReferenceTypeOutputBehavior"/>
+        /// </remarks>
+        public ReferenceTypeOutputBehavior ReferenceTypeOutputBehavior { get; init; } = ReferenceTypeOutputBehavior.AsRefOrByValue;
+
+        public bool SuppressDefaultParameterValuesOnNonPublicMethods { get; init; } = true;
 
         public CSharpGenerationOptions()
 #pragma warning disable CS0618 // Type or member is obsolete

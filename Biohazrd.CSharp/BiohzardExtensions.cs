@@ -1,7 +1,12 @@
-﻿using Biohazrd.Expressions;
+﻿using Biohazrd.CSharp.Infrastructure;
+using Biohazrd.CSharp.Metadata;
+using Biohazrd.CSharp.Trampolines;
+using Biohazrd.Expressions;
 using Biohazrd.Transformation;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace Biohazrd.CSharp
 {
@@ -68,5 +73,31 @@ namespace Biohazrd.CSharp
                 NullPointerConstant => CSharpBuiltinType.NativeInt,
                 _ => null
             };
+
+        /// <summary>Gets the effective <see cref="ReferenceTypeOutputBehavior"/> for the parameter if applicable.</summary>
+        internal static ParameterOutputMode GetParameterOutputMode(this TranslatedParameter parameter, ReferenceTypeOutputBehavior globalOutputBehavior)
+        {
+            if (parameter.Type is not PointerTypeReference { WasReference: true } referenceType)
+            { return ParameterOutputMode.Normal; }
+
+            ReferenceTypeOutputBehavior outputBehavior = globalOutputBehavior;
+
+            if (parameter.Metadata.TryGet(out OverrideReferenceTypeOutputBehavior overrideMetadata))
+            { outputBehavior = overrideMetadata.ReferenceTypeOutputBehavior; }
+
+            return outputBehavior switch
+            {
+                ReferenceTypeOutputBehavior.AsPointer => ParameterOutputMode.Normal,
+                ReferenceTypeOutputBehavior.AsRefOrByValue => referenceType.InnerIsConst ? ParameterOutputMode.RefByValue : ParameterOutputMode.RefByRef,
+                ReferenceTypeOutputBehavior.AlwaysByRef => referenceType.InnerIsConst ? ParameterOutputMode.RefByReadonlyRef : ParameterOutputMode.RefByRef,
+                _ => throw new InvalidOperationException($"Unknown/unsupported {nameof(ReferenceTypeOutputBehavior)} '{outputBehavior}' applied to {parameter}.")
+            };
+        }
+
+        public static Trampoline? TryGetPrimaryTrampoline(this TranslatedFunction function)
+            => function.Metadata.TryGet(out TrampolineCollection trampolines) ? trampolines.PrimaryTrampoline : null;
+
+        public static Trampoline GetPrimaryTrampoline(this TranslatedFunction function)
+            => function.TryGetPrimaryTrampoline() ?? throw new InvalidOperationException("Tried to get the primary trampoline of a function with no trampoline metadata.");
     }
 }
