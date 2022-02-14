@@ -156,11 +156,6 @@ public sealed record Trampoline
             Debug.Assert(virtualMethodAccess is not null || virtualMethodAccessFailure is not null, "We need either a virtual method access or a failure message.");
         }
 
-        //if (declaration.IsVirtual && virtualFunctionAccess is null)
-        //{ throw new ArgumentNullException(nameof(virtualFunctionAccess), "Virtual function access is required when emitting a virtual method."); }
-        //else if (!declaration.IsVirtual && virtualFunctionAccess is not null)
-        //{ throw new ArgumentException("Virtual function access should not be provided when emitting a non-virtual method.", nameof(virtualFunctionAccess)); }
-
         // Create base contexts
         TrampolineContext functionContext = new(outputGenerator, this, writer, context, declaration);
         TrampolineContext parameterContext = functionContext with { Context = functionContext.Context.Add(declaration) };
@@ -248,19 +243,13 @@ public sealed record Trampoline
         // Emit function signature
         //===========================================================================================================================================
         {
-            // If this is a constructor, determine if we'll emit it as an actual constructor
-            string? constructorName = null;
-            if (!IsNativeFunction && declaration.SpecialFunctionKind == SpecialFunctionKind.Constructor && context.ParentDeclaration is TranslatedRecord constructorType)
+            if (GetConstructorName(outputGenerator, context, declaration) is string constructorName)
             {
-                constructorName = constructorType.Name;
-
-                //TODO: This does not handle input-no-output adapters
-                // Parameterless constructors require C# 10
-                if (declaration.Parameters.Length == 0 && outputGenerator.Options.TargetLanguageVersion < TargetLanguageVersion.CSharp10)
-                { constructorName = null; }
+                writer.Write(Accessibility.ToCSharpKeyword());
+                writer.Write(' ');
+                writer.WriteIdentifier(constructorName);
             }
-
-            if (constructorName is null)
+            else
             {
                 writer.Write(Accessibility.ToCSharpKeyword());
 
@@ -279,12 +268,6 @@ public sealed record Trampoline
 
                 // Write out the function name
                 writer.WriteIdentifier(Name);
-            }
-            else
-            {
-                writer.Write(Accessibility.ToCSharpKeyword());
-                writer.Write(' ');
-                writer.WriteIdentifier(constructorName);
             }
 
             // Write out the parameter list
@@ -366,38 +349,16 @@ public sealed record Trampoline
             else
             { ReturnAdapter.WriteResultCapture(functionContext, writer); }
 
-            bool targetIsActuallyConstructor = false;
-            if (declaration.SpecialFunctionKind == SpecialFunctionKind.Constructor && !Target.IsNativeFunction)
-            {
-                targetIsActuallyConstructor = true;
-                bool anyTargetAdaptersAreInputs = false;
-
-                foreach (Adapter adapter in Target.Adapters)
-                {
-                    if (adapter.AcceptsInput)
-                    {
-                        anyTargetAdaptersAreInputs = true;
-
-                        if (adapter.SpecialKind == SpecialAdapterKind.ThisPointer)
-                        {
-                            targetIsActuallyConstructor = false;
-                            break;
-                        }
-                    }
-                }
-
-                // If the target could be a constructor but it has no inputs, it will not be a constructor unless we're targeting C# 10 or newer
-                if (targetIsActuallyConstructor && !anyTargetAdaptersAreInputs && outputGenerator.Options.TargetLanguageVersion < TargetLanguageVersion.CSharp10)
-                { targetIsActuallyConstructor = false; }
-            }
-
             if (virtualMethodAccess is not null)
             {
                 Debug.Assert(declaration.IsVirtual);
                 writer.Write(virtualMethodAccess);
             }
-            else if (targetIsActuallyConstructor)
-            { writer.Write("this = new"); }
+            else if (Target.GetConstructorName(outputGenerator, context, declaration) is string constructorName)
+            {
+                writer.Write("this = new ");
+                writer.WriteIdentifier(constructorName);
+            }
             else
             //TODO: Need to handle constructor dispatch
             { writer.WriteIdentifier(Target.Name); }
@@ -488,5 +449,40 @@ public sealed record Trampoline
         }
 
         writer.WriteLine(")]");
+    }
+
+    private string? GetConstructorName(ICSharpOutputGenerator outputGenerator, VisitorContext context, TranslatedFunction declaration)
+    {
+        // Native functions are never emitted as constructors
+        if (IsNativeFunction)
+        { return null; }
+
+        // Non-constructors are never emitted as constructors
+        if (declaration.SpecialFunctionKind != SpecialFunctionKind.Constructor)
+        { return null; }
+
+        // If we don't have a parent record we don't know what type we're constructing
+        if (context.ParentDeclaration is not TranslatedRecord constructorType)
+        { return null; }
+
+        // If none of our adaptors accept inputs, we won't emit any parameters. Parameterless constructors require C# 10 or newer
+        if (outputGenerator.Options.TargetLanguageVersion < TargetLanguageVersion.CSharp10)
+        {
+            bool haveInputs = false;
+            foreach (Adapter adapter in Adapters)
+            {
+                if (adapter.AcceptsInput)
+                {
+                    haveInputs = true;
+                    break;
+                }
+            }
+
+            if (!haveInputs)
+            { return null; }
+        }
+
+        // If we got this far we will emit as a constructor
+        return constructorType.Name;
     }
 }
