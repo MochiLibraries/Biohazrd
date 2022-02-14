@@ -1,9 +1,11 @@
 ﻿using Biohazrd.Transformation;
+using System;
 using System.Diagnostics;
 using System.Linq;
 
 namespace Biohazrd.CSharp
 {
+    [Obsolete($"This transformation has been superseded by '{nameof(CreateTrampolinesTransformation)}'")]
     public sealed class WrapNonBlittableTypesWhereNecessaryTransformation : CSharpTypeTransformationBase
     {
         private NativeBooleanDeclaration? NativeBoolean = null;

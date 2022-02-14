@@ -101,7 +101,29 @@ public abstract class Adapter
         return parameter.Id == TargetDeclaration || parameter.ReplacedIds.Contains(TargetDeclaration);
     }
 
-    public abstract void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue);
+    //TODO: Modify all children to use this instead of writing it out themselves
+    public virtual void WriteInputType(TrampolineContext context, CSharpCodeWriter writer)
+    {
+        if (!AcceptsInput)
+        { throw new InvalidOperationException("This adapter does not accept input."); }
+
+        context.WriteType(InputType);
+    }
+
+    //TODO: Remove unnecessary implementations in children
+    public virtual void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
+    {
+        WriteInputType(context, writer);
+        writer.Write(' ');
+        writer.WriteIdentifier(ParameterName);
+
+        if (emitDefaultValue && DefaultValue is not null)
+        {
+            writer.Write(" = ");
+            context.WriteConstant(DefaultValue, InputType);
+        }
+    }
+
     public abstract void WritePrologue(TrampolineContext context, CSharpCodeWriter writer);
     public abstract bool WriteBlockBeforeCall(TrampolineContext context, CSharpCodeWriter writer);
     public abstract void WriteOutputArgument(TrampolineContext context, CSharpCodeWriter writer);

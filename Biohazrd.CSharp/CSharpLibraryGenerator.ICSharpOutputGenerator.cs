@@ -1,9 +1,10 @@
 ﻿using Biohazrd.CSharp.Infrastructure;
 using Biohazrd.Expressions;
+using System;
 
 namespace Biohazrd.CSharp
 {
-    partial class CSharpLibraryGenerator : ICSharpOutputGenerator
+    partial class CSharpLibraryGenerator : ICSharpOutputGenerator, ICSharpOutputGeneratorInternal
     {
         CSharpGenerationOptions ICSharpOutputGenerator.Options => Options;
 
@@ -21,5 +22,29 @@ namespace Biohazrd.CSharp
 
         void ICSharpOutputGenerator.AddDiagnostic(TranslationDiagnostic diagnostic)
             => Diagnostics.Add(diagnostic);
+
+        void ICSharpOutputGeneratorInternal.Fatal(VisitorContext context, TranslatedDeclaration declaration, string? reason)
+            => Fatal(context, declaration, reason);
+
+        void ICSharpOutputGeneratorInternal.Fatal(VisitorContext context, TranslatedDeclaration declaration, string? reason, string? extraDescription)
+            => Fatal(context, declaration, reason, extraDescription);
+
+        // These are used for a dirty hack to work around lack of proper support for late-generated infrastructure types
+        private bool __NeedsNativeBoolean;
+        private bool __NeedsNativeChar;
+        void ICSharpOutputGeneratorInternal.__IndicateInfrastructureTypeDependency(NonBlittableTypeKind kind)
+        {
+            switch (kind)
+            {
+                case NonBlittableTypeKind.NativeBoolean:
+                    __NeedsNativeBoolean = true;
+                    break;
+                case NonBlittableTypeKind.NativeChar:
+                    __NeedsNativeChar = true;
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
+        }
     }
 }

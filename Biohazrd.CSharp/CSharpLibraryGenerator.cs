@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp
@@ -92,6 +93,34 @@ namespace Biohazrd.CSharp
 
                 // Add this declaration to the generator
                 generator.Visit(rootVisitorContext, declaration);
+            }
+
+            // Emit autolate-generated infrastructure types
+            // (This is a bit of a hack until we have proper support for these sort of thigns.)
+            {
+                CSharpCodeWriter OpenInfrastructureTypeFile(string fileName)
+                {
+                    fileName = Path.Combine(options.InfrastructureTypesDirectoryPath, fileName);
+                    return session.Open<CSharpCodeWriter>(fileName);
+                }
+
+                if (generators.Values.Any(g => g.__NeedsNativeBoolean))
+                {
+                    using (CSharpCodeWriter writer = OpenInfrastructureTypeFile("NativeBoolean.cs"))
+                    using (writer.Namespace(options.InfrastructureTypesNamespace))
+                    {
+                        NativeBooleanDeclaration.Emit(writer);
+                    }
+                }
+
+                if (generators.Values.Any(g => g.__NeedsNativeChar))
+                {
+                    using (CSharpCodeWriter writer = OpenInfrastructureTypeFile("NativeChar.cs"))
+                    using (writer.Namespace(options.InfrastructureTypesNamespace))
+                    {
+                        NativeCharDeclaration.Emit(writer);
+                    }
+                }
             }
 
             // Finish all writers and collect diagnostics

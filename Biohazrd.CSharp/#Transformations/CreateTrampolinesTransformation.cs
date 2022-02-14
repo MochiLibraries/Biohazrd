@@ -1,7 +1,6 @@
 ﻿using Biohazrd.CSharp.Trampolines;
 using Biohazrd.Transformation;
 using ClangSharp.Pathogen;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -62,13 +61,20 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
             TypeReference returnType = declaration.ReturnType;
 
             // Handle returning bool
-            if (TargetRuntime < TargetRuntime.Net7 && returnType == CSharpBuiltinType.Bool)
+            if (TargetRuntime < TargetRuntime.Net7 && returnType.IsCSharpType(context.Library, CSharpBuiltinType.Bool))
             {
-                //TODO: If function is virtual method rewrite to NativeBoolean instead.
-                nativeReturnAdapter = new PassthroughReturnAdapter(CSharpBuiltinType.Byte);
-                friendlyReturnAdapter = new ByteToBoolReturnAdapter(nativeReturnAdapter);
+                // If the function is virtual, use NativeBoolean on the native side and allow the friendly side to just be passthrough
+                if (declaration.IsVirtual)
+                { nativeReturnAdapter = NonBlittableTypeReturnAdapter.NativeBoolean; }
+                else
+                {
+                    nativeReturnAdapter = new PassthroughReturnAdapter(CSharpBuiltinType.Byte);
+                    friendlyReturnAdapter = new ByteToBoolReturnAdapter(nativeReturnAdapter);
+                }
             }
-            //TODO: Handle char for virtual methods
+            // Handle virtual methods returning bool
+            else if (declaration.IsVirtual && TargetRuntime < TargetRuntime.Net7 && returnType.IsCSharpType(context.Library, CSharpBuiltinType.Char))
+            { nativeReturnAdapter = NonBlittableTypeReturnAdapter.NativeChar; }
             // Handle returning void
             else if (returnType is VoidTypeReference)
             { nativeReturnAdapter = VoidReturnAdapter.Instance; }
@@ -129,26 +135,6 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
         // Handle explicit parameters
         foreach (TranslatedParameter parameter in declaration.Parameters)
         {
-            // Handle pre-.NET 7 non-blittables
-            if (TargetRuntime < TargetRuntime.Net7)
-            {
-                // Handle bool
-                if (parameter.Type == CSharpBuiltinType.Bool)
-                {
-                    //TODO: Rewrite to NativeBoolean for virtual methods
-                    Adapter nativeAdapter = new PassthroughAdapter(parameter, CSharpBuiltinType.Byte);
-                    nativeAdapters.Add(nativeAdapter);
-                    AddFriendlyAdapter(nativeAdapter, new BoolToByteAdapter(nativeAdapter));
-                    continue;
-                }
-
-                // Handle char
-                if (declaration.IsVirtual && parameter.Type == CSharpBuiltinType.Char)
-                {
-                    //TODO: Rewrite to NativeChar for virtual methods
-                }
-            }
-
             // Handle implicit pass by reference
             if (parameter.ImplicitlyPassedByReference)
             {
@@ -162,6 +148,32 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
                 AddFriendlyAdapter(nativeAdapter, new ToPointerAdapter(nativeAdapter));
 
                 continue;
+            }
+
+            // Handle pre-.NET 7 non-blittables
+            if (TargetRuntime < TargetRuntime.Net7)
+            {
+                // Handle bool
+                if (parameter.Type.IsCSharpType(context.Library, CSharpBuiltinType.Bool))
+                {
+                    // If the function is virtual, use NativeBoolean on the native side and allow the friendly side to just be passthrough
+                    if (declaration.IsVirtual)
+                    { nativeAdapters.Add(new NonBlittableTypeAdapter(parameter, NonBlittableTypeKind.NativeBoolean)); }
+                    else
+                    {
+                        Adapter nativeAdapter = new PassthroughAdapter(parameter, CSharpBuiltinType.Byte);
+                        nativeAdapters.Add(nativeAdapter);
+                        AddFriendlyAdapter(nativeAdapter, new BoolToByteAdapter(nativeAdapter));
+                    }
+                    continue;
+                }
+
+                // Handle char -- No friendly adapter needed, it can just be passthrough
+                if (declaration.IsVirtual && parameter.Type.IsCSharpType(context.Library, CSharpBuiltinType.Char))
+                {
+                    nativeAdapters.Add(new NonBlittableTypeAdapter(parameter, NonBlittableTypeKind.NativeChar));
+                    continue;
+                }
             }
 
             // Typical case

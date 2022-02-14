@@ -136,16 +136,21 @@ namespace Biohazrd.CSharp
                             returnType += '*';
                             functionPointerResult += $"{returnType}, ";
                         }
+                        else
+                        { returnType = FixNonBlittableTypeForFunctionPointer(returnType); }
 
                         int abiIndex = 0;
                         foreach (TypeReference parameterType in functionPointer.ParameterTypes)
                         {
-                            functionPointerResult += GetTypeAsString(context, declaration, parameterType);
+                            string parameterTypeString = GetTypeAsString(context, declaration, parameterType);
 
                             // Handle parameters implicitly passed by reference
                             if (haveFunctionAbi && functionPointer.FunctionAbi!.Arguments[abiIndex].Kind == PathogenArgumentKind.Indirect)
-                            { functionPointerResult += '*'; }
+                            { parameterTypeString += '*'; }
+                            else
+                            { parameterTypeString = FixNonBlittableTypeForFunctionPointer(parameterTypeString); }
 
+                            functionPointerResult += parameterTypeString;
                             functionPointerResult += ", ";
                             abiIndex++;
                         }
@@ -169,6 +174,30 @@ namespace Biohazrd.CSharp
                     Fatal(context, declaration, $"{type.GetType().Name} is not supported by the C# output generator.");
                     return "int";
             }
+        }
+
+        /// <summary>Handles types which cannot be blittable in the context of function pointers prior to .NET 7</summary>
+        /// <remarks>It is never necessary to call this helper when the type is known to be a pointer</remarks>
+        private string FixNonBlittableTypeForFunctionPointer(string typeString)
+        {
+            if (Options.TargetRuntime < TargetRuntime.Net7)
+            {
+                // We don't want to compare the actual type with CSharpBuiltinType.Bool/Char here because that would not properly account for typedefs and such.
+                if (typeString == "bool")
+                {
+                    __NeedsNativeBoolean = true;
+                    Writer.Using(Options.InfrastructureTypesNamespace);
+                    return "NativeBoolean";
+                }
+                else if (typeString == "char")
+                {
+                    __NeedsNativeChar = true;
+                    Writer.Using(Options.InfrastructureTypesNamespace);
+                    return "NativeChar";
+                }
+            }
+
+            return typeString;
         }
     }
 }

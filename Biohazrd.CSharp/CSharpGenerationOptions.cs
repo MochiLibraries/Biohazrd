@@ -99,6 +99,10 @@ namespace Biohazrd.CSharp
         /// </remarks>
         public bool SuppressDefaultParameterValuesOnNonPublicMethods { get; init; } = true;
 
+        //TODO: We shold automatically prefix this with whatever is configured on OrganizeOutputFilesByNamespaceTransformation
+        public string InfrastructureTypesNamespace { get; init; } = "Infrastructure";
+        public string InfrastructureTypesDirectoryPath { get; init; } = "Infrastructure";
+
         public CSharpGenerationOptions()
 #pragma warning disable CS0618 // Type or member is obsolete
             => DumpOptions = ClangSharpInfoDumper.DefaultOptions;

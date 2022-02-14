@@ -53,18 +53,18 @@ namespace Biohazrd.CSharp
             {
                 //TODO: Add enumerator to TrampolineCollection and change this to a foreach
                 Writer.EnsureSeparation();
-                trampolines.NativeFunction.Write(this, context, declaration, Writer);
+                trampolines.NativeFunction.Emit(this, context, declaration, Writer);
 
                 if (!ReferenceEquals(trampolines.NativeFunction, trampolines.PrimaryTrampoline))
                 {
                     Writer.EnsureSeparation();
-                    trampolines.PrimaryTrampoline.Write(this, context, declaration, Writer);
+                    trampolines.PrimaryTrampoline.Emit(this, context, declaration, Writer);
                 }
 
                 foreach (Trampoline trampoline in trampolines.SecondaryTrampolines)
                 {
                     Writer.EnsureSeparation();
-                    trampoline.Write(this, context, declaration, Writer);
+                    trampoline.Emit(this, context, declaration, Writer);
                 }
 
                 return;
@@ -340,7 +340,11 @@ namespace Biohazrd.CSharp
             if (declaration.ReturnByReference)
             { WriteTypeAsReference(context, declaration, declaration.ReturnType); }
             else
-            { WriteType(context, declaration, declaration.ReturnType); }
+            {
+                string typeString = GetTypeAsString(context, declaration, declaration.ReturnType);
+                typeString = FixNonBlittableTypeForFunctionPointer(typeString);
+                Writer.Write(typeString);
+            }
 
             Writer.Write('>');
         }
@@ -447,7 +451,12 @@ namespace Biohazrd.CSharp
                         if (mode == EmitParameterListMode.TrampolineParameters)
                         { WriteTypeForTrampoline(parameterContext, parameter, parameter.Type); }
                         else
-                        { WriteType(parameterContext, parameter, parameter.Type); }
+                        {
+                            string typeString = GetTypeAsString(parameterContext, parameter, parameter.Type);
+                            if (mode == EmitParameterListMode.VTableFunctionPointerParameters)
+                            { typeString = FixNonBlittableTypeForFunctionPointer(typeString); }
+                            Writer.Write(typeString);
+                        }
                     }
 
                     if (writeNames)

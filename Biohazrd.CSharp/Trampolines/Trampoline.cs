@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp.Trampolines;
@@ -106,7 +107,7 @@ public sealed record Trampoline
         return null;
     }
 
-    internal void Write(ICSharpOutputGenerator outputGenerator, VisitorContext context, TranslatedFunction declaration, CSharpCodeWriter writer)
+    internal void Emit(ICSharpOutputGenerator outputGenerator, VisitorContext context, TranslatedFunction declaration, CSharpCodeWriter writer)
     {
         if (declaration.Id != TargetFunctionId && !declaration.ReplacedIds.Contains(TargetFunctionId))
         { throw new ArgumentException("The specified function is not related to the target of this trampoline.", nameof(declaration)); }
@@ -158,6 +159,9 @@ public sealed record Trampoline
 
         // Create base contexts
         TrampolineContext functionContext = new(outputGenerator, this, writer, context, declaration);
+        //TODO: At one point we had logic in this method to update parameterContext.Declaration but I accidentally removed it.
+        // This is actually really hard to properly provide since we don't necessarily know which adapter corresponds to a given parameter except in the native function
+        // The declaration is really only ever used for debugging, maybe we should just say it doesn't need to be accurate for parameters?
         TrampolineContext parameterContext = functionContext with { Context = functionContext.Context.Add(declaration) };
 
         // Scan adapters to figure out how this function will be emitted
@@ -367,7 +371,6 @@ public sealed record Trampoline
             writer.Write('(');
 
             bool first = true;
-            ImmutableArray<TranslatedParameter> parameters = declaration.Parameters;
             int adapterIndex = -1;
 
             foreach (Adapter adapter in Adapters)
@@ -410,6 +413,51 @@ public sealed record Trampoline
                 ReturnAdapter.WriteEpilogue(parameterContext, writer);
             }
         }
+    }
+
+    internal void EmitFunctionPointer(ICSharpOutputGeneratorInternal outputGenerator, VisitorContext context, TranslatedFunction declaration, CSharpCodeWriter writer)
+    {
+        if (IsNativeFunction)
+        {
+            string? callingConventionString = declaration.CallingConvention switch
+            {
+                CallingConvention.Cdecl => "Cdecl",
+                CallingConvention.StdCall => "Stdcall",
+                CallingConvention.ThisCall => "Thiscall",
+                CallingConvention.FastCall => "Fastcall",
+                _ => null
+            };
+
+            if (callingConventionString is null)
+            {
+                outputGenerator.Fatal(context, declaration, $"The {declaration.CallingConvention} convention is not supported.");
+                writer.Write("void*");
+                return;
+            }
+
+            writer.Write($"delegate* unmanaged[{callingConventionString}]<");
+        }
+        else
+        { writer.Write($"delegate*<"); }
+
+        // Create base contexts
+        TrampolineContext functionContext = new(outputGenerator, this, writer, context, declaration);
+        //TODO: At one point we had logic in this method to update parameterContext.Declaration but I accidentally removed it.
+        // This is actually really hard to properly provide since we don't necessarily know which adapter corresponds to a given parameter except in the native function
+        // The declaration is really only ever used for debugging, maybe we should just say it doesn't need to be accurate for parameters?
+        TrampolineContext parameterContext = functionContext with { Context = functionContext.Context.Add(declaration) };
+
+        foreach (Adapter adapter in Adapters)
+        {
+            if (!adapter.AcceptsInput)
+            { continue; }
+
+            adapter.WriteInputType(parameterContext, writer);
+            writer.Write(", ");
+        }
+
+        ReturnAdapter.WriteReturnType(functionContext, writer);
+        writer.Write('>');
     }
 
     private void EmitMethodImplAttribute(TranslatedFunction declaration, CSharpCodeWriter writer)

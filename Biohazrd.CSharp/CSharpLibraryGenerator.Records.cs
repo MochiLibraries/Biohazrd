@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using Biohazrd.CSharp.Trampolines;
+using System.Linq;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp
@@ -89,8 +90,15 @@ namespace Biohazrd.CSharp
 
                     if (entry.IsFunctionPointer && entry.MethodReference?.TryResolve(context.Library) is TranslatedFunction associatedFunction)
                     {
-                        EmitFunctionContext emitContext = new(context, associatedFunction);
-                        EmitFunctionPointerForVTable(context, emitContext, associatedFunction);
+                        if (associatedFunction.Metadata.TryGet(out TrampolineCollection trampolines))
+                        {
+                            trampolines.NativeFunction.EmitFunctionPointer(this, context, associatedFunction, Writer);
+                        }
+                        else
+                        {
+                            EmitFunctionContext emitContext = new(context, associatedFunction);
+                            EmitFunctionPointerForVTable(context, emitContext, associatedFunction);
+                        }
                     }
                     else
                     { WriteType(context.Add(entry), entry, VoidTypeReference.PointerInstance); }

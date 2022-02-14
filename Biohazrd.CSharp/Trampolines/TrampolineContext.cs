@@ -5,7 +5,7 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public struct TrampolineContext
 {
-    private ICSharpOutputGenerator OutputGenerator { get; }
+    internal ICSharpOutputGenerator OutputGenerator { get; }
     public Trampoline Target { get; }
     public CSharpCodeWriter Writer { get; }
 

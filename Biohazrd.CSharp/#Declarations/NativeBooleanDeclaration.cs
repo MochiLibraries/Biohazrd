@@ -24,11 +24,17 @@ namespace Biohazrd.CSharp
             => this;
 
         void ICustomCSharpTranslatedDeclaration.GenerateOutput(ICSharpOutputGenerator outputGenerator, VisitorContext context, CSharpCodeWriter writer)
+            => Emit(Name, writer);
+
+        internal static void Emit(CSharpCodeWriter writer)
+            => Emit("NativeBoolean", writer);
+
+        private static void Emit(string name, CSharpCodeWriter writer)
         {
             writer.Using("System"); // IComprable, IComparable<T>, IEquatable<T>
             writer.Using("System.Runtime.InteropServices"); // StructLayoutAttribute, LayoutKind
             writer.Using("System.Runtime.CompilerServices"); // MethodImplAttribute, MethodImplOptions, Unsafe
-            string sanitizedName = SanitizeIdentifier(Name);
+            string sanitizedName = SanitizeIdentifier(name);
 
             // Developers should typically not use this type directly anyway, but we provide the same instance methods as System.Boolean
             // for scenarios where the return type of a native function is immeidately consumed.
