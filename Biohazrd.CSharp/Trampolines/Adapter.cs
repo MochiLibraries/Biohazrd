@@ -29,6 +29,10 @@ public abstract class Adapter
         TargetDeclaration = target.Id;
         DefaultValue = target.DefaultValue;
 
+        //HACK: Don't allow bad default values (need to rework how default values work in general, see notes in Trampoline.)
+        if (DefaultValue is StringConstant or UnsupportedConstantExpression)
+        { DefaultValue = null; }
+
         SpecialKind = SpecialAdapterKind.None;
     }
 
