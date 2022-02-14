@@ -99,5 +99,17 @@ namespace Biohazrd.CSharp
 
         public static Trampoline GetPrimaryTrampoline(this TranslatedFunction function)
             => function.TryGetPrimaryTrampoline() ?? throw new InvalidOperationException("Tried to get the primary trampoline of a function with no trampoline metadata.");
+
+        public static TranslatedFunction WithSecondaryTrampoline(this TranslatedFunction function, Trampoline secondaryTrampoline)
+        {
+            if (!function.Metadata.TryGet(out TrampolineCollection trampolines))
+            { throw new InvalidOperationException("Cannot add a secondary trampoline to a function which has no trampolines."); }
+
+            trampolines = trampolines.WithTrampoline(secondaryTrampoline);
+            return function with
+            {
+                Metadata = function.Metadata.Set(trampolines)
+            };
+        }
     }
 }

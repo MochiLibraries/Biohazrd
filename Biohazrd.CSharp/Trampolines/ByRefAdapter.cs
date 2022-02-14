@@ -22,7 +22,7 @@ public sealed class ByRefAdapter : Adapter
         { throw new ArgumentOutOfRangeException(nameof(kind)); }
 
         OutputType = pointerType;
-        InputType = pointerType.Inner; //TODO: This is somewhat misleading because it's actually ByRef
+        InputType = new ByRefTypeReference(kind, pointerType.Inner);
         ParameterName = target.ParameterName;
         TemporaryName = $"__{ParameterName}P";
         Kind = kind;
@@ -30,22 +30,6 @@ public sealed class ByRefAdapter : Adapter
 
     public override void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
     {
-        switch (Kind)
-        {
-            case ByRefKind.In:
-                writer.Write("in ");
-                break;
-            case ByRefKind.Out:
-                writer.Write("out ");
-                break;
-            case ByRefKind.Ref:
-                writer.Write("ref ");
-                break;
-            default:
-                Debug.Fail("Invalid byref kind!");
-                break;
-        }
-
         context.WriteType(InputType);
         writer.Write(' ');
         writer.WriteIdentifier(ParameterName);

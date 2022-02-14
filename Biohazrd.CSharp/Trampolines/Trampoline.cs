@@ -49,23 +49,34 @@ public sealed record Trampoline
         { ReturnAdapter = builder.ReturnAdapter; }
         else if (template?.ReturnAdapter is not null)
         { ReturnAdapter = template.ReturnAdapter; }
-        else if (Target.ReturnAdapter is VoidReturnAdapter)
+        else if (Target.ReturnAdapter.OutputType is VoidTypeReference)
         { ReturnAdapter = VoidReturnAdapter.Instance; }
         else
         { ReturnAdapter = new PassthroughReturnAdapter(Target.ReturnAdapter); }
 
         // Add parameter adapters
-        int expectedLength = template is not null ? template.Adapters.Length : Target.Adapters.Length;
+        int expectedLength;
+        if (template is not null)
+        { expectedLength = template.Adapters.Length; }
+        else
+        {
+            expectedLength = 0;
+            foreach (Adapter adapter in Target.Adapters)
+            {
+                if (adapter.AcceptsInput)
+                { expectedLength++; }
+            }
+        }
         ImmutableArray<Adapter>.Builder adapters = ImmutableArray.CreateBuilder<Adapter>(expectedLength);
 
         foreach (Adapter targetAdapter in template?.Adapters ?? Target.Adapters)
         {
             // If the builder adapted this adapter, insert its adapter
             if (builder.Adapters?.TryGetValue(targetAdapter, out Adapter? adapter) ?? false)
-            { adapters.Add(adapter); }
+            { adapters.Add(adapter); } //TODO: Debug.Assert(template is not null || targetAdapter.AcceptsInput); ? Is it enough this is done in Adapter's constructor? (Probably.)
             else if (builder.TargetIsTemplate)
             { adapters.Add(targetAdapter); }
-            else
+            else if (targetAdapter.AcceptsInput)
             { adapters.Add(new PassthroughAdapter(targetAdapter)); }
         }
 
@@ -109,7 +120,7 @@ public sealed record Trampoline
         string? virtualMethodAccess = null;
         string? virtualMethodAccessFailure = null;
 
-        if (declaration.IsVirtual)
+        if (declaration.IsVirtual && Target is not null && Target.IsNativeFunction)
         {
             // Figure out how to access the VTable entry
             if (context.ParentDeclaration is not TranslatedRecord record)
