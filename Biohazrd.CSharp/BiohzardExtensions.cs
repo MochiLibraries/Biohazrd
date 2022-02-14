@@ -74,26 +74,6 @@ namespace Biohazrd.CSharp
                 _ => null
             };
 
-        /// <summary>Gets the effective <see cref="ReferenceTypeOutputBehavior"/> for the parameter if applicable.</summary>
-        internal static ParameterOutputMode GetParameterOutputMode(this TranslatedParameter parameter, ReferenceTypeOutputBehavior globalOutputBehavior)
-        {
-            if (parameter.Type is not PointerTypeReference { WasReference: true } referenceType)
-            { return ParameterOutputMode.Normal; }
-
-            ReferenceTypeOutputBehavior outputBehavior = globalOutputBehavior;
-
-            if (parameter.Metadata.TryGet(out OverrideReferenceTypeOutputBehavior overrideMetadata))
-            { outputBehavior = overrideMetadata.ReferenceTypeOutputBehavior; }
-
-            return outputBehavior switch
-            {
-                ReferenceTypeOutputBehavior.AsPointer => ParameterOutputMode.Normal,
-                ReferenceTypeOutputBehavior.AsRefOrByValue => referenceType.InnerIsConst ? ParameterOutputMode.RefByValue : ParameterOutputMode.RefByRef,
-                ReferenceTypeOutputBehavior.AlwaysByRef => referenceType.InnerIsConst ? ParameterOutputMode.RefByReadonlyRef : ParameterOutputMode.RefByRef,
-                _ => throw new InvalidOperationException($"Unknown/unsupported {nameof(ReferenceTypeOutputBehavior)} '{outputBehavior}' applied to {parameter}.")
-            };
-        }
-
         public static Trampoline? TryGetPrimaryTrampoline(this TranslatedFunction function)
             => function.Metadata.TryGet(out TrampolineCollection trampolines) ? trampolines.PrimaryTrampoline : null;
 

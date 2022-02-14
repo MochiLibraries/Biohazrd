@@ -12,32 +12,6 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
 {
     public TargetRuntime TargetRuntime { get; init; } = CSharpGenerationOptions.Default.TargetRuntime; //TODO: This ideally should come from some central context to ensure consistency
 
-    private ReferenceTypeOutputBehavior _CppReferenceOutputBehavior = ReferenceTypeOutputBehavior.AsRefOrByValue;
-    public ReferenceTypeOutputBehavior CppReferenceOutputBehavior
-    {
-        get => _CppReferenceOutputBehavior;
-        init
-        {
-            if (!Enum.IsDefined(value))
-            { throw new ArgumentOutOfRangeException(nameof(value)); }
-
-            _CppReferenceOutputBehavior = value;
-        }
-    }
-
-    private ReferenceTypeOutputBehavior _ImplicitReferenceOutputBehavior = ReferenceTypeOutputBehavior.AsRefOrByValue;
-    public ReferenceTypeOutputBehavior ImplicitReferenceOutputBehavior
-    {
-        get => _ImplicitReferenceOutputBehavior;
-        init
-        {
-            if (!Enum.IsDefined(value))
-            { throw new ArgumentOutOfRangeException(nameof(value)); }
-
-            _ImplicitReferenceOutputBehavior = value;
-        }
-    }
-
     protected override TransformationResult TransformFunction(TransformationContext context, TranslatedFunction declaration)
     {
         // Don't try to add trampolines to a function which already has them
@@ -181,19 +155,11 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
                 Adapter nativeAdapter = new PassthroughAdapter(parameter, new PointerTypeReference(parameter.Type));
                 nativeAdapters.Add(nativeAdapter);
 
-                // Pick friendly adapter
-                switch (ImplicitReferenceOutputBehavior)
-                {
-                    case ReferenceTypeOutputBehavior.AlwaysByRef:
-                        AddFriendlyAdapter(nativeAdapter, new ByRefAdapter(nativeAdapter, ByRefKind.In));
-                        break;
-                    case ReferenceTypeOutputBehavior.AsRefOrByValue:
-                        AddFriendlyAdapter(nativeAdapter, new ToPointerAdapter(nativeAdapter));
-                        break;
-                    default:
-                        Debug.Assert(ImplicitReferenceOutputBehavior == ReferenceTypeOutputBehavior.AsPointer);
-                        break;
-                }
+                // Parameters which are written as being passed by value but are implicitly passed by reference will be adapted to behave the same.
+                // Using byref here might seem tempting from a performance standpoint, but doing so would change semantics since the callee assumes it owns the buffer.
+                // In theory if the native function receives a const byval we could use a readonly byref, but in partice C++ compilers don't do that even for PODs so we won't either.
+                // (const byvals are weird and are not consdiered a good practice in C++ anyway.)
+                AddFriendlyAdapter(nativeAdapter, new ToPointerAdapter(nativeAdapter));
 
                 continue;
             }
@@ -204,24 +170,8 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
                 nativeAdapters.Add(nativeAdapter);
 
                 // Handle C++-style reference
-                if (CppReferenceOutputBehavior != ReferenceTypeOutputBehavior.AsPointer && parameter.Type is PointerTypeReference { WasReference: true } referenceType)
-                {
-                    switch (CppReferenceOutputBehavior)
-                    {
-                        case ReferenceTypeOutputBehavior.AsRefOrByValue:
-                            if (referenceType.InnerIsConst)
-                            { AddFriendlyAdapter(nativeAdapter, new ToPointerAdapter(nativeAdapter)); }
-                            else
-                            { AddFriendlyAdapter(nativeAdapter, new ByRefAdapter(nativeAdapter, ByRefKind.Ref)); }
-                            break;
-                        case ReferenceTypeOutputBehavior.AlwaysByRef:
-                            AddFriendlyAdapter(nativeAdapter, new ByRefAdapter(nativeAdapter, referenceType.InnerIsConst ? ByRefKind.In : ByRefKind.Ref));
-                            break;
-                        default:
-                            Debug.Fail("Unreachable.");
-                            break;
-                    }
-                }
+                if (parameter.Type is PointerTypeReference { WasReference: true } referenceType)
+                { AddFriendlyAdapter(nativeAdapter, new ByRefAdapter(nativeAdapter, referenceType.InnerIsConst ? ByRefKind.In : ByRefKind.Ref)); }
             }
         }
 
