@@ -92,14 +92,6 @@ namespace Biohazrd.CSharp
             }
         }
 
-        /// <summary>Controls how C++ reference types are translated to C#.</summary>
-        /// <remarks>
-        /// By default, references are emitted according to <see cref="ReferenceTypeOutputBehavior.AsRefOrByValue"/>.
-        ///
-        /// This setting can be overriden for individual parameters using <see cref="Metadata.OverrideReferenceTypeOutputBehavior"/>
-        /// </remarks>
-        public ReferenceTypeOutputBehavior ReferenceTypeOutputBehavior { get; init; } = ReferenceTypeOutputBehavior.AsRefOrByValue;
-
         public bool SuppressDefaultParameterValuesOnNonPublicMethods { get; init; } = true;
 
         public CSharpGenerationOptions()

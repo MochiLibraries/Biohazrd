@@ -89,7 +89,7 @@ namespace Biohazrd.CSharp
 
                     if (entry.IsFunctionPointer && entry.MethodReference?.TryResolve(context.Library) is TranslatedFunction associatedFunction)
                     {
-                        EmitFunctionContext emitContext = new(context, associatedFunction, Options);
+                        EmitFunctionContext emitContext = new(context, associatedFunction);
                         EmitFunctionPointerForVTable(context, emitContext, associatedFunction);
                     }
                     else

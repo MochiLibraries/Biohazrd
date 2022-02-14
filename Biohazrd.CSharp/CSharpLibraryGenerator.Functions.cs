@@ -1,9 +1,7 @@
 ﻿using Biohazrd.CSharp.Metadata;
 using Biohazrd.CSharp.Trampolines;
-using Biohazrd.OutputGeneration;
 using ClangSharp.Pathogen;
 using System;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -13,13 +11,6 @@ namespace Biohazrd.CSharp
 {
     partial class CSharpLibraryGenerator
     {
-        private struct ParameterEmitStrategy
-        {
-            public TranslatedParameter Declaration { get; init; }
-            public ParameterOutputMode OutputMode { get; init; }
-            public string FixedName => $"__{Declaration.Name}P";
-        }
-
         private ref struct EmitFunctionContext
         {
             public bool NeedsTrampoline { get; }
@@ -27,32 +18,11 @@ namespace Biohazrd.CSharp
             public TypeReference? ThisType { get; }
             public string ThisParameterName => "this";
             public string ReturnBufferParameterName => "__returnBuffer";
-            public ImmutableArray<ParameterEmitStrategy> Parameters { get; }
-            public VisitorContext ParameterContext { get; }
 
-            public EmitFunctionContext(VisitorContext context, TranslatedFunction declaration, CSharpGenerationOptions options)
+            public EmitFunctionContext(VisitorContext context, TranslatedFunction declaration)
             {
                 // We emit a trampoline for functions which are instance methods or return via reference to hide those ABI semantics
                 NeedsTrampoline = declaration.IsInstanceMethod || declaration.ReturnByReference;
-
-                // Determine how parameters will be written
-                ImmutableArray<ParameterEmitStrategy>.Builder parameters = ImmutableArray.CreateBuilder<ParameterEmitStrategy>(declaration.Parameters.Length);
-                foreach (TranslatedParameter parameter in declaration.Parameters)
-                {
-                    ParameterEmitStrategy strategy = new()
-                    {
-                        Declaration = parameter,
-                        OutputMode = parameter.GetParameterOutputMode(options.ReferenceTypeOutputBehavior)
-                    };
-
-                    // References emitted as anything other than pointers need a trampoline
-                    if (strategy.OutputMode != ParameterOutputMode.Normal)
-                    { NeedsTrampoline = true; }
-
-                    parameters.Add(strategy);
-                }
-                Parameters = parameters.MoveToImmutable();
-                ParameterContext = context.Add(declaration);
 
                 // When this function is uses a trampoline, we add a suffix to the P/Invoke method to ensure they don't conflict with other methods.
                 // (For instance, when there's a SomeClass::Method() method in addition to a SomeClass::Method(SomeClass*) method.)
@@ -100,7 +70,7 @@ namespace Biohazrd.CSharp
                 return;
             }
 
-            EmitFunctionContext emitContext = new(context, declaration, Options);
+            EmitFunctionContext emitContext = new(context, declaration);
 
             // Emit the DllImport
             if (!declaration.IsVirtual)
@@ -283,31 +253,20 @@ namespace Biohazrd.CSharp
             // Emit the dispatch
             using (Writer.Block())
             {
-                bool hasFixedBlocks = false;
-
-                // Fix the this pointer if necessary
+                bool hasThis;
                 if (emitContext.ThisType is not null)
                 {
+                    hasThis = true;
                     Debug.Assert(declaration.IsInstanceMethod);
 
                     Writer.Write($"fixed (");
                     WriteType(context, declaration, emitContext.ThisType!);
                     Writer.WriteLine($" {SanitizeIdentifier(emitContext.ThisParameterName)} = &this)");
-                    hasFixedBlocks = true;
                 }
                 else
-                { Debug.Assert(!declaration.IsInstanceMethod); }
-
-                // Fix the parameters if necessary
-                foreach (ParameterEmitStrategy parameter in emitContext.Parameters)
                 {
-                    if (parameter.OutputMode != ParameterOutputMode.RefByRef && parameter.OutputMode != ParameterOutputMode.RefByReadonlyRef)
-                    { continue; }
-
-                    Writer.Write("fixed (");
-                    WriteType(emitContext.ParameterContext, parameter.Declaration, parameter.Declaration.Type);
-                    Writer.WriteLine($" {SanitizeIdentifier(parameter.FixedName)} = &{SanitizeIdentifier(parameter.Declaration.Name)})");
-                    hasFixedBlocks = true;
+                    hasThis = false;
+                    Debug.Assert(!declaration.IsInstanceMethod);
                 }
 
                 bool hasReturnValue = declaration.ReturnType is not VoidTypeReference;
@@ -326,7 +285,7 @@ namespace Biohazrd.CSharp
                         Writer.WriteLine($"return {SanitizeIdentifier(emitContext.ReturnBufferParameterName)};");
                     }
 
-                    if (hasFixedBlocks)
+                    if (hasThis)
                     {
                         // If we have a fixed statement for the this pointer, wrap the return buffer logic with a block
                         using (Writer.Block())
@@ -338,7 +297,7 @@ namespace Biohazrd.CSharp
                 else
                 {
                     // If we have a fixed statement for the this pointer, write out the curly braces for it
-                    if (hasFixedBlocks)
+                    if (hasThis)
                     { Writer.Write("{ "); }
 
                     if (hasReturnValue)
@@ -348,7 +307,7 @@ namespace Biohazrd.CSharp
                     EmitFunctionParameterList(context, emitContext, declaration, EmitParameterListMode.TrampolineArguments);
                     Writer.Write(");");
 
-                    if (hasFixedBlocks)
+                    if (hasThis)
                     { Writer.WriteLine(" }"); }
                 }
             }
@@ -411,6 +370,8 @@ namespace Biohazrd.CSharp
                 _ => false
             };
 
+            VisitorContext parameterContext = context.Add(declaration);
+
             // Write out the this/retbuf parameters
             if (writeImplicitParameters)
             {
@@ -466,10 +427,8 @@ namespace Biohazrd.CSharp
             }
 
             // Write out parameters
-            foreach (ParameterEmitStrategy strategy in emitContext.Parameters)
+            foreach (TranslatedParameter parameter in declaration.Parameters)
             {
-                TranslatedParameter parameter = strategy.Declaration;
-
                 if (first)
                 { first = false; }
                 else
@@ -477,28 +436,8 @@ namespace Biohazrd.CSharp
 
                 if (writeTypes)
                 {
-                    if (mode == EmitParameterListMode.TrampolineParameters && strategy.OutputMode != ParameterOutputMode.Normal)
-                    {
-                        Debug.Assert(writeNames);
-                        Debug.Assert(!parameter.ImplicitlyPassedByReference);
-                        PointerTypeReference? pointerType = parameter.Type as PointerTypeReference;
-                        Debug.Assert(pointerType is not null); // EffectiveReferenceTypeOutputBehavior should not return a byref mode when the type isn't a pointer
-                        Debug.Assert(pointerType.WasReference);
-
-                        switch (strategy.OutputMode)
-                        {
-                            case ParameterOutputMode.RefByReadonlyRef:
-                                Writer.Write("in ");
-                                break;
-                            case ParameterOutputMode.RefByRef:
-                                Writer.Write("ref ");
-                                break;
-                        }
-
-                        WriteTypeForTrampoline(emitContext.ParameterContext, parameter, pointerType.Inner);
-                    }
-                    else if (parameter.ImplicitlyPassedByReference)
-                    { WriteTypeAsReference(emitContext.ParameterContext, parameter, parameter.Type); }
+                    if (parameter.ImplicitlyPassedByReference)
+                    { WriteTypeAsReference(parameterContext, parameter, parameter.Type); }
                     else
                     {
                         // Write MarshalAs for booleans at pinvoke boundaries
@@ -506,9 +445,9 @@ namespace Biohazrd.CSharp
                         { Writer.Write("[MarshalAs(UnmanagedType.I1)] "); }
 
                         if (mode == EmitParameterListMode.TrampolineParameters)
-                        { WriteTypeForTrampoline(emitContext.ParameterContext, parameter, parameter.Type); }
+                        { WriteTypeForTrampoline(parameterContext, parameter, parameter.Type); }
                         else
-                        { WriteType(emitContext.ParameterContext, parameter, parameter.Type); }
+                        { WriteType(parameterContext, parameter, parameter.Type); }
                     }
 
                     if (writeNames)
@@ -516,30 +455,10 @@ namespace Biohazrd.CSharp
                 }
 
                 if (writeNames)
-                {
-                    if (mode == EmitParameterListMode.TrampolineArguments && strategy.OutputMode != ParameterOutputMode.Normal)
-                    {
-                        switch (strategy.OutputMode)
-                        {
-                            case ParameterOutputMode.RefByReadonlyRef:
-                            case ParameterOutputMode.RefByRef:
-                                Writer.WriteIdentifier(strategy.FixedName);
-                                break;
-                            case ParameterOutputMode.RefByValue:
-                                Writer.Write('&');
-                                Writer.WriteIdentifier(parameter.Name);
-                                break;
-                            default:
-                                FatalContext(emitContext.ParameterContext, parameter, $"Invalid parameter output mode '{strategy.OutputMode}'");
-                                break;
-                        }
-                    }
-                    else
-                    { Writer.WriteIdentifier(parameter.Name); }
-                }
+                { Writer.WriteIdentifier(parameter.Name); }
 
                 if (writeDefautValues && parameter.DefaultValue is not null)
-                { Writer.Write($" = {GetConstantAsString(emitContext.ParameterContext, parameter, parameter.DefaultValue, parameter.Type)}"); }
+                { Writer.Write($" = {GetConstantAsString(parameterContext, parameter, parameter.DefaultValue, parameter.Type)}"); }
             }
         }
 
