@@ -254,6 +254,7 @@ public sealed record Trampoline
             {
                 constructorName = constructorType.Name;
 
+                //TODO: This does not handle input-no-output adapters
                 // Parameterless constructors require C# 10
                 if (declaration.Parameters.Length == 0 && outputGenerator.Options.TargetLanguageVersion < TargetLanguageVersion.CSharp10)
                 { constructorName = null; }
@@ -365,11 +366,38 @@ public sealed record Trampoline
             else
             { ReturnAdapter.WriteResultCapture(functionContext, writer); }
 
+            bool targetIsActuallyConstructor = false;
+            if (declaration.SpecialFunctionKind == SpecialFunctionKind.Constructor && !Target.IsNativeFunction)
+            {
+                targetIsActuallyConstructor = true;
+                bool anyTargetAdaptersAreInputs = false;
+
+                foreach (Adapter adapter in Target.Adapters)
+                {
+                    if (adapter.AcceptsInput)
+                    {
+                        anyTargetAdaptersAreInputs = true;
+
+                        if (adapter.SpecialKind == SpecialAdapterKind.ThisPointer)
+                        {
+                            targetIsActuallyConstructor = false;
+                            break;
+                        }
+                    }
+                }
+
+                // If the target could be a constructor but it has no inputs, it will not be a constructor unless we're targeting C# 10 or newer
+                if (targetIsActuallyConstructor && !anyTargetAdaptersAreInputs && outputGenerator.Options.TargetLanguageVersion < TargetLanguageVersion.CSharp10)
+                { targetIsActuallyConstructor = false; }
+            }
+
             if (virtualMethodAccess is not null)
             {
                 Debug.Assert(declaration.IsVirtual);
                 writer.Write(virtualMethodAccess);
             }
+            else if (targetIsActuallyConstructor)
+            { writer.Write("this = new"); }
             else
             //TODO: Need to handle constructor dispatch
             { writer.WriteIdentifier(Target.Name); }
@@ -379,7 +407,6 @@ public sealed record Trampoline
 
             bool first = true;
             ImmutableArray<TranslatedParameter> parameters = declaration.Parameters;
-            int parameterIndex = -1;
             int adapterIndex = -1;
 
             foreach (Adapter adapter in Adapters)
@@ -388,18 +415,6 @@ public sealed record Trampoline
 
                 if (!adapter.ProvidesOutput)
                 { continue; }
-
-                // Validate the parameter and this adapter correspond to eachother
-#if false //TODO: Does this actually make sense? It would not handle parameters being removed. Also needs to handle implicit parameters
-                parameterIndex++;
-                if (parameterIndex >= parameters.Length)
-                { throw new InvalidOperationException($"The trampoline is malformed, {adapter.GetType().Name} @ {adapterIndex} provides an output but all parameters in the target function have been accounted for."); }
-
-                //TODO: Should we support reordering parameters?
-                TranslatedParameter parameter = parameters[parameterIndex];
-                if (!adapter.CorrespondsTo(parameter))
-                { throw new InvalidOperationException($"The trampoline is malformed, {adapter.GetType().Name} @ {adapterIndex} does not correspond to '{parameter}' @ {parameterIndex}."); }
-#endif
 
                 if (first)
                 { first = false; }

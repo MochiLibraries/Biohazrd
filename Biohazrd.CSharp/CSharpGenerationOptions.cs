@@ -92,6 +92,11 @@ namespace Biohazrd.CSharp
             }
         }
 
+        /// <summary>If true, default parameter values will not be emitted for non-public APIs.</summary>
+        /// <remarks>
+        /// This setting is enabled by default to avoid unecessary metadata bloat.
+        /// If you intend to manually write trampolines for native functions it may be desirable to turn this off.
+        /// </remarks>
         public bool SuppressDefaultParameterValuesOnNonPublicMethods { get; init; } = true;
 
         public CSharpGenerationOptions()
