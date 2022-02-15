@@ -44,6 +44,8 @@ namespace Biohazrd.CSharp
 
                 if (parameter.DefaultValue is not null)
                 {
+                    //TODO: Technically this isn't necessary during verification anymore as it happens automatically during trampoline emit.
+                    // However you don't get any warnings when it happens during trampoline emit so let's keep it for now.
                     newParameters[i] = parameter with
                     {
                         DefaultValue = null,

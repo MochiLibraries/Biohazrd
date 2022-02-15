@@ -15,7 +15,10 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
     {
         // Don't try to add trampolines to a function which already has them
         if (declaration.Metadata.Has<TrampolineCollection>())
-        { return declaration; }
+        {
+            Debug.Fail("This should be the only transformation which adds trampoline collections.");
+            return declaration;
+        }
 
         // Can't generate trampolines when the function ABI is unknown
         if (declaration.FunctionAbi is null)
@@ -223,7 +226,7 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
 
         return declaration with
         {
-            Metadata = declaration.Metadata.Add(new TrampolineCollection(nativeTrampoline, primaryTrampoline)),
+            Metadata = declaration.Metadata.Add(new TrampolineCollection(declaration, nativeTrampoline, primaryTrampoline)),
             Diagnostics = diagnositcs
         };
     }

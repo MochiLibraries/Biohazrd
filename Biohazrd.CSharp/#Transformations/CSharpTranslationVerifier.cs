@@ -1,9 +1,13 @@
 ﻿using Biohazrd.CSharp.Metadata;
+using Biohazrd.CSharp.Trampolines;
 using Biohazrd.Expressions;
 using Biohazrd.Transformation;
+using Biohazrd.Transformation.Infrastructure;
 using ClangSharp;
 using ClangSharp.Pathogen;
+using System;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Biohazrd.CSharp
@@ -153,6 +157,60 @@ namespace Biohazrd.CSharp
 
         protected override TransformationResult TransformFunction(TransformationContext context, TranslatedFunction declaration)
         {
+            // Validate the trampolines
+            if (!declaration.Metadata.TryGet(out TrampolineCollection trampolines))
+            { declaration = declaration.WithWarning($"Function does not have trampolines which will soon be deprecated, use {nameof(CreateTrampolinesTransformation)} to add them."); }
+            else if (trampolines.OriginalFunctionName is null)
+            { declaration = declaration.WithWarning($"Function has trampolines but they were defaulted. Trampolines should be added via {nameof(CreateTrampolinesTransformation)}."); }
+            else
+            {
+                if (declaration.Name != trampolines.OriginalFunctionName)
+                {
+                    //TODO: Maybe we should actually just use the name of the function declaration by default?
+                    declaration = declaration.WithWarning($"Function was renamed after trampolines were added, the new name will not be reflected in the output.");
+                }
+                else
+                {
+                    ReadOnlySpan<TypeReference> types = trampolines.OriginalFunctionTypes.AsSpan();
+                    Debug.Assert(types.Length >= 1);
+
+                    if (types[0] != declaration.ReturnType)
+                    { declaration = declaration.WithWarning($"Function's return type changed after trampolines were added. The new return type will not be reflected in the output."); }
+
+                    types = types.Slice(1);
+
+                    ArrayTransformHelper<TranslatedParameter> verifiedParameters = new(declaration.Parameters);
+                    foreach (TranslatedParameter _parameter in declaration.Parameters)
+                    {
+                        TranslatedParameter parameter = _parameter;
+
+                        // This situation is somewhat nonsensical, but let's assume they had a good reason to add synthesized parameters
+                        if (types.Length == 0)
+                        { parameter = parameter.WithWarning($"Parameter seems to have been added after trampolines were added. This parameter will not be reflected in the output."); }
+                        else
+                        {
+                            if (parameter.Type != types[0])
+                            { parameter = parameter.WithWarning($"Parameter's type was changed from '{types[0]}' to '{parameter.Type}' after trampolines were added. The new type will not be reflected in the output."); }
+
+                            types = types.Slice(1);
+                        }
+
+                        verifiedParameters.Add(parameter);
+                    }
+
+                    if (verifiedParameters.WasChanged)
+                    {
+                        declaration = declaration with
+                        {
+                            Parameters = verifiedParameters.MoveToImmutable()
+                        };
+                    }
+
+                    if (types.Length > 1)
+                    { declaration = declaration.WithWarning($"Parameter list was truncated after trampolines were added. This will not be reflected in the output."); }
+                }
+            }
+
             //TODO: Verify return type is compatible
             //TODO: We might want to check if they can be resolved in an extra pass due to BrokenDeclarationExtractor.
             if (!context.IsValidFieldOrMethodContext())
@@ -224,6 +282,11 @@ namespace Biohazrd.CSharp
             //TODO: Verify type is compatible
             if (context.ParentDeclaration is not TranslatedFunction)
             { declaration = declaration.WithError("Function parameters are not valid outside of a function context."); }
+
+            //TODO: These default values have already been captured in the trampolines so it's actually too late to remove them
+            // Additionally, the user might've added trampolines which *can* handle these defaults so it's hard to say the concept of an incompatible default value really exists anymore
+            // We could potentially loop through all of the trampolines and see if any of the input adapters corresponding to this parameter was able to emit this default value and if not
+            // emit a warning then. That'd be a decent way to warn that the default value won't be present in the output *and* detect if the generator author handled it themselves.
 
             // Verify default parameter value is compatible
             switch (declaration.DefaultValue)

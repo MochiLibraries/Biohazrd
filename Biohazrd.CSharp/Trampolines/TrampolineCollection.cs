@@ -5,6 +5,9 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public readonly struct TrampolineCollection : IDeclarationMetadataItem
 {
+    internal string OriginalFunctionName { get; }
+    internal ImmutableArray<TypeReference> OriginalFunctionTypes { get; }
+
     private readonly Trampoline _NativeFunction;
     private readonly Trampoline _PrimaryTrampoline;
     private ImmutableArray<Trampoline> _SecondaryTrampolines { get; init; }
@@ -69,11 +72,21 @@ public readonly struct TrampolineCollection : IDeclarationMetadataItem
         }
     }
 
-    internal TrampolineCollection(Trampoline nativeFunction, Trampoline primaryTrampoline)
+    internal TrampolineCollection(TranslatedFunction function, Trampoline nativeFunction, Trampoline primaryTrampoline)
     {
         _NativeFunction = nativeFunction;
         _PrimaryTrampoline = primaryTrampoline;
         _SecondaryTrampolines = ImmutableArray<Trampoline>.Empty;
+
+        // Save some extra info for verification purposes
+        OriginalFunctionName = function.Name;
+
+        ImmutableArray<TypeReference>.Builder originalTypes = ImmutableArray.CreateBuilder<TypeReference>(function.Parameters.Length + 1);
+        originalTypes.Add(function.ReturnType);
+        foreach (TranslatedParameter parameter in function.Parameters)
+        { originalTypes.Add(parameter.Type); }
+
+        OriginalFunctionTypes = originalTypes.MoveToImmutable();
     }
 
     public TrampolineCollection WithTrampoline(Trampoline trampoline)
