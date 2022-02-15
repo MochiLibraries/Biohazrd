@@ -74,7 +74,9 @@ jobs:
         if: matrix.platform.skip-tool-install != true
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 6.0.x
+          dotnet-version: |
+            5.0.x
+            6.0.x
 
       # ----------------------------------------------------------------------- Setup other dependencies
       - name: Setup other dependencies (Linux)
@@ -142,7 +144,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 6.0.x
+          dotnet-version: |
+            5.0.x
+            6.0.x
 
       # ----------------------------------------------------------------------- Download built packages
       - name: Download built packages
@@ -209,7 +213,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 6.0.x
+          dotnet-version: |
+            5.0.x
+            6.0.x
 
       # ----------------------------------------------------------------------- Download built packages
       - name: Download built packages
