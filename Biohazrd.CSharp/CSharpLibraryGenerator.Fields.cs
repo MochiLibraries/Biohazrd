@@ -1,5 +1,4 @@
-﻿using Biohazrd.Expressions;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Linq;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
@@ -17,7 +16,7 @@ namespace Biohazrd.CSharp
             // Apply MarshalAs to boolean fields
             // This might not strictly be necessary since our struct has an explicit layout, but we do it anyway for the sake of sanity.
             // (The marshaler definitely still runs on bools in explicit layouts, but it's not immediately clear if it is trying to interpret the memory as a 4-byte or 1-byte bool.)
-            if (field is TranslatedNormalField { Type: CSharpBuiltinTypeReference cSharpType } && cSharpType.Type == CSharpBuiltinType.Bool)
+            if (Options.TargetRuntime < TargetRuntime.Net7 && field is TranslatedNormalField { Type: CSharpBuiltinTypeReference cSharpType } && cSharpType.Type == CSharpBuiltinType.Bool)
             { Writer.Write($"[MarshalAs(UnmanagedType.I1)] "); }
 
             Writer.Write($"{field.Accessibility.ToCSharpKeyword()} ");
