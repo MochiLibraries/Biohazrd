@@ -51,17 +51,7 @@ namespace Biohazrd.CSharp
 
             if (declaration.Metadata.TryGet(out TrampolineCollection trampolines))
             {
-                //TODO: Add enumerator to TrampolineCollection and change this to a foreach
-                Writer.EnsureSeparation();
-                trampolines.NativeFunction.Emit(this, context, declaration, Writer);
-
-                if (!ReferenceEquals(trampolines.NativeFunction, trampolines.PrimaryTrampoline))
-                {
-                    Writer.EnsureSeparation();
-                    trampolines.PrimaryTrampoline.Emit(this, context, declaration, Writer);
-                }
-
-                foreach (Trampoline trampoline in trampolines.SecondaryTrampolines)
+                foreach (Trampoline trampoline in trampolines)
                 {
                     Writer.EnsureSeparation();
                     trampoline.Emit(this, context, declaration, Writer);

@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Biohazrd.CSharp.Trampolines;
 
-public readonly struct TrampolineCollection : IDeclarationMetadataItem
+public readonly struct TrampolineCollection : IDeclarationMetadataItem, IEnumerable<Trampoline>
 {
     internal string OriginalFunctionName { get; }
     internal ImmutableArray<TypeReference> OriginalFunctionTypes { get; }
@@ -102,4 +104,57 @@ public readonly struct TrampolineCollection : IDeclarationMetadataItem
             _SecondaryTrampolines = _SecondaryTrampolines.Add(trampoline)
         };
     }
+
+    public struct Enumerator
+    {
+        private readonly TrampolineCollection Collection;
+        private int Index;
+        public Trampoline Current
+            => Index switch
+            {
+                -2 => Collection.NativeFunction,
+                -1 => Collection.PrimaryTrampoline,
+                _ => Collection.SecondaryTrampolines[Index]
+            };
+
+        internal Enumerator(TrampolineCollection collection)
+        {
+            Collection = collection;
+            Index = -3;
+        }
+
+        public bool MoveNext()
+        {
+            Index++;
+
+            // Skip the primary trampoline if it's the same as the naitve function
+            if (Index == -1)
+            {
+                if (ReferenceEquals(Collection.NativeFunction, Collection.PrimaryTrampoline))
+                { Index++; }
+            }
+
+            return Index < Collection.SecondaryTrampolines.Length;
+        }
+    }
+
+    public Enumerator GetEnumerator()
+        => new Enumerator(this);
+
+    private IEnumerator<Trampoline> GetEnumeratorObject()
+    {
+        yield return NativeFunction;
+
+        if (!ReferenceEquals(NativeFunction, PrimaryTrampoline))
+        { yield return PrimaryTrampoline; }
+
+        foreach (Trampoline trampoline in SecondaryTrampolines)
+        { yield return trampoline; }
+    }
+
+    IEnumerator<Trampoline> IEnumerable<Trampoline>.GetEnumerator()
+        => GetEnumeratorObject();
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => GetEnumeratorObject();
 }
