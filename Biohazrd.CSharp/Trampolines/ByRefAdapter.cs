@@ -19,6 +19,8 @@ public sealed class ByRefAdapter : Adapter
 
         if (!Enum.IsDefined(kind))
         { throw new ArgumentOutOfRangeException(nameof(kind)); }
+        else if (kind == ByRefKind.RefReadOnly)
+        { throw new ArgumentException("ref readonly is not valid in this context.", nameof(kind)); }
 
         OutputType = pointerType;
         InputType = new ByRefTypeReference(kind, pointerType.Inner);

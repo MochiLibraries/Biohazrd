@@ -13,8 +13,8 @@ public sealed class ByRefReturnAdapter : IReturnAdapter, IShortReturnAdapter
     {
         if (kind != ByRefKind.Ref && kind != ByRefKind.RefReadOnly)
         {
-            if (kind == ByRefKind.Out)
-            { throw new ArgumentException("Returns cannot be out byrefs.", nameof(kind)); }
+            if (Enum.IsDefined(kind))
+            { throw new ArgumentException($"{kind.GetKeyword()} is not valid in this context.", nameof(kind)); }
             else
             { throw new ArgumentOutOfRangeException(nameof(kind)); }
         }
