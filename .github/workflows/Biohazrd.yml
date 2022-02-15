@@ -90,9 +90,8 @@ jobs:
         # However, the runners do have a full LLVM toolchian installed via brew, so we use that for tests which require these tools
         run: python .github/workflows/gha.py set_environment_variable BIOHAZRD_FULL_LLVM_TOOLCHAIN_PATH "$(brew --prefix llvm)"
 
-      # ----------------------------------------------------------------------- Configure versioning
+      # ----------------------------------------------------------------------- Configure build
       - name: Configure build
-        id: configuration
         run: python .github/workflows/configure-build.py
         env:
           github_event_name: ${{github.event_name}}

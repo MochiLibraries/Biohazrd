@@ -34,7 +34,7 @@ namespace Biohazrd.CSharp
         }
 
         public override string ToString()
-            => $"Constant array {base.ToString()} ({Type}[{ElementCount}])";
+            => $"Constant array {Type}[{ElementCount}]";
 
         TransformationResult ICustomTranslatedDeclaration.TransformChildren(ITransformation transformation, TransformationContext context)
             => this;
