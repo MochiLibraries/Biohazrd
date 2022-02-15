@@ -11,6 +11,10 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
 {
     public TargetRuntime TargetRuntime { get; init; } = CSharpGenerationOptions.Default.TargetRuntime; //TODO: This ideally should come from some central context to ensure consistency
 
+    // We offer this for return types but not parameter types because emitting returned C++ references has some usability concerns when it comes to storing them
+    //TODO: Should this be enabled by default? C# developers are not necessarily used to carting ref types around and they're easy to unintentionally dereference.
+    public bool LeaveCppReferenceReturnsAsPointers { get; init; } = false;
+
     protected override TransformationResult TransformFunction(TransformationContext context, TranslatedFunction declaration)
     {
         // Don't try to add trampolines to a function which already has them
@@ -83,7 +87,13 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
             { nativeReturnAdapter = VoidReturnAdapter.Instance; }
             // Handle typical return
             else
-            { nativeReturnAdapter = new PassthroughReturnAdapter(returnType); }
+            {
+                nativeReturnAdapter = new PassthroughReturnAdapter(returnType);
+
+                // Handle C++-style reference
+                if (!LeaveCppReferenceReturnsAsPointers && returnType is PointerTypeReference { WasReference: true } referenceType)
+                { friendlyReturnAdapter = new ByRefReturnAdapter(nativeReturnAdapter, referenceType.InnerIsConst ? ByRefKind.RefReadOnly : ByRefKind.Ref); }
+            }
         }
 
         // Handle implicit parameters

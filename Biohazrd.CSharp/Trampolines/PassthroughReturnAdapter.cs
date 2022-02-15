@@ -27,13 +27,28 @@ public sealed class PassthroughReturnAdapter : IReturnAdapter, IShortReturnAdapt
     { }
 
     public void WriteShortReturn(TrampolineContext context, CSharpCodeWriter writer)
-        => writer.Write("return ");
+    {
+        writer.Write("return ");
+
+        if (OutputType is ByRefTypeReference)
+        { writer.Write("ref "); }
+    }
 
     public void WritePrologue(TrampolineContext context, CSharpCodeWriter writer)
     {
         context.WriteType(OutputType);
         writer.Write(' ');
         writer.WriteIdentifier(TemporaryName);
+
+        // Ref locals cannot be declared without an initializer
+        if (OutputType is ByRefTypeReference byRefType)
+        {
+            writer.Using("System.Runtime.CompilerServices"); // Unsafe
+            writer.Write("ref Unsafe.NullRef<");
+            context.WriteType(byRefType.Inner);
+            writer.Write(">()");
+        }
+
         writer.WriteLine(';');
     }
 
@@ -41,11 +56,18 @@ public sealed class PassthroughReturnAdapter : IReturnAdapter, IShortReturnAdapt
     {
         writer.WriteIdentifier(TemporaryName);
         writer.Write(" = ");
+
+        if (OutputType is ByRefTypeReference)
+        { writer.Write("ref "); }
     }
 
     public void WriteEpilogue(TrampolineContext context, CSharpCodeWriter writer)
     {
         writer.Write("return ");
+
+        if (OutputType is ByRefTypeReference)
+        { writer.Write("ref "); }
+
         writer.WriteIdentifier(TemporaryName);
         writer.WriteLine(';');
     }

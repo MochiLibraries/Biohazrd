@@ -22,8 +22,6 @@ public sealed record ByRefTypeReference : TypeReference, ICustomTypeReference, I
 
     public TypeReference Inner { get; init; }
 
-    public string Keyword => Kind.GetKeyword();
-
     public ByRefTypeReference(ByRefKind kind, TypeReference inner)
     {
         if (!Enum.IsDefined(kind))
@@ -48,8 +46,18 @@ public sealed record ByRefTypeReference : TypeReference, ICustomTypeReference, I
     }
 
     string ICustomCSharpTypeReference.GetTypeAsString(ICSharpOutputGenerator outputGenerator, VisitorContext context, TranslatedDeclaration declaration)
-        => $"{Keyword} {outputGenerator.GetTypeAsString(context, declaration, Inner)}";
+    {
+        string keyword;
+
+        //TODO: This is slightly brittle since we don't actually know what the emit context is (only the declaration context.)
+        if (declaration is TranslatedParameter)
+        { keyword = Kind.GetKeywordForParameter(); }
+        else
+        { keyword = Kind.GetKeywordForReturn(); }
+
+        return $"{keyword} {outputGenerator.GetTypeAsString(context, declaration, Inner)}";
+    }
 
     public override string ToString()
-        => $"{Keyword} {Inner}";
+        => $"{Kind.GetKeywordForParameter()} {Inner}";
 }

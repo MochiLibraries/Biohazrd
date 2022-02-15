@@ -98,7 +98,7 @@ public abstract class Adapter
         if (TargetDeclaration == DeclarationId.Null)
         { return false; }
 
-        return parameter.Id == TargetDeclaration || parameter.ReplacedIds.Contains(TargetDeclaration);
+        return parameter.MatchesId(TargetDeclaration);
     }
 
     //TODO: Modify all children to use this instead of writing it out themselves

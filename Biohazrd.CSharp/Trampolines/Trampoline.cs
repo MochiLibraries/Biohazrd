@@ -109,7 +109,7 @@ public sealed record Trampoline
 
     internal void Emit(ICSharpOutputGenerator outputGenerator, VisitorContext context, TranslatedFunction declaration, CSharpCodeWriter writer)
     {
-        if (declaration.Id != TargetFunctionId && !declaration.ReplacedIds.Contains(TargetFunctionId))
+        if (!declaration.MatchesId(TargetFunctionId))
         { throw new ArgumentException("The specified function is not related to the target of this trampoline.", nameof(declaration)); }
 
         // Don't emit the native function for virtual methods
@@ -157,19 +157,17 @@ public sealed record Trampoline
             Debug.Assert(virtualMethodAccess is not null || virtualMethodAccessFailure is not null, "We need either a virtual method access or a failure message.");
         }
 
-        // Create base contexts
+        // Create base function context
         TrampolineContext functionContext = new(outputGenerator, this, writer, context, declaration);
-        //TODO: At one point we had logic in this method to update parameterContext.Declaration but I accidentally removed it.
-        // This is actually really hard to properly provide since we don't necessarily know which adapter corresponds to a given parameter except in the native function
-        // The declaration is really only ever used for debugging, maybe we should just say it doesn't need to be accurate for parameters?
-        TrampolineContext parameterContext = functionContext with { Context = functionContext.Context.Add(declaration) };
 
-        // Scan adapters to figure out how this function will be emitted
+        // Scan adapters to figure out how this function will be emitted and to build adapter contexts
         bool hasExplicitThis = false;
         bool hasAnyEpilogue = false;
         int firstDefaultableInput = int.MaxValue;
+        TrampolineContext[] adapterContexts = new TrampolineContext[Adapters.Length];
         {
             int adapterIndex = -1;
+            VisitorContext parameterVisitorContext = functionContext.Context.Add(declaration);
             foreach (Adapter adapter in Adapters)
             {
                 adapterIndex++;
@@ -193,6 +191,9 @@ public sealed record Trampoline
 
                 if (adapter is IAdapterWithEpilogue)
                 { hasAnyEpilogue = true; }
+
+                // Determine the context for this adapter
+                adapterContexts[adapterIndex] = DetermineAdapterContext(declaration, parameterVisitorContext, adapter, functionContext);
             }
         }
 
@@ -297,7 +298,7 @@ public sealed record Trampoline
                 bool emitDefaultValue = !skipDefaultValues && adapterIndex >= firstDefaultableInput;
                 if (emitDefaultValue)
                 { Debug.Assert(adapter.CanEmitDefaultValue && adapter.DefaultValue is not null, "Tried to emit a default value when a parameter can't emit a default value or doesn't have one."); }
-                adapter.WriteInputParameter(parameterContext, writer, emitDefaultValue);
+                adapter.WriteInputParameter(adapterContexts[adapterIndex], writer, emitDefaultValue);
             }
 
             if (IsNativeFunction)
@@ -327,21 +328,32 @@ public sealed record Trampoline
             IShortReturnAdapter? shortReturn = hasAnyEpilogue ? null : ReturnAdapter as IShortReturnAdapter;
 
             // Emit out prologues
-            if (shortReturn is not null)
-            { shortReturn.WriteShortPrologue(functionContext, writer); }
-            else
-            { ReturnAdapter.WritePrologue(functionContext, writer); }
+            {
+                if (shortReturn is not null)
+                { shortReturn.WriteShortPrologue(functionContext, writer); }
+                else
+                { ReturnAdapter.WritePrologue(functionContext, writer); }
 
-            foreach (Adapter adapter in Adapters)
-            { adapter.WritePrologue(parameterContext, writer); }
+                int adapterIndex = -1;
+                foreach (Adapter adapter in Adapters)
+                {
+                    adapterIndex++;
+                    adapter.WritePrologue(adapterContexts[adapterIndex], writer);
+                }
+            }
 
             // Emit blocks (IE: `fixed` statements)
             writer.EnsureSeparation();
             bool hasBlocks = false;
-            foreach (Adapter adapter in Adapters)
             {
-                if (adapter.WriteBlockBeforeCall(parameterContext, writer))
-                { hasBlocks = true; }
+                int adapterIndex = -1;
+                foreach (Adapter adapter in Adapters)
+                {
+                    adapterIndex++;
+
+                    if (adapter.WriteBlockBeforeCall(adapterContexts[adapterIndex], writer))
+                    { hasBlocks = true; }
+                }
             }
 
             // Emit function dispatch
@@ -368,27 +380,29 @@ public sealed record Trampoline
             { writer.WriteIdentifier(Target.Name); }
 
             // Emit function arguments
-            writer.Write('(');
-
-            bool first = true;
-            int adapterIndex = -1;
-
-            foreach (Adapter adapter in Adapters)
             {
-                adapterIndex++;
+                writer.Write('(');
 
-                if (!adapter.ProvidesOutput)
-                { continue; }
+                bool first = true;
+                int adapterIndex = -1;
 
-                if (first)
-                { first = false; }
-                else
-                { writer.Write(", "); }
+                foreach (Adapter adapter in Adapters)
+                {
+                    adapterIndex++;
 
-                adapter.WriteOutputArgument(parameterContext, writer);
+                    if (!adapter.ProvidesOutput)
+                    { continue; }
+
+                    if (first)
+                    { first = false; }
+                    else
+                    { writer.Write(", "); }
+
+                    adapter.WriteOutputArgument(adapterContexts[adapterIndex], writer);
+                }
+
+                writer.Write(");");
             }
-
-            writer.Write(");");
 
             // Finish function dispatch
             if (hasBlocks)
@@ -403,14 +417,17 @@ public sealed record Trampoline
 
                 if (hasAnyEpilogue)
                 {
+                    int adapterIndex = -1;
                     foreach (Adapter adapter in Adapters)
                     {
+                        adapterIndex++;
+
                         if (adapter is IAdapterWithEpilogue epilogueAdapter)
-                        { epilogueAdapter.WriteEpilogue(parameterContext, writer); }
+                        { epilogueAdapter.WriteEpilogue(adapterContexts[adapterIndex], writer); }
                     }
                 }
 
-                ReturnAdapter.WriteEpilogue(parameterContext, writer);
+                ReturnAdapter.WriteEpilogue(functionContext, writer);
             }
         }
     }
@@ -442,22 +459,47 @@ public sealed record Trampoline
 
         // Create base contexts
         TrampolineContext functionContext = new(outputGenerator, this, writer, context, declaration);
-        //TODO: At one point we had logic in this method to update parameterContext.Declaration but I accidentally removed it.
-        // This is actually really hard to properly provide since we don't necessarily know which adapter corresponds to a given parameter except in the native function
-        // The declaration is really only ever used for debugging, maybe we should just say it doesn't need to be accurate for parameters?
-        TrampolineContext parameterContext = functionContext with { Context = functionContext.Context.Add(declaration) };
+        VisitorContext parameterVisitorContext = functionContext.Context.Add(declaration);
 
         foreach (Adapter adapter in Adapters)
         {
             if (!adapter.AcceptsInput)
             { continue; }
 
-            adapter.WriteInputType(parameterContext, writer);
+            TrampolineContext adapterContext = DetermineAdapterContext(declaration, parameterVisitorContext, adapter, functionContext);
+            adapter.WriteInputType(adapterContext, writer);
             writer.Write(", ");
         }
 
         ReturnAdapter.WriteReturnType(functionContext, writer);
         writer.Write('>');
+    }
+
+    private TrampolineContext DetermineAdapterContext(TranslatedFunction declaration, in VisitorContext parameterVisitorContext, Adapter adapter, in TrampolineContext functionContext)
+    {
+        // This is a lot of extra mostly-unecessary work.
+        // If this shows up on a profiler we should just remove it change the expectations of the context provided to GetTypeAsString and eliminate it.
+        // https://github.com/MochiLibraries/Biohazrd/issues/238
+        if (adapter.TargetDeclaration == DeclarationId.Null || declaration.MatchesId(adapter.TargetDeclaration))
+        { return functionContext; }
+        else
+        {
+            foreach (TranslatedParameter parameter in declaration.Parameters)
+            {
+                if (parameter.MatchesId(adapter.TargetDeclaration))
+                {
+                    return functionContext with
+                    {
+                        Context = parameterVisitorContext,
+                        Declaration = parameter
+                    };
+                }
+            }
+
+            // This adapter does not match the function or any of its parameters, just use the function's context
+            Debug.Fail("This should not happen.");
+            return functionContext;
+        }
     }
 
     private void EmitMethodImplAttribute(TranslatedFunction declaration, CSharpCodeWriter writer)
