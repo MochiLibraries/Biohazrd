@@ -88,6 +88,18 @@ public abstract class Adapter
         SpecialKind = target.SpecialKind;
     }
 
+    private protected Adapter(TypeReference inputType, string parameterName)
+    {
+        InputType = inputType;
+        ParameterName = parameterName;
+        AcceptsInput = true;
+
+        TargetDeclaration = DeclarationId.Null;
+        DefaultValue = null;
+
+        SpecialKind = SpecialAdapterKind.None;
+    }
+
     public bool CorrespondsTo(TranslatedParameter parameter)
     {
         // Early out: Special adapters never correspond to parameters

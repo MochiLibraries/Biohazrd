@@ -1,4 +1,5 @@
-﻿using Biohazrd.CSharp.Trampolines;
+﻿using Biohazrd.CSharp.Metadata;
+using Biohazrd.CSharp.Trampolines;
 using Biohazrd.Transformation;
 using ClangSharp.Pathogen;
 using System.Collections.Generic;
@@ -56,11 +57,18 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
 
         IReturnAdapter? friendlyReturnAdapter = null;
         Dictionary<Adapter, Adapter>? friendlyAdapters = null;
+        List<SyntheticAdapter>? friendlySyntheticAdapters = null;
 
         void AddFriendlyAdapter(Adapter target, Adapter adapter)
         {
             friendlyAdapters ??= new Dictionary<Adapter, Adapter>(nativeAdapters.Count);
             friendlyAdapters.Add(target, adapter);
+        }
+
+        void AddFriendlySyntheticAdapter(SyntheticAdapter adapter)
+        {
+            friendlySyntheticAdapters ??= new List<SyntheticAdapter>();
+            friendlySyntheticAdapters.Add(adapter);
         }
 
         // Handle return type when not returning by reference
@@ -201,12 +209,29 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
             }
         }
 
+        // Determine if SetLastError logic is needed
+        bool useLegacySetLastError = false;
+        if (declaration.Metadata.TryGet(out SetLastErrorFunction setLastErrorMetadata))
+        {
+            // Prior to .NET 6 we have to use the legacy SetLastError logic
+            if (TargetRuntime < TargetRuntime.Net6)
+            {
+                useLegacySetLastError = true;
+
+                if (setLastErrorMetadata.SkipPedanticClear)
+                { PrimaryTrampolineProblem(Severity.Warning, $"{nameof(setLastErrorMetadata.SkipPedanticClear)} is not available when targeting {TargetRuntime}."); }
+            }
+            else
+            { AddFriendlySyntheticAdapter(new SetLastSystemErrorAdapter(setLastErrorMetadata.SkipPedanticClear)); }
+        }
+
         // Create native trampoline
-        bool haveFriendlyTrampoline = friendlyReturnAdapter is not null || friendlyAdapters is not null;
+        bool haveFriendlyTrampoline = friendlyReturnAdapter is not null || friendlyAdapters is not null || friendlySyntheticAdapters is not null;
         Trampoline nativeTrampoline = new(declaration, nativeReturnAdapter, nativeAdapters.ToImmutable())
         {
             Name = haveFriendlyTrampoline ? $"{declaration.Name}_PInvoke" : declaration.Name,
-            Accessibility = haveFriendlyTrampoline ? AccessModifier.Private : declaration.Accessibility
+            Accessibility = haveFriendlyTrampoline ? AccessModifier.Private : declaration.Accessibility,
+            UseLegacySetLastError = useLegacySetLastError,
         };
         Trampoline primaryTrampoline;
 
@@ -226,6 +251,9 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
 
             if (friendlyAdapters is not null)
             { friendlyBuilder.AdaptParametersDirect(friendlyAdapters); }
+
+            if (friendlySyntheticAdapters is not null)
+            { friendlyBuilder.AddSyntheticAdaptersDirect(friendlySyntheticAdapters); }
 
             primaryTrampoline = friendlyBuilder.Create();
         }

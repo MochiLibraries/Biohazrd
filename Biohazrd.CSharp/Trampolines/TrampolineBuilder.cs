@@ -19,10 +19,11 @@ public struct TrampolineBuilder
     public string Description { get; set; }
     internal IReturnAdapter? ReturnAdapter { get; private set; }
     internal Dictionary<Adapter, Adapter>? Adapters { get; private set; }
+    internal List<SyntheticAdapter>? SyntheticAdapters { get; private set; }
 
     /// <summary>Returns true if this builder has adapters.</summary>
     /// <remarks>If this struct is defaulted this will return false.</remarks>
-    public bool HasAdapters => ReturnAdapter is not null || Adapters is not null;
+    public bool HasAdapters => ReturnAdapter is not null || Adapters is not null || SyntheticAdapters is not null;
 
     public TrampolineBuilder(Trampoline target, bool useAsTemplate)
     {
@@ -39,6 +40,7 @@ public struct TrampolineBuilder
         Description = "Unnamed Trampoline";
         ReturnAdapter = null;
         Adapters = null;
+        SyntheticAdapters = null;
     }
 
     public void AdaptReturnValue(IReturnAdapter adapter)
@@ -51,16 +53,14 @@ public struct TrampolineBuilder
 
     public void AdaptParameter(Adapter target, Adapter adapter)
     {
-        if (Adapters is null)
-        { Adapters = new Dictionary<Adapter, Adapter>(Target.Adapters.Length); }
-
-        if (Adapters.ContainsKey(target))
-        { throw new InvalidOperationException("The specified parameter has already been adapted for this trampoline."); }
-
         if (!Target.Adapters.Contains(target))
         { throw new InvalidOperationException("The specified parameter is not part of the target trampoline."); }
 
-        Adapters.Add(target, adapter);
+        if (Adapters is null)
+        { Adapters = new Dictionary<Adapter, Adapter>(Target.Adapters.Length, ReferenceEqualityComparer.Instance); }
+
+        if (!Adapters.TryAdd(target, adapter))
+        { throw new InvalidOperationException("The specified parameter has already been adapted for this trampoline."); }
     }
 
     public bool TryAdaptParameter(TranslatedParameter parameter, Adapter adapter)
@@ -117,6 +117,17 @@ public struct TrampolineBuilder
         { throw new InvalidOperationException($"The target trampoline does not contain a {specialParameter} parameter."); }
     }
 
+    //TODO: Add removing and replacing synthetic adapters
+    // Removing should add a Adapter => null kvp to the adapters list
+    // Replacing works as normal but should be separtate for API clarity
+    public void AddSyntheticAdapter(SyntheticAdapter adapter)
+    {
+        if (SyntheticAdapters is null)
+        { SyntheticAdapters = new List<SyntheticAdapter>(); }
+
+        SyntheticAdapters.Add(adapter);
+    }
+
     // This method only exists as an optimization for CreateTrampolinesTransformation so that it can build the friendly trampoline before the native trampoline is complete.
     internal void AdaptParametersDirect(Dictionary<Adapter, Adapter> adapters)
     {
@@ -128,6 +139,19 @@ public struct TrampolineBuilder
         { AdaptParameter(target, adapter); }
 #else
         Adapters = adapters;
+#endif
+    }
+
+    internal void AddSyntheticAdaptersDirect(List<SyntheticAdapter> adapters)
+    {
+        if (SyntheticAdapters is not null)
+        { throw new InvalidOperationException("This builder has already received synthetic adapters."); }
+
+#if DEBUG
+        foreach (SyntheticAdapter adapter in adapters)
+        { AddSyntheticAdapter(adapter); }
+#else
+        SyntheticAdapters = adapters;
 #endif
     }
 

@@ -24,6 +24,14 @@ public sealed record Trampoline
     [MemberNotNullWhen(false, nameof(Target))]
     public bool IsNativeFunction => Target is null;
 
+    /// <summary>Enables <see cref="DllImportAttribute.SetLastError"/> on the emitted P/Invoke.</summary>
+    /// <remarks>
+    /// This is a property of the trampoline in order to ensure consistent emit between .NET 5 and more modern runtimes.
+    /// It should not be used on .NET 6 or newer or exposed publicly.
+    /// <c>SetLastError</c> behavior should be controlled by applying <see cref="SetLastErrorFunction"/> prior to <see cref="CreateTrampolinesTransformation"/>.
+    /// </remarks>
+    internal bool UseLegacySetLastError { get; init; }
+
     internal Trampoline(TranslatedFunction function, IReturnAdapter nativeReturnAdapter, ImmutableArray<Adapter> nativeAdapters)
     {
         Target = null;
@@ -70,6 +78,10 @@ public sealed record Trampoline
                 { expectedLength++; }
             }
         }
+
+        if (builder.SyntheticAdapters is not null)
+        { expectedLength += builder.SyntheticAdapters.Count; }
+
         ImmutableArray<Adapter>.Builder adapters = ImmutableArray.CreateBuilder<Adapter>(expectedLength);
 
         foreach (Adapter targetAdapter in template?.Adapters ?? Target.Adapters)
@@ -82,6 +94,9 @@ public sealed record Trampoline
             else if (targetAdapter.AcceptsInput)
             { adapters.Add(new PassthroughAdapter(targetAdapter)); }
         }
+
+        if (builder.SyntheticAdapters is not null)
+        { adapters.AddRange(builder.SyntheticAdapters); }
 
         Adapters = adapters.MoveToImmutable();
     }
@@ -165,6 +180,7 @@ public sealed record Trampoline
         // Scan adapters to figure out how this function will be emitted and to build adapter contexts
         bool hasExplicitThis = false;
         bool hasAnyEpilogue = false;
+        bool hasInnerWrapper = false;
         bool hasGenericParameters = ReturnAdapter is IAdapterWithGenericParameter;
         bool hasDoubleDutyReturnAdapter = false;
         int firstDefaultableInput = int.MaxValue;
@@ -195,6 +211,9 @@ public sealed record Trampoline
 
                 if (adapter is IAdapterWithEpilogue)
                 { hasAnyEpilogue = true; }
+
+                if (adapter is IAdapterWithInnerWrapper)
+                { hasInnerWrapper = hasAnyEpilogue = true; }
 
                 if (adapter is IAdapterWithGenericParameter)
                 { hasGenericParameters = true; }
@@ -230,7 +249,11 @@ public sealed record Trampoline
             if (declaration.MangledName != Name)
             { writer.Write($", EntryPoint = \"{SanitizeStringLiteral(declaration.MangledName)}\""); }
 
-            //TODO: Allow SetLastError on .NET 5?
+            if (UseLegacySetLastError)
+            {
+                //Debug.Assert(outputGenerator.Options.TargetRuntime < TargetRuntime.Net6);
+                writer.Write(", SetLastError = true");
+            }
 
             writer.WriteLine(", ExactSpelling = true)]");
         }
@@ -421,58 +444,99 @@ public sealed record Trampoline
             }
 
             // Emit function dispatch
-            if (hasBlocks)
-            { writer.Write("{ "); }
-
-            if (shortReturn is not null)
-            { shortReturn.WriteShortReturn(functionContext, writer); }
-            else
-            { ReturnAdapter.WriteResultCapture(functionContext, writer); }
-
-            if (virtualMethodAccess is not null)
+            void EmitFunctionDispatch()
             {
-                Debug.Assert(declaration.IsVirtual);
-                writer.Write(virtualMethodAccess);
-            }
-            else if (Target.GetConstructorName(outputGenerator, context, declaration) is string constructorName)
-            {
-                writer.Write("this = new ");
-                writer.WriteIdentifier(constructorName);
-            }
-            else
-            //TODO: Need to handle constructor dispatch
-            { writer.WriteIdentifier(Target.Name); }
-
-            // Emit function arguments
-            {
-                writer.Write('(');
-
-                bool first = true;
-                int adapterIndex = -1;
-
-                foreach (Adapter adapter in Adapters)
+                // Handle inner wrapper prologues
+                if (hasInnerWrapper)
                 {
-                    adapterIndex++;
-
-                    if (!adapter.ProvidesOutput)
-                    { continue; }
-
-                    if (first)
-                    { first = false; }
-                    else
-                    { writer.Write(", "); }
-
-                    adapter.WriteOutputArgument(adapterContexts[adapterIndex], writer);
+                    int adapterIndex = -1;
+                    foreach (Adapter adapter in Adapters)
+                    {
+                        adapterIndex++;
+                        if (adapter is IAdapterWithInnerWrapper innerWrapper)
+                        { innerWrapper.WriterInnerPrologue(adapterContexts[adapterIndex], writer); }
+                    }
                 }
 
-                writer.Write(");");
+                // Emit the actual function dispatch line
+                if (shortReturn is not null)
+                { shortReturn.WriteShortReturn(functionContext, writer); }
+                else
+                { ReturnAdapter.WriteResultCapture(functionContext, writer); }
+
+                if (virtualMethodAccess is not null)
+                {
+                    Debug.Assert(declaration.IsVirtual);
+                    writer.Write(virtualMethodAccess);
+                }
+                else if (Target.GetConstructorName(outputGenerator, context, declaration) is string constructorName)
+                {
+                    writer.Write("this = new ");
+                    writer.WriteIdentifier(constructorName);
+                }
+                else
+                //TODO: Need to handle constructor dispatch
+                { writer.WriteIdentifier(Target.Name); }
+
+                // Emit function arguments
+                {
+                    writer.Write('(');
+
+                    bool first = true;
+                    int adapterIndex = -1;
+
+                    foreach (Adapter adapter in Adapters)
+                    {
+                        adapterIndex++;
+
+                        if (!adapter.ProvidesOutput)
+                        { continue; }
+
+                        if (first)
+                        { first = false; }
+                        else
+                        { writer.Write(", "); }
+
+                        adapter.WriteOutputArgument(adapterContexts[adapterIndex], writer);
+                    }
+
+                    writer.Write(");");
+                }
+
+                // Handle inner wrapper epilogues
+                if (hasInnerWrapper)
+                {
+                    writer.WriteLine();
+                    int adapterIndex = -1;
+                    foreach (Adapter adapter in Adapters)
+                    {
+                        adapterIndex++;
+                        if (adapter is IAdapterWithInnerWrapper innerWrapper)
+                        { innerWrapper.WriteInnerEpilogue(adapterContexts[adapterIndex], writer); }
+                    }
+                }
             }
 
-            // Finish function dispatch
-            if (hasBlocks)
-            { writer.WriteLine(" }"); }
+            if (hasInnerWrapper && hasBlocks)
+            {
+                using (writer.Block())
+                { EmitFunctionDispatch(); }
+            }
+            else if (hasBlocks)
+            {
+                // If we need a block but there's no inner wrappers (IE: the dispatch will be on a single line) prefer to write it on a single line to keep things terse.
+                writer.Write("{ ");
+                EmitFunctionDispatch();
+                writer.WriteLine(" }");
+            }
             else
-            { writer.WriteLine(); }
+            {
+                EmitFunctionDispatch();
+
+                // If we didn't write inner wrappers, EmitFunctionDispatch will not finish the dispatch with a newline.
+                if (!hasInnerWrapper)
+                { writer.WriteLine(); }
+            }
 
             // Emit epilogues
             if (hasAnyEpilogue || shortReturn is null)
