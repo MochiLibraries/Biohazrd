@@ -20,6 +20,9 @@ public sealed class PassthroughReturnAdapter : IReturnAdapter, IShortReturnAdapt
         if (target.OutputType is VoidTypeReference)
         { throw new ArgumentException("The specified target returns void.", nameof(target)); }
 
+        if (target is IAdapterWithGenericParameter)
+        { throw new NotSupportedException("Adapting to a generic return type is not supported."); }
+
         OutputType = target.OutputType;
     }
 

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using static Biohazrd.CSharp.CSharpCodeWriter;
@@ -33,6 +34,7 @@ public sealed record Trampoline
         ReturnAdapter = nativeReturnAdapter;
         Adapters = nativeAdapters;
         Debug.Assert(IsNativeFunction);
+        Debug.Assert(ReturnAdapter is not IAdapterWithGenericParameter && !Adapters.OfType<IAdapterWithGenericParameter>().Any(), "Native functions cannot have generic parameters.");
     }
 
     internal Trampoline(TrampolineBuilder builder)
@@ -163,6 +165,8 @@ public sealed record Trampoline
         // Scan adapters to figure out how this function will be emitted and to build adapter contexts
         bool hasExplicitThis = false;
         bool hasAnyEpilogue = false;
+        bool hasGenericParameters = ReturnAdapter is IAdapterWithGenericParameter;
+        bool hasDoubleDutyReturnAdapter = false;
         int firstDefaultableInput = int.MaxValue;
         TrampolineContext[] adapterContexts = new TrampolineContext[Adapters.Length];
         {
@@ -191,6 +195,12 @@ public sealed record Trampoline
 
                 if (adapter is IAdapterWithEpilogue)
                 { hasAnyEpilogue = true; }
+
+                if (adapter is IAdapterWithGenericParameter)
+                { hasGenericParameters = true; }
+
+                if (ReferenceEquals(adapter, ReturnAdapter))
+                { hasDoubleDutyReturnAdapter = true; }
 
                 // Determine the context for this adapter
                 adapterContexts[adapterIndex] = DetermineAdapterContext(declaration, parameterVisitorContext, adapter, functionContext);
@@ -275,39 +285,93 @@ public sealed record Trampoline
                 writer.WriteIdentifier(Name);
             }
 
+            // Write out generic parameters
+            if (hasGenericParameters)
+            {
+                Debug.Assert(!IsNativeFunction);
+                writer.Write('<');
+                bool first = true;
+
+                if (!hasDoubleDutyReturnAdapter && ReturnAdapter is IAdapterWithGenericParameter genericReturnAdapter)
+                {
+                    genericReturnAdapter.WriteGenericParameter(functionContext, writer);
+                    first = false;
+                }
+
+                int adapterIndex = -1;
+                foreach (Adapter adapter in Adapters)
+                {
+                    adapterIndex++;
+
+                    if (adapter is not IAdapterWithGenericParameter genericAdapter)
+                    { continue; }
+
+                    if (first)
+                    { first = false; }
+                    else
+                    { writer.Write(", "); }
+
+                    genericAdapter.WriteGenericParameter(adapterContexts[adapterIndex], writer);
+                }
+                writer.Write('>');
+            }
+
             // Write out the parameter list
-            writer.Write('(');
-
-            bool first = true;
-            int adapterIndex = -1;
-            bool skipDefaultValues = outputGenerator.Options.SuppressDefaultParameterValuesOnNonPublicMethods && Accessibility != AccessModifier.Public;
-            foreach (Adapter adapter in Adapters)
             {
-                adapterIndex++;
+                writer.Write('(');
 
-                // Nothing to do if the adapter doesn't accept input
-                if (!adapter.AcceptsInput)
-                { continue; }
+                bool first = true;
+                int adapterIndex = -1;
+                bool skipDefaultValues = outputGenerator.Options.SuppressDefaultParameterValuesOnNonPublicMethods && Accessibility != AccessModifier.Public;
+                foreach (Adapter adapter in Adapters)
+                {
+                    adapterIndex++;
 
-                // Write out the adapter's parameter
-                if (first)
-                { first = false; }
+                    // Nothing to do if the adapter doesn't accept input
+                    if (!adapter.AcceptsInput)
+                    { continue; }
+
+                    // Write out the adapter's parameter
+                    if (first)
+                    { first = false; }
+                    else
+                    { writer.Write(", "); }
+
+                    bool emitDefaultValue = !skipDefaultValues && adapterIndex >= firstDefaultableInput;
+                    if (emitDefaultValue)
+                    { Debug.Assert(adapter.CanEmitDefaultValue && adapter.DefaultValue is not null, "Tried to emit a default value when a parameter can't emit a default value or doesn't have one."); }
+                    adapter.WriteInputParameter(adapterContexts[adapterIndex], writer, emitDefaultValue);
+                }
+
+                if (IsNativeFunction)
+                {
+                    writer.WriteLine(");");
+                    return;
+                }
                 else
-                { writer.Write(", "); }
-
-                bool emitDefaultValue = !skipDefaultValues && adapterIndex >= firstDefaultableInput;
-                if (emitDefaultValue)
-                { Debug.Assert(adapter.CanEmitDefaultValue && adapter.DefaultValue is not null, "Tried to emit a default value when a parameter can't emit a default value or doesn't have one."); }
-                adapter.WriteInputParameter(adapterContexts[adapterIndex], writer, emitDefaultValue);
+                { writer.WriteLine(')'); }
             }
 
-            if (IsNativeFunction)
+            // Write out generic constraints
+            if (hasGenericParameters)
             {
-                writer.WriteLine(");");
-                return;
+                using (writer.Indent())
+                {
+                    if (!hasDoubleDutyReturnAdapter && ReturnAdapter is IAdapterWithGenericParameter genericReturnAdapter)
+                    { genericReturnAdapter.WriteGenericConstraint(functionContext, writer); }
+
+                    int adapterIndex = -1;
+                    foreach (Adapter adapter in Adapters)
+                    {
+                        adapterIndex++;
+
+                        if (adapter is not IAdapterWithGenericParameter genericAdapter)
+                        { continue; }
+
+                        genericAdapter.WriteGenericConstraint(adapterContexts[adapterIndex], writer);
+                    }
+                }
             }
-            else
-            { writer.WriteLine(')'); }
         }
 
         //===========================================================================================================================================

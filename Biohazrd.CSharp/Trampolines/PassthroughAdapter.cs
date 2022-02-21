@@ -1,4 +1,6 @@
-﻿namespace Biohazrd.CSharp.Trampolines;
+﻿using System;
+
+namespace Biohazrd.CSharp.Trampolines;
 
 public sealed class PassthroughAdapter : Adapter
 {
@@ -18,7 +20,10 @@ public sealed class PassthroughAdapter : Adapter
 
     public PassthroughAdapter(Adapter target)
         : base(target)
-    { }
+    {
+        if (target is IAdapterWithGenericParameter)
+        { throw new NotSupportedException("Adapting to a generic parameter is not supported."); }
+    }
 
     public override void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
     {
