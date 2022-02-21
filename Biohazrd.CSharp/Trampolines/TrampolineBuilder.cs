@@ -20,6 +20,8 @@ public struct TrampolineBuilder
     internal IReturnAdapter? ReturnAdapter { get; private set; }
     internal Dictionary<Adapter, Adapter>? Adapters { get; private set; }
 
+    /// <summary>Returns true if this builder has adapters.</summary>
+    /// <remarks>If this struct is defaulted this will return false.</remarks>
     public bool HasAdapters => ReturnAdapter is not null || Adapters is not null;
 
     public TrampolineBuilder(Trampoline target, bool useAsTemplate)

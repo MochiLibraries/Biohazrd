@@ -13,7 +13,8 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
 
     // We offer this for return types but not parameter types because emitting returned C++ references has some usability concerns when it comes to storing them
     //TODO: Should this be enabled by default? C# developers are not necessarily used to carting ref types around and they're easy to unintentionally dereference.
-    public bool LeaveCppReferenceReturnsAsPointers { get; init; } = false;
+    //TODO: Maybe we should have an in-between setting where it's only used for const references? The semantics of those can't be expressed using C#'s pointers today.
+    public bool LeaveCppReferenceReturnsAsPointers { get; init; } = true;
 
     protected override TransformationResult TransformFunction(TransformationContext context, TranslatedFunction declaration)
     {
