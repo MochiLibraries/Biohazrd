@@ -9,6 +9,7 @@ public readonly struct TrampolineCollection : IDeclarationMetadataItem, IEnumera
 {
     internal string OriginalFunctionName { get; }
     internal ImmutableArray<TypeReference> OriginalFunctionTypes { get; }
+    internal ImmutableArray<string> OriginalParameterNames { get; }
 
     private readonly Trampoline _NativeFunction;
     private readonly Trampoline _PrimaryTrampoline;
@@ -84,11 +85,18 @@ public readonly struct TrampolineCollection : IDeclarationMetadataItem, IEnumera
         OriginalFunctionName = function.Name;
 
         ImmutableArray<TypeReference>.Builder originalTypes = ImmutableArray.CreateBuilder<TypeReference>(function.Parameters.Length + 1);
+        ImmutableArray<string>.Builder originalNames = ImmutableArray.CreateBuilder<string>(function.Parameters.Length);
+
         originalTypes.Add(function.ReturnType);
+
         foreach (TranslatedParameter parameter in function.Parameters)
-        { originalTypes.Add(parameter.Type); }
+        {
+            originalTypes.Add(parameter.Type);
+            originalNames.Add(parameter.Name);
+        }
 
         OriginalFunctionTypes = originalTypes.MoveToImmutable();
+        OriginalParameterNames = originalNames.MoveToImmutable();
     }
 
     public TrampolineCollection WithTrampoline(Trampoline trampoline)

@@ -9,6 +9,7 @@ using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection.Metadata;
 
 namespace Biohazrd.CSharp
 {
@@ -164,51 +165,55 @@ namespace Biohazrd.CSharp
             { declaration = declaration.WithWarning($"Function has trampolines but they were defaulted. Trampolines should be added via {nameof(CreateTrampolinesTransformation)}."); }
             else
             {
+                // Validate name did not change too late
                 if (declaration.Name != trampolines.OriginalFunctionName)
+                { declaration = declaration.WithWarning($"Function was renamed after trampolines were added, the new name will not be reflected in the output."); }
+
+                // Validate return type and parameter types/names did not change too late
+                ReadOnlySpan<TypeReference> types = trampolines.OriginalFunctionTypes.AsSpan();
+                ReadOnlySpan<string> parameterNames = trampolines.OriginalParameterNames.AsSpan();
+                Debug.Assert(types.Length >= 1);
+
+                if (types[0] != declaration.ReturnType)
+                { declaration = declaration.WithWarning($"Function's return type changed after trampolines were added. The new return type will not be reflected in the output."); }
+
+                types = types.Slice(1);
+
+                Debug.Assert(types.Length == parameterNames.Length);
+
+                ArrayTransformHelper<TranslatedParameter> verifiedParameters = new(declaration.Parameters);
+                foreach (TranslatedParameter _parameter in declaration.Parameters)
                 {
-                    //TODO: Maybe we should actually just use the name of the function declaration by default?
-                    declaration = declaration.WithWarning($"Function was renamed after trampolines were added, the new name will not be reflected in the output.");
-                }
-                else
-                {
-                    ReadOnlySpan<TypeReference> types = trampolines.OriginalFunctionTypes.AsSpan();
-                    Debug.Assert(types.Length >= 1);
+                    TranslatedParameter parameter = _parameter;
 
-                    if (types[0] != declaration.ReturnType)
-                    { declaration = declaration.WithWarning($"Function's return type changed after trampolines were added. The new return type will not be reflected in the output."); }
-
-                    types = types.Slice(1);
-
-                    ArrayTransformHelper<TranslatedParameter> verifiedParameters = new(declaration.Parameters);
-                    foreach (TranslatedParameter _parameter in declaration.Parameters)
+                    // This situation is somewhat nonsensical, but let's assume they had a good reason to add synthesized parameters
+                    if (types.Length == 0 || parameterNames.Length == 0)
+                    { parameter = parameter.WithWarning($"Parameter seems to have been added after trampolines were added. This parameter will not be reflected in the output."); }
+                    else
                     {
-                        TranslatedParameter parameter = _parameter;
+                        if (parameter.Type != types[0])
+                        { parameter = parameter.WithWarning($"Parameter's type was changed from '{types[0]}' to '{parameter.Type}' after trampolines were added. The new type will not be reflected in the output."); }
 
-                        // This situation is somewhat nonsensical, but let's assume they had a good reason to add synthesized parameters
-                        if (types.Length == 0)
-                        { parameter = parameter.WithWarning($"Parameter seems to have been added after trampolines were added. This parameter will not be reflected in the output."); }
-                        else
-                        {
-                            if (parameter.Type != types[0])
-                            { parameter = parameter.WithWarning($"Parameter's type was changed from '{types[0]}' to '{parameter.Type}' after trampolines were added. The new type will not be reflected in the output."); }
+                        if (parameter.Name != parameterNames[0])
+                        { parameter = parameter.WithWarning($"Parameter's name was changed from '{parameterNames[0]}' to '{parameter.Name}' after trampolines were added. The new name will not be refelected in the output."); }
 
-                            types = types.Slice(1);
-                        }
-
-                        verifiedParameters.Add(parameter);
+                        types = types.Slice(1);
+                        parameterNames = parameterNames.Slice(1);
                     }
 
-                    if (verifiedParameters.WasChanged)
-                    {
-                        declaration = declaration with
-                        {
-                            Parameters = verifiedParameters.MoveToImmutable()
-                        };
-                    }
-
-                    if (types.Length > 1)
-                    { declaration = declaration.WithWarning($"Parameter list was truncated after trampolines were added. This will not be reflected in the output."); }
+                    verifiedParameters.Add(parameter);
                 }
+
+                if (verifiedParameters.WasChanged)
+                {
+                    declaration = declaration with
+                    {
+                        Parameters = verifiedParameters.MoveToImmutable()
+                    };
+                }
+
+                if (types.Length > 1)
+                { declaration = declaration.WithWarning($"Parameter list was truncated after trampolines were added. This will not be reflected in the output."); }
             }
 
             //TODO: Verify return type is compatible
