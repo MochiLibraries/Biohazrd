@@ -15,5 +15,8 @@
 
         public override string ToString()
             => $"`Ref resolved by {Id}{ToStringSuffix}`";
+
+        internal override bool __HACK__CouldResolveTo(TranslatedDeclaration declaration)
+            => declaration.MatchesId(Id);
     }
 }

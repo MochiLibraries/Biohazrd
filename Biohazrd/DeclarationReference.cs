@@ -42,5 +42,8 @@ namespace Biohazrd
 
         public override string ToString()
             => Reference.ToString();
+
+        internal bool __HACK__CouldResolveTo(TranslatedDeclaration declaration)
+            => Reference.__HACK__CouldResolveTo(declaration);
     }
 }

@@ -17,5 +17,8 @@ namespace Biohazrd
 
         public override string ToString()
             => $"`Ref resolved by {ClangDecl}{ToStringSuffix}`";
+
+        internal override bool __HACK__CouldResolveTo(TranslatedDeclaration declaration)
+            => declaration.IsTranslationOf(ClangDecl);
     }
 }
