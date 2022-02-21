@@ -45,15 +45,15 @@ namespace Biohazrd.CSharp
             // Create AssemblyInfo file
             if (options.TargetRuntime >= TargetRuntime.Net7)
             {
-                using CSharpCodeWriter assemblyInfo = session.Open<CSharpCodeWriter>("AssemblyInfo.cs");
-                assemblyInfo.Using("System.Runtime.CompilerServices");
-                assemblyInfo.WriteLine("[assembly: DisableRuntimeMarshalling]");
+                using CSharpCodeWriter assemblyAttributes = session.Open<CSharpCodeWriter>("AssemblyAttributes.cs");
+                assemblyAttributes.Using("System.Runtime.CompilerServices");
+                assemblyAttributes.WriteLine("[assembly: DisableRuntimeMarshalling]");
             }
             else
             {
-                using CSharpCodeWriter assemblyInfo = session.Open<CSharpCodeWriter>("AssemblyInfo.cs");
-                assemblyInfo.Using("System.Runtime.InteropServices");
-                assemblyInfo.WriteLine("[module: DefaultCharSet(CharSet.Unicode)]");
+                using CSharpCodeWriter assemblyAttributes = session.Open<CSharpCodeWriter>("AssemblyAttributes.cs");
+                assemblyAttributes.Using("System.Runtime.InteropServices");
+                assemblyAttributes.WriteLine("[module: DefaultCharSet(CharSet.Unicode)]");
             }
 
             // path => generator
