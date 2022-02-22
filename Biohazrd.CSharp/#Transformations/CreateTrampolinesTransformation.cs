@@ -218,11 +218,11 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
             {
                 useLegacySetLastError = true;
 
-                if (setLastErrorMetadata.SkipPedanticClear)
-                { PrimaryTrampolineProblem(Severity.Warning, $"{nameof(setLastErrorMetadata.SkipPedanticClear)} is not available when targeting {TargetRuntime}."); }
+                if (setLastErrorMetadata.SkipDefensiveClear)
+                { PrimaryTrampolineProblem(Severity.Warning, $"{nameof(setLastErrorMetadata.SkipDefensiveClear)} is not available when targeting {TargetRuntime}."); }
             }
             else
-            { AddFriendlySyntheticAdapter(new SetLastSystemErrorAdapter(setLastErrorMetadata.SkipPedanticClear)); }
+            { AddFriendlySyntheticAdapter(new SetLastSystemErrorAdapter(setLastErrorMetadata.SkipDefensiveClear)); }
         }
 
         // Create native trampoline

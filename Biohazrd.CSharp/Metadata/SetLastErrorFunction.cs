@@ -17,6 +17,6 @@ namespace Biohazrd.CSharp.Metadata
         ///
         /// Only applicable when targeting .NET 6 or later.
         /// </remarks>
-        public bool SkipPedanticClear { get; init; }
+        public bool SkipDefensiveClear { get; init; }
     }
 }
