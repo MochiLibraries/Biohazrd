@@ -3,7 +3,7 @@ using System;
 
 namespace Biohazrd.CSharp.Trampolines;
 
-public sealed class ReturnByReferenceAdapter : Adapter, IReturnAdapter
+public sealed class ReturnByImplicitBufferAdapter : Adapter, IReturnAdapter
 {
     public TypeReference OutputType { get; }
     public override bool CanEmitDefaultValue => false;
@@ -13,7 +13,7 @@ public sealed class ReturnByReferenceAdapter : Adapter, IReturnAdapter
     public string SanityCheckName => "__returnBuffer2";
 #endif
 
-    internal ReturnByReferenceAdapter(Adapter returnBufferParameter)
+    internal ReturnByImplicitBufferAdapter(Adapter returnBufferParameter)
         : base(returnBufferParameter)
     {
         if (returnBufferParameter.SpecialKind != SpecialAdapterKind.ReturnBuffer)

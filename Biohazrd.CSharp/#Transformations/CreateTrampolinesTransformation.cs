@@ -119,7 +119,7 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
                 nativeAdapters.Add(returnBufferParameter);
 
                 // Create friendly adapter for return buffer
-                ReturnByReferenceAdapter returnByReferenceAdapter = new(returnBufferParameter);
+                ReturnByImplicitBufferAdapter returnByReferenceAdapter = new(returnBufferParameter);
                 friendlyReturnAdapter = returnByReferenceAdapter;
                 AddFriendlyAdapter(returnBufferParameter, returnByReferenceAdapter);
             }
