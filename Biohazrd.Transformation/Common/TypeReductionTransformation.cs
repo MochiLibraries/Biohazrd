@@ -3,7 +3,6 @@ using ClangSharp.Interop;
 using ClangSharp.Pathogen;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 
 namespace Biohazrd.Transformation.Common
 {

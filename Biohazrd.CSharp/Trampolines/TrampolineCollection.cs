@@ -53,6 +53,10 @@ public readonly struct TrampolineCollection : IDeclarationMetadataItem, IEnumera
             if (value.TargetFunctionId != _NativeFunction.TargetFunctionId)
             { throw new ArgumentException("The specified trampoline belongs to a different function.", nameof(value)); }
 
+            // Note: We do not want to ensure the target of this trampoline is present in the collection because we don't necessarily have the full graph available at this point.
+            // Additionally, this allows transformations which might remove/replace trampolines to not worry about maintaining the trampoline graph.
+            // (CSharpTranslationVerifier handle validating the trampoline graph is complete and remove any dangling trampolines as necessary.)
+
             _PrimaryTrampoline = value;
         }
     }
@@ -66,16 +70,31 @@ public readonly struct TrampolineCollection : IDeclarationMetadataItem, IEnumera
             foreach (Trampoline trampoline in value)
             {
                 if (trampoline.TargetFunctionId != _NativeFunction.TargetFunctionId)
-                { throw new ArgumentException("All trampolines in the specified trampoline set must belong to the same function as this collection.", nameof(value)); }
+                { throw new ArgumentException($"Trampoline '{trampoline}' does not belong to the same function as this collection.", nameof(value)); }
 
                 if (trampoline.IsNativeFunction)
-                { throw new ArgumentException("Native trampolines must not appear in the set of secondary trampolines.", nameof(value)); }
+                { throw new ArgumentException($"Trampoline '{trampoline}' is a native function. Native functions cannot be trampolines.", nameof(value)); }
+
+                // Note: We do not want to ensure the target of this trampoline is present in the collection because we don't necessarily have the full graph available at this point.
+                // Additionally, this allows transformations which might remove/replace trampolines to not worry about maintaining the trampoline graph.
+                // (CSharpTranslationVerifier handle validating the trampoline graph is complete and remove any dangling trampolines as necessary.)
             }
+
+            _SecondaryTrampolines = value;
         }
     }
 
     internal TrampolineCollection(TranslatedFunction function, Trampoline nativeFunction, Trampoline primaryTrampoline)
     {
+        if (function is null)
+        { throw new ArgumentNullException(nameof(function)); }
+
+        if (nativeFunction is null)
+        { throw new ArgumentNullException(nameof(nativeFunction)); }
+
+        if (primaryTrampoline is null)
+        { throw new ArgumentNullException(nameof(primaryTrampoline)); }
+
         _NativeFunction = nativeFunction;
         _PrimaryTrampoline = primaryTrampoline;
         _SecondaryTrampolines = ImmutableArray<Trampoline>.Empty;
@@ -87,10 +106,14 @@ public readonly struct TrampolineCollection : IDeclarationMetadataItem, IEnumera
     public TrampolineCollection WithTrampoline(Trampoline trampoline)
     {
         if (trampoline.TargetFunctionId != _NativeFunction.TargetFunctionId)
-        { throw new ArgumentException("The specified trampoline must belong to the same function as this collection.", nameof(trampoline)); }
+        { throw new ArgumentException("The specified trampoline does not belong to the same function as this collection.", nameof(trampoline)); }
 
         if (trampoline.IsNativeFunction)
         { throw new ArgumentException("Native trampolines cannot be secondary trampolines.", nameof(trampoline)); }
+
+        // Note: We do not want to ensure the target of this trampoline is present in the collection because we don't necessarily have the full graph available at this point.
+        // Additionally, this allows transformations which might remove/replace trampolines to not worry about maintaining the trampoline graph.
+        // (CSharpTranslationVerifier handle validating the trampoline graph is complete and remove any dangling trampolines as necessary.)
 
         return this with
         {

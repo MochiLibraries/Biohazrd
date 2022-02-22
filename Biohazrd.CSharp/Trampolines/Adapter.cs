@@ -1,6 +1,5 @@
 ﻿using Biohazrd.Expressions;
 using System;
-using System.Diagnostics;
 
 namespace Biohazrd.CSharp.Trampolines;
 
@@ -50,7 +49,7 @@ public abstract class Adapter
 
             if (inputType is not PointerTypeReference)
             { throw new ArgumentException($"The this pointer parameter '{inputType}' is not a pointer type.", nameof(inputType)); }
-            
+
             InputType = inputType;
             ParameterName = "this";
         }

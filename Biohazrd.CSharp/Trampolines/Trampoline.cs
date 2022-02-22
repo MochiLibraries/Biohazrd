@@ -706,4 +706,7 @@ public sealed record Trampoline
         // If we got this far we will emit as a constructor
         return constructorType.Name;
     }
+
+    public override string ToString()
+        => $"{Name} ({Description})";
 }

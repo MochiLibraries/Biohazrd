@@ -5,12 +5,10 @@ using Biohazrd.Transformation;
 using Biohazrd.Transformation.Infrastructure;
 using ClangSharp;
 using ClangSharp.Pathogen;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection.Metadata;
 
 namespace Biohazrd.CSharp
 {
@@ -163,7 +161,13 @@ namespace Biohazrd.CSharp
             if (!declaration.Metadata.TryGet(out TrampolineCollection trampolines))
             { declaration = declaration.WithWarning($"Function does not have trampolines which will soon be deprecated, use {nameof(CreateTrampolinesTransformation)} to add them."); }
             else if (trampolines.__OriginalFunction is null)
-            { declaration = declaration.WithWarning($"Function has trampolines but they were defaulted. Trampolines should be added via {nameof(CreateTrampolinesTransformation)}."); }
+            {
+                declaration = declaration with
+                {
+                    Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Function has trampolines but they were defaulted. Trampolines should be added via {nameof(CreateTrampolinesTransformation)}."),
+                    Metadata = declaration.Metadata.Remove<TrampolineCollection>()
+                };
+            }
             else
             {
                 TranslatedFunction original = trampolines.__OriginalFunction;
@@ -195,6 +199,9 @@ namespace Biohazrd.CSharp
                         if (parameter.Name != originalParameter.Name)
                         { parameter = parameter.WithWarning($"Parameter's name was changed from '{originalParameter.Name}' to '{parameter.Name}' after trampolines were added. This change will not be reflected in the output."); }
 
+                        if (parameter.DefaultValue != originalParameter.DefaultValue)
+                        { parameter = parameter.WithWarning($"Parameter's default value was changed from '{originalParameter.DefaultValue}' to '{parameter.DefaultValue}' after trampolines were added. This change will not be reflected in the output."); }
+
                         verifiedParameters.Add(parameter);
                     }
 
@@ -204,6 +211,38 @@ namespace Biohazrd.CSharp
                         {
                             Parameters = verifiedParameters.MoveToImmutable()
                         };
+                    }
+                }
+
+                // Validate the trampoline collection does not contain duplicates
+                for (int i = 0; i < trampolines.SecondaryTrampolines.Length; i++)
+                {
+                    Trampoline trampoline = trampolines.SecondaryTrampolines[i];
+
+                    if (ReferenceEquals(trampoline, trampolines.PrimaryTrampoline))
+                    {
+                        trampolines = trampolines with { SecondaryTrampolines = trampolines.SecondaryTrampolines.RemoveAt(i) };
+                        i--;
+                        declaration = declaration with
+                        {
+                            Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampoline.Description}' was added as both a secondary and the primary trampoline. The extra entry was removed."),
+                            Metadata = declaration.Metadata.Set(trampolines)
+                        };
+                        continue;
+                    }
+
+                    for (int j = i + 1; j < trampolines.SecondaryTrampolines.Length; j++)
+                    {
+                        if (ReferenceEquals(trampoline, trampolines.SecondaryTrampolines[j]))
+                        {
+                            trampolines = trampolines with { SecondaryTrampolines = trampolines.SecondaryTrampolines.RemoveAt(j) };
+                            j--;
+                            declaration = declaration with
+                            {
+                                Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampoline.Description}' was added to the secondary trampoline list more than once. The extra entry was removed."),
+                                Metadata = declaration.Metadata.Set(trampolines)
+                            };
+                        }
                     }
                 }
 
@@ -221,7 +260,7 @@ namespace Biohazrd.CSharp
                         trampolines = trampolines with { PrimaryTrampoline = trampolines.NativeFunction };
                         declaration = declaration with
                         {
-                            Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampolines.PrimaryTrampoline.Description}' referenced missing trampoline '{primary.Target.Description}' and was removed."),
+                            Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{primary.Description}' referenced missing trampoline '{primary.Target.Description}' and was removed."),
                             Metadata = declaration.Metadata.Set(trampolines)
                         };
 
@@ -246,7 +285,7 @@ namespace Biohazrd.CSharp
 
                             declaration = declaration with
                             {
-                                Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampolines.PrimaryTrampoline.Description}' referenced missing trampoline '{trampoline.Description}' and was removed."),
+                                Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampoline.Description}' referenced missing trampoline '{trampoline.Target.Description}' and was removed."),
                                 Metadata = declaration.Metadata.Set(trampolines)
                             };
 

@@ -1,15 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Biohazrd.CSharp.Trampolines;
 
-//TODO: How to add no-output (synthesized) adapters?
 public struct TrampolineBuilder
 {
     public Trampoline Target { get; }
@@ -160,7 +153,8 @@ public struct TrampolineBuilder
         if (Target is null)
         { throw new InvalidOperationException("Triend to create a trampoline from a defaulted builder!"); }
 
-        if (!HasAdapters)
+        // Changing the name isn't *really* an adaption, but it will create something sane when emitted so let's allow it.
+        if (!HasAdapters && Name == Target.Name)
         { throw new InvalidOperationException("Tried to create a trampoline with nothing adapted!"); }
 
         return new Trampoline(this);

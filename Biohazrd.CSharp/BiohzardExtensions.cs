@@ -1,12 +1,8 @@
-﻿using Biohazrd.CSharp.Infrastructure;
-using Biohazrd.CSharp.Metadata;
-using Biohazrd.CSharp.Trampolines;
+﻿using Biohazrd.CSharp.Trampolines;
 using Biohazrd.Expressions;
 using Biohazrd.Transformation;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace Biohazrd.CSharp
 {
