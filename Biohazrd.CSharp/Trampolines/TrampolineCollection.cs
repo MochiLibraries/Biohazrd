@@ -98,6 +98,23 @@ public readonly struct TrampolineCollection : IDeclarationMetadataItem, IEnumera
         };
     }
 
+    internal bool Contains(Trampoline trampoline)
+    {
+        if (ReferenceEquals(trampoline, NativeFunction))
+        { return true; }
+
+        if (ReferenceEquals(trampoline, PrimaryTrampoline))
+        { return true; }
+
+        foreach (Trampoline secondaryTrampoline in SecondaryTrampolines)
+        {
+            if (ReferenceEquals(trampoline, secondaryTrampoline))
+            { return true; }
+        }
+
+        return false;
+    }
+
     public struct Enumerator
     {
         private readonly TrampolineCollection Collection;

@@ -13,7 +13,7 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public sealed record Trampoline
 {
-    private Trampoline? Target { get; }
+    internal Trampoline? Target { get; }
     internal DeclarationId TargetFunctionId { get; }
     public AccessModifier Accessibility { get; init; }
     public string Name { get; init; }

@@ -6,6 +6,7 @@ using Biohazrd.Transformation.Infrastructure;
 using ClangSharp;
 using ClangSharp.Pathogen;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
@@ -205,6 +206,54 @@ namespace Biohazrd.CSharp
                         };
                     }
                 }
+
+                // Validate the trampoline graph is complete
+                // This has to be done iteratively so if we have A -> B -> (missing) and A is checked before B we will remove both.
+                bool foundBrokenLinks;
+                do
+                {
+                    foundBrokenLinks = false;
+
+                    // Validate primary trampoline
+                    Trampoline primary = trampolines.PrimaryTrampoline;
+                    if (!primary.IsNativeFunction && !trampolines.Contains(primary.Target))
+                    {
+                        trampolines = trampolines with { PrimaryTrampoline = trampolines.NativeFunction };
+                        declaration = declaration with
+                        {
+                            Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampolines.PrimaryTrampoline.Description}' referenced missing trampoline '{primary.Target.Description}' and was removed."),
+                            Metadata = declaration.Metadata.Set(trampolines)
+                        };
+
+                        foundBrokenLinks = true;
+                    }
+
+                    // Verify secondary trampolines
+                    foreach (Trampoline trampoline in trampolines.SecondaryTrampolines)
+                    {
+                        if (trampoline.IsNativeFunction)
+                        {
+                            Debug.Fail("Secondary trampolines should not be native trampolines!");
+                            continue;
+                        }
+
+                        if (!trampolines.Contains(trampoline.Target))
+                        {
+                            trampolines = trampolines with
+                            {
+                                SecondaryTrampolines = trampolines.SecondaryTrampolines.Remove(trampoline, ReferenceEqualityComparer.Instance)
+                            };
+
+                            declaration = declaration with
+                            {
+                                Diagnostics = declaration.Diagnostics.Add(Severity.Warning, $"Trampoline '{trampolines.PrimaryTrampoline.Description}' referenced missing trampoline '{trampoline.Description}' and was removed."),
+                                Metadata = declaration.Metadata.Set(trampolines)
+                            };
+
+                            foundBrokenLinks = true;
+                        }
+                    }
+                } while (foundBrokenLinks);
             }
 
             //TODO: Verify return type is compatible
