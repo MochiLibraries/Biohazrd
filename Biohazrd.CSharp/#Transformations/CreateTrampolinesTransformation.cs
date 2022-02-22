@@ -85,7 +85,7 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
                 else
                 {
                     nativeReturnAdapter = new PassthroughReturnAdapter(CSharpBuiltinType.Byte);
-                    friendlyReturnAdapter = new ByteToBoolReturnAdapter(nativeReturnAdapter);
+                    friendlyReturnAdapter = new CastReturnAdapter(nativeReturnAdapter, CSharpBuiltinType.Bool, CastKind.UnsafeAs);
                 }
             }
             // Handle virtual methods returning bool
@@ -185,7 +185,7 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
                     {
                         Adapter nativeAdapter = new PassthroughAdapter(parameter, CSharpBuiltinType.Byte);
                         nativeAdapters.Add(nativeAdapter);
-                        AddFriendlyAdapter(nativeAdapter, new BoolToByteAdapter(nativeAdapter));
+                        AddFriendlyAdapter(nativeAdapter, new CastAdapter(nativeAdapter, CSharpBuiltinType.Bool, CastKind.UnsafeAs));
                     }
                     continue;
                 }

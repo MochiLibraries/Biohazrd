@@ -414,6 +414,9 @@ public sealed record Trampoline
         {
             IShortReturnAdapter? shortReturn = hasAnyEpilogue ? null : ReturnAdapter as IShortReturnAdapter;
 
+            if (shortReturn is not null && !shortReturn.CanEmitShortReturn)
+            { shortReturn = null; }
+
             // Emit out prologues
             {
                 if (shortReturn is not null)
