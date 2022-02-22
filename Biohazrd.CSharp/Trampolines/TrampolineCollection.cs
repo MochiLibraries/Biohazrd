@@ -7,9 +7,8 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public readonly struct TrampolineCollection : IDeclarationMetadataItem, IEnumerable<Trampoline>
 {
-    internal string OriginalFunctionName { get; }
-    internal ImmutableArray<TypeReference> OriginalFunctionTypes { get; }
-    internal ImmutableArray<string> OriginalParameterNames { get; }
+    /// <summary>The function declaration used to create this trampoline. Should only be used for verification purposes.</summary>
+    internal TranslatedFunction __OriginalFunction { get; }
 
     private readonly Trampoline _NativeFunction;
     private readonly Trampoline _PrimaryTrampoline;
@@ -81,22 +80,8 @@ public readonly struct TrampolineCollection : IDeclarationMetadataItem, IEnumera
         _PrimaryTrampoline = primaryTrampoline;
         _SecondaryTrampolines = ImmutableArray<Trampoline>.Empty;
 
-        // Save some extra info for verification purposes
-        OriginalFunctionName = function.Name;
-
-        ImmutableArray<TypeReference>.Builder originalTypes = ImmutableArray.CreateBuilder<TypeReference>(function.Parameters.Length + 1);
-        ImmutableArray<string>.Builder originalNames = ImmutableArray.CreateBuilder<string>(function.Parameters.Length);
-
-        originalTypes.Add(function.ReturnType);
-
-        foreach (TranslatedParameter parameter in function.Parameters)
-        {
-            originalTypes.Add(parameter.Type);
-            originalNames.Add(parameter.Name);
-        }
-
-        OriginalFunctionTypes = originalTypes.MoveToImmutable();
-        OriginalParameterNames = originalNames.MoveToImmutable();
+        // This is only saved for verification purposes
+        __OriginalFunction = function;
     }
 
     public TrampolineCollection WithTrampoline(Trampoline trampoline)
