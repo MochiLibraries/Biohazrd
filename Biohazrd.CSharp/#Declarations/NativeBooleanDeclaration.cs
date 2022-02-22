@@ -1,6 +1,8 @@
 ﻿using Biohazrd.CSharp.Infrastructure;
 using Biohazrd.Transformation;
 using Biohazrd.Transformation.Infrastructure;
+using System;
+using System.ComponentModel;
 using static Biohazrd.CSharp.CSharpCodeWriter;
 
 namespace Biohazrd.CSharp
@@ -11,6 +13,8 @@ namespace Biohazrd.CSharp
     ///
     /// See https://github.com/InfectedLibraries/Biohazrd/issues/99 for details.
     /// </remarks>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete($"This declaration is only ever added by {nameof(WrapNonBlittableTypesWhereNecessaryTransformation)}, which is deprecated.")]
     public sealed record NativeBooleanDeclaration : TranslatedDeclaration, ICustomTranslatedDeclaration, ICustomCSharpTranslatedDeclaration
     {
         public NativeBooleanDeclaration()
