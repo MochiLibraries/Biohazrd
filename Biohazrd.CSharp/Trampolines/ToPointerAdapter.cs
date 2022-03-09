@@ -14,7 +14,7 @@ public sealed class ToPointerAdapter : Adapter
         { throw new ArgumentException("By ref adapters must target pointers!", nameof(target)); }
 
         InputType = pointerType.Inner;
-        ParameterName = target.ParameterName;
+        Name = target.Name;
     }
 
     public override void WritePrologue(TrampolineContext context, CSharpCodeWriter writer)
@@ -26,6 +26,6 @@ public sealed class ToPointerAdapter : Adapter
     public override void WriteOutputArgument(TrampolineContext context, CSharpCodeWriter writer)
     {
         writer.Write('&');
-        writer.WriteIdentifier(ParameterName);
+        writer.WriteIdentifier(Name);
     }
 }

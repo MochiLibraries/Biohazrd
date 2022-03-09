@@ -46,6 +46,6 @@ public sealed class NonBlittableTypeAdapter : Adapter
     public override void WriteOutputArgument(TrampolineContext context, CSharpCodeWriter writer)
     {
         Debug.Fail("This adapter should not be used in a context where it is emitted in a function body.");
-        writer.WriteIdentifier(ParameterName);
+        writer.WriteIdentifier(Name);
     }
 }

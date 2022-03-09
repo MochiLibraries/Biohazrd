@@ -32,15 +32,15 @@ public sealed class CastAdapter : Adapter
                 writer.Write('(');
                 context.WriteType(TargetType);
                 writer.Write(')');
-                writer.WriteIdentifier(ParameterName);
+                writer.WriteIdentifier(Name);
                 break;
             case CastKind.Implicit:
-                writer.WriteIdentifier(ParameterName);
+                writer.WriteIdentifier(Name);
                 break;
             case CastKind.UnsafeAs:
                 writer.Using("System.Runtime.CompilerServices"); // Unsafe
                 writer.Write("Unsafe.As<bool, byte>(ref ");
-                writer.WriteIdentifier(ParameterName);
+                writer.WriteIdentifier(Name);
                 writer.Write(')');
                 break;
             default:

@@ -25,11 +25,11 @@ public sealed class ThisPointerAdapter : Adapter
         writer.Write("fixed (");
         context.WriteType(InputType);
         writer.Write(' ');
-        writer.WriteIdentifier(ParameterName);
+        writer.WriteIdentifier(Name);
         writer.WriteLine(" = &this)");
         return true;
     }
 
     public override void WriteOutputArgument(TrampolineContext context, CSharpCodeWriter writer)
-        => writer.WriteIdentifier(ParameterName);
+        => writer.WriteIdentifier(Name);
 }

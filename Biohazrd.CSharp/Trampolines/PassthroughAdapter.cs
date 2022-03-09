@@ -39,6 +39,6 @@ public sealed class PassthroughAdapter : Adapter
             writer.Write(' ');
         }
 
-        writer.WriteIdentifier(ParameterName);
+        writer.WriteIdentifier(Name);
     }
 }

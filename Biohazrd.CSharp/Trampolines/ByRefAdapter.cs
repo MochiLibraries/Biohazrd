@@ -22,8 +22,8 @@ public sealed class ByRefAdapter : Adapter
 
         OutputType = pointerType;
         InputType = new ByRefTypeReference(kind, pointerType.Inner);
-        ParameterName = target.ParameterName;
-        TemporaryName = $"__{ParameterName}P";
+        Name = target.Name;
+        TemporaryName = $"__{Name}P";
         Kind = kind;
     }
 
@@ -37,7 +37,7 @@ public sealed class ByRefAdapter : Adapter
         writer.Write(' ');
         writer.WriteIdentifier(TemporaryName);
         writer.Write(" = &");
-        writer.WriteIdentifier(ParameterName);
+        writer.WriteIdentifier(Name);
         writer.WriteLine(')');
         return true;
     }

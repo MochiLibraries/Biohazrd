@@ -7,7 +7,7 @@ namespace Biohazrd.CSharp.Trampolines;
 public abstract class Adapter
 {
     public TypeReference InputType { get; protected init; }
-    public string ParameterName { get; protected init; } //TODO: Should this just be `Name`?
+    public string Name { get; protected init; }
     public bool AcceptsInput { get; protected init; }
     public bool ProvidesOutput => TargetDeclaration != DeclarationId.Null;
 
@@ -19,7 +19,7 @@ public abstract class Adapter
     private protected Adapter(TranslatedParameter target)
     {
         InputType = target.Type;
-        ParameterName = target.Name;
+        Name = target.Name;
         AcceptsInput = true;
 
         TargetDeclaration = target.Id;
@@ -44,7 +44,7 @@ public abstract class Adapter
             { throw new ArgumentException($"The this pointer parameter '{inputType}' is not a pointer type.", nameof(inputType)); }
 
             InputType = inputType;
-            ParameterName = "this";
+            Name = "this";
         }
         else if (specialKind == SpecialAdapterKind.ReturnBuffer)
         {
@@ -57,7 +57,7 @@ public abstract class Adapter
             { throw new ArgumentException($"The return buffer parameter '{inputType}' is not a pointer to the function's return type '{target.ReturnType}'.", nameof(inputType)); }
 
             InputType = inputType;
-            ParameterName = "__returnBuffer";
+            Name = "__returnBuffer";
         }
         else if (specialKind == SpecialAdapterKind.None)
         { throw new ArgumentException("Adapters targeting functions rather than their parameters must have a special kind.", nameof(specialKind)); }
@@ -71,7 +71,7 @@ public abstract class Adapter
         { throw new ArgumentException("The target adapter does not accept an input!", nameof(target)); }
 
         InputType = target.InputType;
-        ParameterName = target.ParameterName;
+        Name = target.Name;
         AcceptsInput = true;
 
         TargetDeclaration = target.TargetDeclaration;
@@ -83,7 +83,7 @@ public abstract class Adapter
     private protected Adapter(TypeReference inputType, string parameterName)
     {
         InputType = inputType;
-        ParameterName = parameterName;
+        Name = parameterName;
         AcceptsInput = true;
 
         TargetDeclaration = DeclarationId.Null;
@@ -192,7 +192,7 @@ public abstract class Adapter
     {
         WriteInputType(context, writer);
         writer.Write(' ');
-        writer.WriteIdentifier(ParameterName);
+        writer.WriteIdentifier(Name);
 
         if (emitDefaultValue)
         {
