@@ -4,7 +4,7 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public sealed class ByRefAdapter : Adapter
 {
-    public override bool CanEmitDefaultValue => Kind == ByRefKind.In;
+    public override bool CanEmitDefaultValue => base.CanEmitDefaultValue && Kind == ByRefKind.In;
 
     private TypeReference OutputType { get; }
     private string TemporaryName { get; }
@@ -27,19 +27,6 @@ public sealed class ByRefAdapter : Adapter
         ParameterName = target.ParameterName;
         TemporaryName = $"__{ParameterName}P";
         Kind = kind;
-    }
-
-    public override void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
-    {
-        context.WriteType(InputType);
-        writer.Write(' ');
-        writer.WriteIdentifier(ParameterName);
-
-        if (emitDefaultValue && DefaultValue is not null)
-        {
-            writer.Write(" = ");
-            context.WriteConstant(DefaultValue, InputType);
-        }
     }
 
     public override void WritePrologue(TrampolineContext context, CSharpCodeWriter writer)

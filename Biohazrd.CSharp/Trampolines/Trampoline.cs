@@ -197,10 +197,8 @@ public sealed record Trampoline
                     if (adapter.SpecialKind == SpecialAdapterKind.ThisPointer)
                     { hasExplicitThis = true; }
 
-                    //TODO: I think it'd be better for CanEmitDefaultValue to imply that a default value will be emitted if possible.
-                    // This allows special adapters which have a null DefaultValue but can write their own anyway
-                    // It also means we can make it more opt-in so adapters have to handle UnsupportedConstantValue, etc.
-                    if (adapter.CanEmitDefaultValue && adapter.DefaultValue is not null)
+                    // Note: Do not check `adapter.DefaultValue` here. Specializations are allowed to implement their own default value emit strategy without leveraging `ConstantValue`.
+                    if (adapter.CanEmitDefaultValue)
                     {
                         if (firstDefaultableInput == int.MaxValue)
                         { firstDefaultableInput = adapterIndex; }
@@ -362,7 +360,7 @@ public sealed record Trampoline
 
                     bool emitDefaultValue = !skipDefaultValues && adapterIndex >= firstDefaultableInput;
                     if (emitDefaultValue)
-                    { Debug.Assert(adapter.CanEmitDefaultValue && adapter.DefaultValue is not null, "Tried to emit a default value when a parameter can't emit a default value or doesn't have one."); }
+                    { Debug.Assert(adapter.CanEmitDefaultValue, "Tried to emit a default value when a parameter can't emit a default value or doesn't have one."); }
                     adapter.WriteInputParameter(adapterContexts[adapterIndex], writer, emitDefaultValue);
                 }
 

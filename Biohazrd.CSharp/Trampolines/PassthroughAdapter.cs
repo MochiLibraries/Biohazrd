@@ -4,8 +4,6 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public sealed class PassthroughAdapter : Adapter
 {
-    public override bool CanEmitDefaultValue => true;
-
     internal PassthroughAdapter(TranslatedParameter target)
         : base(target)
     { }
@@ -23,19 +21,6 @@ public sealed class PassthroughAdapter : Adapter
     {
         if (target is IAdapterWithGenericParameter)
         { throw new NotSupportedException("Adapting to a generic parameter is not supported."); }
-    }
-
-    public override void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
-    {
-        context.WriteType(InputType);
-        writer.Write(' ');
-        writer.WriteIdentifier(ParameterName);
-
-        if (emitDefaultValue && DefaultValue is not null)
-        {
-            writer.Write(" = ");
-            context.WriteConstant(DefaultValue, InputType);
-        }
     }
 
     public override void WritePrologue(TrampolineContext context, CSharpCodeWriter writer)

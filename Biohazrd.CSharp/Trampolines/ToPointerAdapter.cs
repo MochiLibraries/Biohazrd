@@ -4,8 +4,6 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public sealed class ToPointerAdapter : Adapter
 {
-    public override bool CanEmitDefaultValue => true;
-
     public ToPointerAdapter(Adapter target)
         : base(target)
     {
@@ -17,19 +15,6 @@ public sealed class ToPointerAdapter : Adapter
 
         InputType = pointerType.Inner;
         ParameterName = target.ParameterName;
-    }
-
-    public override void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
-    {
-        context.WriteType(InputType);
-        writer.Write(' ');
-        writer.WriteIdentifier(ParameterName);
-
-        if (emitDefaultValue && DefaultValue is not null)
-        {
-            writer.Write(" = ");
-            context.WriteConstant(DefaultValue, InputType);
-        }
     }
 
     public override void WritePrologue(TrampolineContext context, CSharpCodeWriter writer)

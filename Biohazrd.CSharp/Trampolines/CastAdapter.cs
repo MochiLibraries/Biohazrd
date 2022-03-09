@@ -4,7 +4,6 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public sealed class CastAdapter : Adapter
 {
-    public override bool CanEmitDefaultValue => true;
     public TypeReference TargetType { get; }
     public CastKind Kind { get; }
 
@@ -17,19 +16,6 @@ public sealed class CastAdapter : Adapter
         TargetType = target.InputType;
         InputType = inputType;
         Kind = kind;
-    }
-
-    public override void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
-    {
-        context.WriteType(InputType);
-        writer.Write(' ');
-        writer.WriteIdentifier(ParameterName);
-
-        if (emitDefaultValue && DefaultValue is not null)
-        {
-            writer.Write(" = ");
-            context.WriteConstant(DefaultValue, InputType);
-        }
     }
 
     public override void WritePrologue(TrampolineContext context, CSharpCodeWriter writer)

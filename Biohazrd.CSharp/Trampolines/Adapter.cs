@@ -1,5 +1,6 @@
 ﻿using Biohazrd.Expressions;
 using System;
+using System.Diagnostics;
 
 namespace Biohazrd.CSharp.Trampolines;
 
@@ -10,12 +11,18 @@ public abstract class Adapter
     public bool AcceptsInput { get; protected init; }
     public bool ProvidesOutput => TargetDeclaration != DeclarationId.Null;
 
-    //TODO: We should provide a constructor that allows synthesizing parameters which won't be passed to the target function
-    //TODO: Is it OK to use a raw declaration id here instead of a DeclarationReference? It's more efficient and we can check if we match a parameter without doing full resolution
     internal DeclarationId TargetDeclaration { get; }
-    //TODO: How will validation remove default values which can't be emitted in C#? How does it even determine if the default value can or can't be handled by this adapter?
     public ConstantValue? DefaultValue { get; protected init; }
-    public abstract bool CanEmitDefaultValue { get; }
+    public virtual bool CanEmitDefaultValue
+        //TODO: Ideally this should check InputType to see if the default value is actually compatible (and allow string constants if the input type is C#'s string type.)
+        // There partially-finished logic for this in CSharpTranslationVerifier.TransformParameter which should be moved here, but it requires access to the TranslatedLibrary which we don't have here.
+        => DefaultValue switch
+        {
+            StringConstant => false,
+            UnsupportedConstantExpression => false,
+            null => false,
+            _ => true
+        };
 
     public SpecialAdapterKind SpecialKind { get; internal init; }
 
@@ -27,10 +34,6 @@ public abstract class Adapter
 
         TargetDeclaration = target.Id;
         DefaultValue = target.DefaultValue;
-
-        //HACK: Don't allow bad default values (need to rework how default values work in general, see notes in Trampoline.)
-        if (DefaultValue is StringConstant or UnsupportedConstantExpression)
-        { DefaultValue = null; }
 
         SpecialKind = SpecialAdapterKind.None;
     }
@@ -112,7 +115,6 @@ public abstract class Adapter
         return parameter.MatchesId(TargetDeclaration);
     }
 
-    //TODO: Modify all children to use this instead of writing it out themselves
     public virtual void WriteInputType(TrampolineContext context, CSharpCodeWriter writer)
     {
         if (!AcceptsInput)
@@ -121,15 +123,22 @@ public abstract class Adapter
         context.WriteType(InputType);
     }
 
-    //TODO: Remove unnecessary implementations in children
     public virtual void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
     {
         WriteInputType(context, writer);
         writer.Write(' ');
         writer.WriteIdentifier(ParameterName);
 
-        if (emitDefaultValue && DefaultValue is not null)
+        if (emitDefaultValue)
         {
+            if (!CanEmitDefaultValue)
+            { throw new InvalidOperationException("Caller requested we emit the default value but it's not supported by this adapter."); }
+
+            // It is possible for implementations to override `CanEmitDefaultValue` to return `true` even when `DefaultValue`.
+            // This is OK (it's assumed the implementation has special default value logic) but it's not OK for it to not override us to do the emit.
+            if (DefaultValue is null)
+            { throw new NotSupportedException($"Default implementation of {nameof(WriteInputParameter)} cannot emit a default value without {nameof(DefaultValue)} being set."); }
+
             writer.Write(" = ");
             context.WriteConstant(DefaultValue, InputType);
         }
