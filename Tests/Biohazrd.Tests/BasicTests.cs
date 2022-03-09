@@ -271,5 +271,14 @@ size_t Test();
             );
             library.FindDeclaration<TranslatedFunction>("Test");
         }
+
+        [Fact]
+        [RelatedIssue("https://github.com/MochiLibraries/ClangSharp.Pathogen/issues/7")]
+        public void ClangDoesntBreakNullReferenceException()
+        {
+            CreateLibrary("void Hello();");
+            object o = null!;
+            Assert.Throws<NullReferenceException>(() => o.GetHashCode());
+        }
     }
 }
