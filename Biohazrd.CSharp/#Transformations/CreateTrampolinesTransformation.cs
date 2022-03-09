@@ -12,10 +12,42 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
 {
     public TargetRuntime TargetRuntime { get; init; } = CSharpGenerationOptions.Default.TargetRuntime; //TODO: This ideally should come from some central context to ensure consistency
 
-    // We offer this for return types but not parameter types because emitting returned C++ references has some usability concerns when it comes to storing them
-    //TODO: Should this be enabled by default? C# developers are not necessarily used to carting ref types around and they're easy to unintentionally dereference.
-    //TODO: Maybe we should have an in-between setting where it's only used for const references? The semantics of those can't be expressed using C#'s pointers today.
-    public bool LeaveCppReferenceReturnsAsPointers { get; init; } = true;
+    /// <summary>Enables or disables emitting C++ reference returns as C# reference returns.</summary>
+    /// <remarks>
+    /// If enabled, functions such as <c>int& Hello();</c> will be emitted as <c>ref int Hello();</c>. If disabled (the default), the function will be emitted as <c>int* Hello();</c>
+    ///
+    /// It is recommended you only enable this only if it makes a lot of sense for your particular library.
+    /// C# developers are not typically used to dealing with ref returns and are likely to mistakenly dereference them unintentionally.
+    /// Additionally, passing them to other translated methods as pointer parameters is much more cumbersome than the equivalent C++ code.
+    ///
+    /// Consider the following C++ API:
+    /// ```cpp
+    /// int& Hello();
+    /// Increment(int* x);
+    /// ```
+    ///
+    /// In C++ you might use these functions together like so:
+    /// ```cpp
+    /// int& x = Hello();
+    /// Increment(&x);
+    /// ```
+    ///
+    /// With this property enabled, usage from C# looks like this:
+    /// ```csharp
+    /// ref int x = ref Hello();
+    /// fixed (int* xP = &x)
+    /// { Increment(xP); }
+    /// ```
+    ///
+    /// Or if the developer is familiar with <see cref="System.Runtime.CompilerServices.Unsafe"/>:
+    /// ```csharp
+    /// ref int x = ref Hello();
+    /// Increment((int*)Unsafe.AsPointer(ref x));
+    /// ```
+    ///
+    /// Both are quite a bit more clunky than the C++ equivalent. Additionally, C#-style refs cannot be stored in fields (unlike with C++) without odd hacks.
+    /// </remarks>
+    public bool EmitCppReferenceReturnsAsCSharpReferenceReturns { get; init; } = false;
 
     protected override TransformationResult TransformFunction(TransformationContext context, TranslatedFunction declaration)
     {
@@ -100,7 +132,7 @@ public sealed class CreateTrampolinesTransformation : CSharpTransformationBase
                 nativeReturnAdapter = new PassthroughReturnAdapter(returnType);
 
                 // Handle C++-style reference
-                if (!LeaveCppReferenceReturnsAsPointers && returnType is PointerTypeReference { WasReference: true } referenceType)
+                if (EmitCppReferenceReturnsAsCSharpReferenceReturns && returnType is PointerTypeReference { WasReference: true } referenceType)
                 { friendlyReturnAdapter = new ByRefReturnAdapter(nativeReturnAdapter, referenceType.InnerIsConst ? ByRefKind.RefReadOnly : ByRefKind.Ref); }
             }
         }
