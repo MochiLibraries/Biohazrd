@@ -20,9 +20,10 @@ public struct TrampolineBuilder
 
     public TrampolineBuilder(Trampoline target, bool useAsTemplate)
     {
-        //TODO: Automatically drop the template designation or?
-        //if (useAsTemplate && target.IsNativeFunction)
-        //{ throw new ArgumentException("The native function dummy trampoline cannot be used as a template.", nameof(useAsTemplate)); }
+        // You can't actually use the native function as a template since it's the terminating node of the trampoline graph
+        // However, for the sake of simplicity we just silently use it as a target instead.
+        // We don't want generator authors to have to worry about the distinction when adding their own trampolines.
+        // (IE: This lets generator authors simply target the primary trampoline as a template and get something sensible regardless of whether there's a non-native primary trampoline.)
         if (target.IsNativeFunction)
         { useAsTemplate = false; }
 

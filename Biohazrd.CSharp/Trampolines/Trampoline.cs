@@ -88,7 +88,7 @@ public sealed record Trampoline
         {
             // If the builder adapted this adapter, insert its adapter
             if (builder.Adapters?.TryGetValue(targetAdapter, out Adapter? adapter) ?? false)
-            { adapters.Add(adapter); } //TODO: Debug.Assert(template is not null || targetAdapter.AcceptsInput); ? Is it enough this is done in Adapter's constructor? (Probably.)
+            { adapters.Add(adapter); }
             else if (builder.TargetIsTemplate)
             { adapters.Add(targetAdapter); }
             else if (targetAdapter.AcceptsInput)
@@ -101,36 +101,12 @@ public sealed record Trampoline
         Adapters = adapters.MoveToImmutable();
     }
 
-    public Adapter? TryGetAdapterFor(SpecialAdapterKind specialKind)
-    {
-        foreach (Adapter adapter in Adapters)
-        {
-            if (adapter.SpecialKind == specialKind)
-            { return adapter; }
-        }
-
-        return null;
-    }
-
-    //TODO: This is somewhat odd when we're already iterating through the parameters. Maybe we should provide a special enumerator?
-    public Adapter? TryGetAdapterFor(TranslatedParameter parameter)
-    {
-        foreach (Adapter adapter in Adapters)
-        {
-            if (adapter.CorrespondsTo(parameter))
-            { return adapter; }
-        }
-
-        return null;
-    }
-
     internal void Emit(ICSharpOutputGenerator outputGenerator, VisitorContext context, TranslatedFunction declaration, CSharpCodeWriter writer)
     {
         if (!declaration.MatchesId(TargetFunctionId))
         { throw new ArgumentException("The specified function is not related to the target of this trampoline.", nameof(declaration)); }
 
         // Don't emit the native function for virtual methods
-        //TODO: Maybe we should use this to emit the function pointer?
         if (declaration.IsVirtual && IsNativeFunction)
         { return; }
 
@@ -258,7 +234,6 @@ public sealed record Trampoline
         }
         else
         {
-            //TODO: This seems like it should be more extensible
             // Hide from the debugger if applicable
             if (outputGenerator.Options.HideTrampolinesFromDebugger)
             {
@@ -475,7 +450,6 @@ public sealed record Trampoline
                     writer.WriteIdentifier(constructorName);
                 }
                 else
-                //TODO: Need to handle constructor dispatch
                 { writer.WriteIdentifier(Target.Name); }
 
                 // Emit function arguments
