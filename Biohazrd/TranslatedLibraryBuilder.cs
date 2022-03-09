@@ -158,6 +158,25 @@ namespace Biohazrd
 
         private void InitializeClang()
         {
+            // Workaround for https://github.com/MochiLibraries/ClangSharp.Pathogen/issues/7
+            if (OperatingSystem.IsLinux())
+            {
+                try
+                {
+                    unsafe
+                    {
+                        [DllImport("libc")]
+                        static extern int setenv(byte* envname, byte* envval, int overwrite);
+
+                        fixed (byte* nameP = Encoding.ASCII.GetBytes("LIBCLANG_DISABLE_CRASH_RECOVERY\0"))
+                        fixed (byte* valueP = Encoding.ASCII.GetBytes("1\0"))
+                        { setenv(nameP, valueP, 1); }
+                    }
+                }
+                catch (Exception ex)
+                { Console.Error.WriteLine($"Exception while applying ClangSharp.Pathogen#7 workaround: {ex}"); }
+            }
+
             if (Environment.GetEnvironmentVariable("BIOHAZRD_CUSTOM_LIBCLANG_PATHOGEN_RUNTIME") is string customNativeRuntime)
             {
                 LibClangSharpResolver.OverrideNativeRuntime(customNativeRuntime);
