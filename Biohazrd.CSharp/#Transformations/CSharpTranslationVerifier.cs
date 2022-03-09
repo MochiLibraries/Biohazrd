@@ -295,7 +295,7 @@ namespace Biohazrd.CSharp
                 } while (foundBrokenLinks);
             }
 
-            //TODO: Verify return type is compatible
+            //TODO: Verify the return type can be actually be emitted
             //TODO: We might want to check if they can be resolved in an extra pass due to BrokenDeclarationExtractor.
             if (!context.IsValidFieldOrMethodContext())
             { declaration = declaration.WithError("Loose functions are not supported in C#."); }
@@ -363,14 +363,18 @@ namespace Biohazrd.CSharp
 
         protected override TransformationResult TransformParameter(TransformationContext context, TranslatedParameter declaration)
         {
-            //TODO: Verify type is compatible
+            //TODO: Verify the type can be actually be emitted
             if (context.ParentDeclaration is not TranslatedFunction)
             { declaration = declaration.WithError("Function parameters are not valid outside of a function context."); }
 
-            //TODO: These default values have already been captured in the trampolines so it's actually too late to remove them
-            // Additionally, the user might've added trampolines which *can* handle these defaults so it's hard to say the concept of an incompatible default value really exists anymore
-            // We could potentially loop through all of the trampolines and see if any of the input adapters corresponding to this parameter was able to emit this default value and if not
-            // emit a warning then. That'd be a decent way to warn that the default value won't be present in the output *and* detect if the generator author handled it themselves.
+            //TODO: This verification was written prior to trampolines. It doesn't really make as much sense anymore now that we have them.
+            // In particular, it's too late to remove the default values here since they were captured upon trampoline creation. This isn't a problem though since trampolines will skip defaults they don't
+            // support automatically.
+            //
+            // However, it is still nice for generator authors to know when a default parameter value is (probably) being ignored by Biohazrd. As such this logic (and CSharpTranslationVerifierPass2) remain
+            // for the time being.
+            //
+            // In the future we should instead look through all trampolines and determine if a default parameter value was lost entirely for all trampolines and emit warnings for that.
 
             // Verify default parameter value is compatible
             switch (declaration.DefaultValue)

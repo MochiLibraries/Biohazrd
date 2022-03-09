@@ -6,8 +6,6 @@ namespace Biohazrd.CSharp.Trampolines;
 public sealed class ReturnByImplicitBufferAdapter : Adapter, IReturnAdapter
 {
     public TypeReference OutputType { get; }
-    public override bool CanEmitDefaultValue => false;
-
     public string TemporaryName => "__returnBuffer";
 #if SANITY_CHECK_RETURNED_POINTER
     public string SanityCheckName => "__returnBuffer2";
@@ -67,9 +65,6 @@ public sealed class ReturnByImplicitBufferAdapter : Adapter, IReturnAdapter
         writer.WriteIdentifier(TemporaryName);
         writer.WriteLine(';');
     }
-
-    public override void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
-        => throw new InvalidOperationException("This adapter does not accept input.");
 
     public override bool WriteBlockBeforeCall(TrampolineContext context, CSharpCodeWriter writer)
         => false;

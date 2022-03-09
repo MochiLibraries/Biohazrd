@@ -4,8 +4,6 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public sealed class SetLastSystemErrorAdapter : SyntheticAdapter, IAdapterWithInnerWrapper
 {
-    public override bool CanEmitDefaultValue => false;
-
     /// <summary>Skips clearing the last system error before the P/Invoke</summary>
     /// <remarks>
     /// Leaving this as <c>false</c> will clear the last system error before invoking the native function.

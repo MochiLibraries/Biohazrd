@@ -7,7 +7,6 @@ namespace Biohazrd.CSharp.Trampolines;
 public sealed class NonBlittableTypeAdapter : Adapter
 {
     internal NonBlittableTypeKind Kind { get; }
-    public override bool CanEmitDefaultValue => false;
 
     internal NonBlittableTypeAdapter(TranslatedParameter target, NonBlittableTypeKind kind)
         : base(target)
@@ -24,6 +23,9 @@ public sealed class NonBlittableTypeAdapter : Adapter
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
     }
+
+    public override bool CanEmitDefaultValue(TranslatedLibrary library)
+        => false;
 
     public override void WriteInputType(TrampolineContext context, CSharpCodeWriter writer)
     {

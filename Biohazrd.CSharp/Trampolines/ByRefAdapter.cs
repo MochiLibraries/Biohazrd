@@ -4,8 +4,6 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public sealed class ByRefAdapter : Adapter
 {
-    public override bool CanEmitDefaultValue => base.CanEmitDefaultValue && Kind == ByRefKind.In;
-
     private TypeReference OutputType { get; }
     private string TemporaryName { get; }
 

@@ -4,8 +4,6 @@ namespace Biohazrd.CSharp.Trampolines;
 
 public sealed class ThisPointerAdapter : Adapter
 {
-    public override bool CanEmitDefaultValue => false;
-
     public ThisPointerAdapter(Adapter target)
         : base(target)
     {
@@ -18,9 +16,6 @@ public sealed class ThisPointerAdapter : Adapter
         // This adapter eliminates the explicit this pointer parameter
         AcceptsInput = false;
     }
-
-    public override void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
-        => throw new InvalidOperationException("This adapter does not accept input.");
 
     public override void WritePrologue(TrampolineContext context, CSharpCodeWriter writer)
     { }

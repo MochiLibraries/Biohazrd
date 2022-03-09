@@ -197,8 +197,9 @@ public sealed record Trampoline
                     if (adapter.SpecialKind == SpecialAdapterKind.ThisPointer)
                     { hasExplicitThis = true; }
 
-                    // Note: Do not check `adapter.DefaultValue` here. Specializations are allowed to implement their own default value emit strategy without leveraging `ConstantValue`.
-                    if (adapter.CanEmitDefaultValue)
+                    // Note: Do not check `adapter.DefaultValue` here.
+                    // Specializations are allowed to implement their own default value emit strategy without leveraging `ConstantValue`.
+                    if (adapter.CanEmitDefaultValue(context.Library))
                     {
                         if (firstDefaultableInput == int.MaxValue)
                         { firstDefaultableInput = adapterIndex; }
@@ -359,8 +360,6 @@ public sealed record Trampoline
                     { writer.Write(", "); }
 
                     bool emitDefaultValue = !skipDefaultValues && adapterIndex >= firstDefaultableInput;
-                    if (emitDefaultValue)
-                    { Debug.Assert(adapter.CanEmitDefaultValue, "Tried to emit a default value when a parameter can't emit a default value or doesn't have one."); }
                     adapter.WriteInputParameter(adapterContexts[adapterIndex], writer, emitDefaultValue);
                 }
 

@@ -1,6 +1,6 @@
-﻿using Biohazrd.Expressions;
+﻿using Biohazrd.CSharp.Infrastructure;
+using Biohazrd.Expressions;
 using System;
-using System.Diagnostics;
 
 namespace Biohazrd.CSharp.Trampolines;
 
@@ -13,16 +13,6 @@ public abstract class Adapter
 
     internal DeclarationId TargetDeclaration { get; }
     public ConstantValue? DefaultValue { get; protected init; }
-    public virtual bool CanEmitDefaultValue
-        //TODO: Ideally this should check InputType to see if the default value is actually compatible (and allow string constants if the input type is C#'s string type.)
-        // There partially-finished logic for this in CSharpTranslationVerifier.TransformParameter which should be moved here, but it requires access to the TranslatedLibrary which we don't have here.
-        => DefaultValue switch
-        {
-            StringConstant => false,
-            UnsupportedConstantExpression => false,
-            null => false,
-            _ => true
-        };
 
     public SpecialAdapterKind SpecialKind { get; internal init; }
 
@@ -123,6 +113,81 @@ public abstract class Adapter
         context.WriteType(InputType);
     }
 
+    //TODO: Use an analyzer to enforce that this is overriden if WriteInputParameter is overridden
+    public virtual bool CanEmitDefaultValue(TranslatedLibrary library)
+    {
+        // Can't emit a default value if we don't accept input
+        if (!AcceptsInput)
+        { throw new InvalidOperationException("This adapter does not accept input."); }
+
+        // Can't emit a default value when there isn't one
+        if (DefaultValue is null)
+        { return false; }
+
+        // Can't emit a default value when the constant isn't supported by Biohazrd
+        if (DefaultValue is UnsupportedConstantExpression)
+        { return false; }
+
+        // Figure out the effective input type
+        TypeReference inputType = InputType;
+        {
+            // If the input type is a byref we only support default values if its in-byref
+            if (inputType is ByRefTypeReference byRefInputType)
+            {
+                if (byRefInputType.Kind != ByRefKind.In)
+                { return false; }
+
+                inputType = byRefInputType.Inner;
+            }
+
+            // If the input type is a typedef we redsolve it
+            while (inputType is TranslatedTypeReference translatedType)
+            {
+                if (translatedType.TryResolve(library) is TranslatedTypedef typedef)
+                { inputType = typedef.UnderlyingType; }
+                else
+                { break; }
+            }
+        }
+
+        // Check if the constant is compatible with the type
+        switch (DefaultValue)
+        {
+            // Assume custom types are compatible
+            //TODO: Maybe ICustomCSharpConstantValue should have to implement a method for checking?
+            case ICustomCSharpConstantValue:
+                return true;
+            // Double and float constants are supported with their corresponding C# built-in types
+            case DoubleConstant:
+                return inputType == CSharpBuiltinType.Double;
+            case FloatConstant:
+                return inputType == CSharpBuiltinType.Float;
+            // Integer constants are supported for all C# built-ins as well as enums
+            //TODO: How should we handle overflow/underflow here? Right now it's not handled at all and will result in invalid codegen.
+            // We could reject it here, but I think a better solution would be a verification warning and an unchecked cast on emit.
+            // (This should never happen unless a generator author forces it to happen with a transformation, so let's wait and see what the real-world scenario is.)
+            case IntegerConstant:
+            {
+                if (inputType is CSharpBuiltinTypeReference)
+                { return true; }
+                else if (inputType == CSharpBuiltinType.NativeInt || inputType == CSharpBuiltinType.NativeUnsignedInt)
+                { return true; }
+                else if (inputType is TranslatedTypeReference translatedType && translatedType.TryResolve(library) is TranslatedEnum)
+                { return true; }
+                else
+                { return false; }
+            }
+            // Nulls can be emitted for pointer types
+            case NullPointerConstant:
+                return inputType is PointerTypeReference or FunctionPointerTypeReference;
+            // Strings are not supported by default
+            case StringConstant:
+                return inputType == CSharpBuiltinType.String;
+            default:
+                return false;
+        }
+    }
+
     public virtual void WriteInputParameter(TrampolineContext context, CSharpCodeWriter writer, bool emitDefaultValue)
     {
         WriteInputType(context, writer);
@@ -131,7 +196,9 @@ public abstract class Adapter
 
         if (emitDefaultValue)
         {
-            if (!CanEmitDefaultValue)
+            //TODO: Should this be an assert? The default implementation of CanEmitDefaultValue is a bit heavy, doesn't cache, and a well-formed application
+            // will not call us with emitDefaultValue = true when it returns false. Alternatively we could just add caching to CanEmitDefaultValue.
+            if (!CanEmitDefaultValue(context.Context.Library))
             { throw new InvalidOperationException("Caller requested we emit the default value but it's not supported by this adapter."); }
 
             // It is possible for implementations to override `CanEmitDefaultValue` to return `true` even when `DefaultValue`.
