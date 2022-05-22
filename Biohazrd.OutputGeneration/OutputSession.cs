@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Biohazrd.OutputGeneration
 {
@@ -52,6 +53,10 @@ namespace Biohazrd.OutputGeneration
         public ReadOnlySpan<string> GeneratedFileHeaderLines => _GeneratedFileHeaderLines;
         public bool HasGeneratedFileHeader => GeneratedFileHeader is not null;
 
+        //TODO: Eventually we'd like to A) store this in some configuration and B) get defaults from EditorConfig.
+        public string __NewLine { get; set; } = Environment.NewLine;
+        public Encoding __Encoding { get; set; } = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
         public OutputSession()
         {
             _GeneratedFileHeaderLines = null!; // This is initialized when GeneratedFileHeader is set.
@@ -60,7 +65,7 @@ namespace Biohazrd.OutputGeneration
             BaseOutputDirectory = Environment.CurrentDirectory;
 
             // Add default factories
-            AddFactory((session, path) => new StreamWriter(path));
+            AddFactory((session, path) => new StreamWriter(path, append: false, __Encoding) { NewLine = __NewLine });
             AddFactory((session, path) => new FileStream(path, FileMode.Create));
             AddFactory((session, path) => new ReserveWithoutOpening(path));
         }
@@ -241,8 +246,9 @@ namespace Biohazrd.OutputGeneration
             }
 
             // Write out a listing of all files written
-            using (StreamWriter fileLog = new(fileLogPath))
+            using (StreamWriter fileLog = new(fileLogPath, append: false, __Encoding))
             {
+                fileLog.NewLine = __NewLine;
                 foreach (string writtenFilePath in FilesWritten.OrderBy(f => f))
                 {
                     // If conservative logging is enabled and the path is outside of the output directory, don't log it

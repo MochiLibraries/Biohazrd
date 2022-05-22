@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 
@@ -14,7 +15,18 @@ namespace Biohazrd.OutputGeneration
         private bool NoSeparationNeeded = true;
         private readonly StringBuilder CodeBuilder = new();
 
-        public override Encoding Encoding => Encoding.Unicode;
+        public override Encoding Encoding => _Writer.Encoding;
+
+        [AllowNull]
+        public override string NewLine
+        {
+            get => base.NewLine;
+            set
+            {
+                base.NewLine = value;
+                _Writer.NewLine = value;
+            }
+        }
 
         protected readonly OutputSession OutputSession;
         private readonly StreamWriter _Writer;
@@ -31,7 +43,8 @@ namespace Biohazrd.OutputGeneration
             // We explicitly open our own FileStream because StreamWriter will specify FileShare.Read, and we'd prefer to avoid having others potentially
             // trying to read a file we're still in the process of writing out.
             FileStream stream = new(FilePath, FileMode.Create, FileAccess.Write, FileShare.None);
-            _Writer = new StreamWriter(stream, leaveOpen: false);
+            _Writer = new StreamWriter(stream, encoding: OutputSession.__Encoding, leaveOpen: false);
+            NewLine = OutputSession.__NewLine;
         }
 
         public void WriteLineLeftAdjusted(string value)
