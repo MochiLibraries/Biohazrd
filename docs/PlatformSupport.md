@@ -82,7 +82,7 @@ In addition to Biohazrd's handling of ABI concerns, some features of Biohazrd re
 
 ### .NET runtime support
 
-Biohazrd its self is a .NET 5 library, so generators themselves must target .NET 5 or newer. (.NET 6 or newer is recommended since .NET 5 is out of support. .NET 5 is supported a courtesy to those stuck on Visual Studio 2019.)
+Biohazrd its self is a .NET 6 library, so generators themselves must target .NET 6 or newer. We intend to support .NET 6 for as long as it is supported by Microsoft. (.NET 5 support was dropped in [v0.0.0-beta4](https://github.com/MochiLibraries/Biohazrd/releases/tag/v0.0.0-beta4).)
 
 As for the wrappers you generate with said generators, Biohazrd is not especially opinionated about the version of the .NET Runtime you target, but it does prefer generating C# 10 code. (C# 9 if you ask nicely.)
 

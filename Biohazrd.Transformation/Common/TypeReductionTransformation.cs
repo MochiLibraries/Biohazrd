@@ -22,6 +22,14 @@ namespace Biohazrd.Transformation.Common
                 {
                     return new ClangTypeReference(elaboratedType.NamedType);
                 }
+                // Using types represent types accessed via C++ using declarations.
+                // For example, given the code below, `x` will be a typed via `UsingType`.
+                //   using std::error_code;
+                //   error_code x;
+                case Type { TypeClass: CX_TypeClass.CX_TypeClass_Using } usingType:
+                {
+                    return new ClangTypeReference(usingType.Desugar);
+                }
                 // We don't care that `auto` or `decltype` was used for a type, so we just replace them with their canonical form
                 case AutoType:
                 case DecltypeType:
