@@ -43,7 +43,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.CSharp.Tests", "Te
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.OutputGeneration.Tests", "Tests\Biohazrd.OutputGeneration.Tests\Biohazrd.OutputGeneration.Tests.csproj", "{00E42A88-A883-4C43-BE2E-8A241A32EDA9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Biohazrd.AllInOne", "Biohazrd.AllInOne\Biohazrd.AllInOne.csproj", "{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.AllInOne", "Biohazrd.AllInOne\Biohazrd.AllInOne.csproj", "{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
