@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Biohazrd.Infrastructure;
+using System;
 
 namespace Biohazrd
 {
@@ -11,6 +12,7 @@ namespace Biohazrd
     /// 
     /// You must never attach these references to actual declarations, they will almost certainly fail to resolve.
     /// </remarks>
+    [DoNotGenerateBoilerplateMethods] // Transformations/visitors should prefer targeting TranslatedTypeReference
     public sealed record PreResolvedTypeReference : TranslatedTypeReference
     {
         private readonly VisitorContext Context;

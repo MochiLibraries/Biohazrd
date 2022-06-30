@@ -45,6 +45,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.OutputGeneration.T
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.AllInOne", "Biohazrd.AllInOne\Biohazrd.AllInOne.csproj", "{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Biohazrd.BoilerplateGenerator", "Biohazrd.BoilerplateGenerator\Biohazrd.BoilerplateGenerator.csproj", "{6470E979-9CB0-475C-84F9-83FDB9A21C6B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -95,6 +97,10 @@ Global
 		{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{093ABF1F-E8E2-4E24-BCEA-845255E5BC5F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6470E979-9CB0-475C-84F9-83FDB9A21C6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6470E979-9CB0-475C-84F9-83FDB9A21C6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6470E979-9CB0-475C-84F9-83FDB9A21C6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6470E979-9CB0-475C-84F9-83FDB9A21C6B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

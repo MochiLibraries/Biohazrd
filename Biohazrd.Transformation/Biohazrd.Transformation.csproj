@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Biohazrd\Biohazrd.csproj" />
+    <ProjectReference Include="..\Biohazrd.BoilerplateGenerator\Biohazrd.BoilerplateGenerator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
   </ItemGroup>
 
 </Project>

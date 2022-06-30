@@ -11,72 +11,19 @@
             { Visit(context, declaration); }
         }
 
-        protected virtual void Visit(VisitorContext context, TranslatedDeclaration declaration)
+        protected virtual void VisitDeclaration(VisitorContext context, TranslatedDeclaration declaration)
         {
-            switch (declaration)
+            // Visit children
+            bool first = true;
+            foreach (TranslatedDeclaration child in declaration)
             {
-                // Fields
-                case TranslatedVTableField vTableFieldDeclaration:
-                    VisitVTableField(context, vTableFieldDeclaration);
-                    break;
-                case TranslatedUnimplementedField unimplementedFieldDeclaration:
-                    VisitUnimplementedField(context, unimplementedFieldDeclaration);
-                    break;
-                case TranslatedBitField bitFieldDeclaration:
-                    VisitBitField(context, bitFieldDeclaration);
-                    break;
-                case TranslatedNormalField normalFieldDeclaration:
-                    VisitNormalField(context, normalFieldDeclaration);
-                    break;
-                case TranslatedBaseField baseFieldDeclaration:
-                    VisitBaseField(context, baseFieldDeclaration);
-                    break;
-                case TranslatedField fieldDeclaration:
-                    VisitField(context, fieldDeclaration);
-                    break;
+                if (first)
+                {
+                    first = false;
+                    context = context.Add(declaration);
+                }
 
-                // Sealed children of TranslatedDeclaration
-                case TranslatedVTableEntry vTableEntry:
-                    VisitVTableEntry(context, vTableEntry);
-                    break;
-                case TranslatedVTable vTableDeclaration:
-                    VisitVTable(context, vTableDeclaration);
-                    break;
-                case TranslatedUnsupportedDeclaration unsupportedDeclarationDeclaration:
-                    VisitUnsupportedDeclaration(context, unsupportedDeclarationDeclaration);
-                    break;
-                case TranslatedUndefinedRecord undefinedRecordDeclaration:
-                    VisitUndefinedRecord(context, undefinedRecordDeclaration);
-                    break;
-                case TranslatedTypedef typedefDeclaration:
-                    VisitTypedef(context, typedefDeclaration);
-                    break;
-                case TranslatedStaticField staticFieldDeclaration:
-                    VisitStaticField(context, staticFieldDeclaration);
-                    break;
-                case TranslatedRecord recordDeclaration:
-                    VisitRecord(context, recordDeclaration);
-                    break;
-                case TranslatedParameter parameterDeclaration:
-                    VisitParameter(context, parameterDeclaration);
-                    break;
-                case TranslatedFunction functionDeclaration:
-                    VisitFunction(context, functionDeclaration);
-                    break;
-                case TranslatedEnumConstant enumConstantDeclaration:
-                    VisitEnumConstant(context, enumConstantDeclaration);
-                    break;
-                case TranslatedEnum enumDeclaration:
-                    VisitEnum(context, enumDeclaration);
-                    break;
-                case TranslatedConstant constantDeclaration:
-                    VisitConstant(context, constantDeclaration);
-                    break;
-
-                // Fallback declaration
-                default:
-                    VisitUnknownDeclarationType(context, declaration);
-                    break;
+                Visit(context, child);
             }
         }
 

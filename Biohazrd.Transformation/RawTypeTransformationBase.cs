@@ -38,33 +38,9 @@ namespace Biohazrd.Transformation
             return recursiveResult.AddDiagnostics(result.Diagnostics);
         }
 
-        protected sealed override TransformationResult Transform(TransformationContext context, TranslatedDeclaration declaration)
-            => declaration switch
-            {
-                ICustomTranslatedDeclaration customDeclaration => customDeclaration.TransformTypeChildren(this, context.Add(declaration)),
-                TranslatedConstant { Type: not null } constantDeclaration => TransformConstantTypeReferences(context.Add(declaration), constantDeclaration),
-                TranslatedEnum enumDeclaration => TransformEnumTypeReferences(context.Add(declaration), enumDeclaration),
-                TranslatedFunction functionDeclaration => TransformFunctionTypeReferences(context.Add(declaration), functionDeclaration),
-                TranslatedParameter parameterDeclaration => TransformParameterTypeReferences(context.Add(declaration), parameterDeclaration),
-                TranslatedStaticField staticFieldDeclaration => TransformStaticFieldTypeReferences(context.Add(declaration), staticFieldDeclaration),
-                TranslatedBaseField baseFieldDeclaration => TransformBaseFieldTypeReferences(context.Add(declaration), baseFieldDeclaration),
-                TranslatedNormalField normalFieldDeclaration => TransformNormalFieldTypeReferences(context.Add(declaration), normalFieldDeclaration),
-                TranslatedTypedef typedefDeclaration => TransformTypedefTypeReferences(context.Add(declaration), typedefDeclaration),
-                TranslatedDeclaration => declaration
-            };
-
         TypeTransformationResult ITypeTransformation.TransformTypeRecursively(TypeTransformationContext context, TypeReference type)
             => TransformTypeRecursively(context, type);
 
         protected abstract TypeTransformationResult TransformType(TypeTransformationContext context, TypeReference type);
-
-        protected virtual TypeTransformationResult TransformTypeChildren(TypeTransformationContext context, TypeReference type)
-            => type switch
-            {
-                ICustomTypeReference customTypeReference => customTypeReference.TransformChildren(this, context.Add(type)),
-                FunctionPointerTypeReference functionPointer => TransformFunctionPointerTypeReferenceChildren(context.Add(type), functionPointer),
-                PointerTypeReference pointerType => TransformPointerTypeReferenceChildren(context.Add(type), pointerType),
-                TypeReference => type
-            };
     }
 }

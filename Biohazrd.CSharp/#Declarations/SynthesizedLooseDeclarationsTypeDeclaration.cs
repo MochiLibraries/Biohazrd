@@ -1,4 +1,5 @@
-﻿using Biohazrd.Transformation;
+﻿using Biohazrd.Infrastructure;
+using Biohazrd.Transformation;
 using Biohazrd.Transformation.Infrastructure;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -7,6 +8,7 @@ namespace Biohazrd.CSharp
 {
     public sealed record SynthesizedLooseDeclarationsTypeDeclaration : TranslatedDeclaration, ICustomTranslatedDeclaration
     {
+        [CatchAllMembersProperty]
         public ImmutableList<TranslatedDeclaration> Members { get; init; } = ImmutableList<TranslatedDeclaration>.Empty;
 
         public SynthesizedLooseDeclarationsTypeDeclaration(TranslatedFile file)

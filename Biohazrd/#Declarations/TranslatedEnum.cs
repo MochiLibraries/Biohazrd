@@ -1,11 +1,10 @@
 ﻿using ClangSharp;
 using ClangSharp.Pathogen;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Biohazrd
 {
-    public sealed record TranslatedEnum : TranslatedDeclaration
+    public sealed partial record TranslatedEnum : TranslatedDeclaration
     {
         public TypeReference UnderlyingType { get; init; }
         public ImmutableList<TranslatedEnumConstant> Values { get; init; }
@@ -46,9 +45,6 @@ namespace Biohazrd
             TranslateAsLooseConstants = false;
             IsFlags = false;
         }
-
-        public override IEnumerator<TranslatedDeclaration> GetEnumerator()
-            => Values.GetEnumerator();
 
         public override string ToString()
             => $"Enum {base.ToString()}";

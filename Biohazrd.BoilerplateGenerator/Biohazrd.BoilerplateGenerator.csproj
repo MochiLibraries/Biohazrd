@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);SOURCE_GENERATOR</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    We can't reference any of the other Biohazrd assemblies because we're going to be used on them so we include select source files directly.
+  -->
+  <ItemGroup>
+    <Compile Include="..\Biohazrd\ImmutableCollectionExtensions.cs" />
+    <Compile Include="..\Biohazrd.OutputGeneration\CodeWriter*.cs" />
+    <Compile Include="..\Biohazrd.OutputGeneration\CLikeCodeWriter.cs" />
+    <Compile Include="..\Biohazrd.CSharp\CSharpCodeWriter*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0-2.final" />
+  </ItemGroup>
+
+</Project>

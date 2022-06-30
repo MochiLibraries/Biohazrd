@@ -3,6 +3,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 
+#if SOURCE_GENERATOR
+using StreamWriter = System.Text.StringBuilder;
+#endif
+
 namespace Biohazrd.OutputGeneration
 {
     public abstract partial class CodeWriter : TextWriter
@@ -16,9 +20,14 @@ namespace Biohazrd.OutputGeneration
 
         public override Encoding Encoding => Encoding.Unicode;
 
+        private bool IsFinished = false;
+
+#if SOURCE_GENERATOR
+        protected CodeWriter()
+        { }
+#else
         protected readonly OutputSession OutputSession;
         private readonly StreamWriter _Writer;
-        private bool IsFinished = false;
 
         protected string FilePath { get; }
 
@@ -33,6 +42,7 @@ namespace Biohazrd.OutputGeneration
             FileStream stream = new(FilePath, FileMode.Create, FileAccess.Write, FileShare.None);
             _Writer = new StreamWriter(stream, leaveOpen: false);
         }
+#endif
 
         public void WriteLineLeftAdjusted(string value)
         {
@@ -108,7 +118,11 @@ namespace Biohazrd.OutputGeneration
         {
         }
 
+#if SOURCE_GENERATOR
+        public string Finish()
+#else
         public void Finish()
+#endif
         {
             if (IsFinished)
             { throw new InvalidOperationException("Can't finish a code writer more than once."); }
@@ -118,10 +132,16 @@ namespace Biohazrd.OutputGeneration
             if (IndentLevel > 0)
             { throw new InvalidOperationException("All indent scopes should be closed before finishing."); }
 
+#if SOURCE_GENERATOR
+            StringBuilder _Writer = new();
+#endif
             WriteOut(_Writer);
             _Writer.Flush();
             CodeBuilder.Clear();
             IsFinished = true;
+#if SOURCE_GENERATOR
+            return _Writer.ToString();
+#endif
         }
 
         protected virtual void WriteOut(StreamWriter writer)
@@ -140,10 +160,12 @@ namespace Biohazrd.OutputGeneration
         {
             if (disposing)
             {
+#if !SOURCE_GENERATOR
                 if (!IsFinished)
                 { Finish(); }
 
                 _Writer.Dispose();
+#endif
             }
             else
             {

@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace Biohazrd
 {
-    public sealed record TranslatedVTable : TranslatedDeclaration
+    public sealed partial record TranslatedVTable : TranslatedDeclaration
     {
         public ImmutableArray<TranslatedVTableEntry> Entries { get; init; }
 
@@ -72,12 +72,6 @@ namespace Biohazrd
 
             Debug.Assert(entriesBuilder.Count == vTable->EntryCount);
             Entries = entriesBuilder.MoveToImmutable();
-        }
-
-        public override IEnumerator<TranslatedDeclaration> GetEnumerator()
-        {
-            foreach (TranslatedVTableEntry entry in Entries)
-            { yield return entry; }
         }
 
         public override string ToString()

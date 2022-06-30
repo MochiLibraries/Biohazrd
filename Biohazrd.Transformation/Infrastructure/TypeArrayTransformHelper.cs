@@ -101,6 +101,10 @@ namespace Biohazrd.Transformation.Infrastructure
             if (transformation.Diagnostics.Length > 0)
             { Diagnostics.AddRange(transformation.Diagnostics); }
 
+            // This defends against transformations returning default(TypeTransformationResult)
+            if (transformation.TypeReference is null)
+            { throw new InvalidOperationException("Type transformations cannot remove type references."); }
+
             // If the builder was already created, just add the type
             if (Builder is not null)
             {

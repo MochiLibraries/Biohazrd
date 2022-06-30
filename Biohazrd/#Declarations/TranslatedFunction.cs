@@ -2,14 +2,13 @@
 using ClangSharp.Interop;
 using ClangSharp.Pathogen;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Biohazrd
 {
-    public sealed record TranslatedFunction : TranslatedDeclaration
+    public sealed partial record TranslatedFunction : TranslatedDeclaration
     {
         /// <remarks>Will be <c>null</c> when <see cref="IsCallable"/> is <c>false</c>.</remarks>
         public PathogenArrangedFunction? FunctionAbi { get; }
@@ -202,12 +201,6 @@ namespace Biohazrd
                     }
                 }
             }
-        }
-
-        public override IEnumerator<TranslatedDeclaration> GetEnumerator()
-        {
-            foreach (TranslatedParameter parameter in Parameters)
-            { yield return parameter; }
         }
 
         public override string ToString()

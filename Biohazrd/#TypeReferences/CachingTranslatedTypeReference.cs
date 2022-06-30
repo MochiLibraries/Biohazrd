@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Biohazrd.Infrastructure;
+using System;
 
 namespace Biohazrd
 {
@@ -8,6 +9,7 @@ namespace Biohazrd
     ///
     /// Implementations can use <see cref="ToStringSuffix"/> to include the cached result in the <see cref="ToString"/> output for debugging purposes.
     /// </remarks>
+    [DoNotGenerateBoilerplateMethods] // This is public in order to simplify implementation of alternative lookup schemes, transformations/visitors should prefer targeting TranslatedTypeReference
     public abstract record CachingTranslatedTypeReference : TranslatedTypeReference
     {
         //TODO: Thread safety

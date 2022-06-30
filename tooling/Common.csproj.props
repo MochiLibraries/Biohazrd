@@ -25,6 +25,23 @@
 
     <!-- Embed untracked sources in the PDB -->
     <EmbedUntrackedSources Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</EmbedUntrackedSources>
+
+    <!--
+      Warnings as errrors
+      CS8032 - Analyzer cannot be created
+      CS8033 - Analyzer assembly empty
+      CS8034 - Unable to load analyzer
+      CS8040 - Unable to load some types in analyzer
+      CS8784 - Source generator initialization failure
+      CS8785 - Source generator failure
+    -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS8032;CS8033;CS8034;CS8040;CS8784;CS8785</WarningsAsErrors>
+    <!-- Workaround for https://github.com/dotnet/roslyn/issues/49219 -->
+    <MSBuildWarningsAsErrors>$(MSBuildWarningsAsErrors);CS8784;CS8785</MSBuildWarningsAsErrors>
+
+    <!-- Dump source generator output for debugging
+    -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
   <ItemGroup>
     <!-- Enable Source Link -->

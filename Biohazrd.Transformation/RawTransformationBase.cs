@@ -106,17 +106,5 @@ namespace Biohazrd.Transformation
             => TransformRecursively(context, declaration);
 
         protected abstract TransformationResult Transform(TransformationContext context, TranslatedDeclaration declaration);
-
-        private TransformationResult TransformChildren(TransformationContext context, TranslatedDeclaration declaration)
-            => declaration switch
-            {
-                ICustomTranslatedDeclaration customDeclaration => customDeclaration.TransformChildren(this, context.Add(declaration)),
-                TranslatedRecord recordDeclaration => TransformRecordChildren(context.Add(declaration), recordDeclaration),
-                TranslatedFunction functionDeclaration => TransformFunctionChildren(context.Add(declaration), functionDeclaration),
-                TranslatedEnum enumDeclaration => TransformEnumChildren(context.Add(declaration), enumDeclaration),
-                TranslatedVTable vTableDeclaration => TransformVTableChildren(context.Add(declaration), vTableDeclaration),
-                // In the default case, the declaration has no children:
-                TranslatedDeclaration => declaration
-            };
     }
 }

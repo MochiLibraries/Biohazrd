@@ -61,5 +61,8 @@
     <!-- For temporary workaround methods on TranslatedTypeReference -->
     <InternalsVisibleTo Include="$(MSBuildProjectName).CSharp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Biohazrd.BoilerplateGenerator\Biohazrd.BoilerplateGenerator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+  </ItemGroup>
 
 </Project>
