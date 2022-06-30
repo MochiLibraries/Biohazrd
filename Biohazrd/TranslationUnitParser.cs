@@ -321,7 +321,20 @@ namespace Biohazrd
                                 Severity.Warning,
                                 $"Partial template specializations are not supported."
                             );
-                        case TemplateDecl:
+                        case ClassTemplateDecl classTemplate:
+                            // Only translate the canonincal declaration
+                            if (!classTemplate.IsCanonicalDecl)
+                            { return None; }
+
+                            return new TranslatedRecordTemplate(file, classTemplate);
+                        case FunctionTemplateDecl functionTemplate:
+                            // Only translate the canonincal declaration
+                            if (!functionTemplate.IsCanonicalDecl)
+                            { return None; }
+
+                            return new TranslatedFunctionTemplate(file, functionTemplate);
+                        case TemplateDecl template:
+                            return new TranslatedUnsupportedTemplate(file, template);
                         case VarTemplatePartialSpecializationDecl:
                         case VarTemplateSpecializationDecl:
                             return new TranslatedUnsupportedDeclaration

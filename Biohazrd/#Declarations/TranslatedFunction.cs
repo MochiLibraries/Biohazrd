@@ -4,6 +4,7 @@ using ClangSharp.Pathogen;
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace Biohazrd
@@ -25,6 +26,7 @@ namespace Biohazrd
         /// void TestMetod3(MyStruct* s); // IsCallable = true,  FunctionAbi = non-null
         /// </code>
         /// </remarks>
+        [MemberNotNullWhen(true, nameof(FunctionAbi))]
         public bool IsCallable => FunctionAbi is not null;
 
         public CallingConvention CallingConvention { get; init; }

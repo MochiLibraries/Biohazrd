@@ -10,7 +10,7 @@ namespace Biohazrd
             : base(parsingContext, file, specialization)
         {
             // Override the name with the specialized string
-            // (This won't result in a name that's very friendly for emit, but it makes it easier to tell what this specialization actuall is.)
+            // (This won't result in a name that's very friendly for emit, but it makes it easier to tell what this specialization actually is.)
             Name = specialization.TypeForDecl.ToString();
         }
 

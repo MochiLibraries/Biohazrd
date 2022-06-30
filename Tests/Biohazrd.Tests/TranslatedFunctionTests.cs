@@ -179,7 +179,7 @@ public:
                 if (declaration is not TranslatedFunction function)
                 { continue; }
 
-                // Class methods with bodied are implicitly inline (n4659§12.2.1 Member Functions)
+                // Class methods with bodies are implicitly inline (n4659§12.2.1 Member Functions)
                 // https://timsong-cpp.github.io/cppwp/n4659/class.mfct#1
                 if (function.Declaration is CXXMethodDecl)
                 { Assert.True(function.IsInline); }
